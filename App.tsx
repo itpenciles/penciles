@@ -51,9 +51,9 @@ const MainLayout = () => (
 
 const App: React.FC = () => {
   return (
-    <PropertyProvider>
-      <HashRouter>
-        <AuthProvider>
+    <HashRouter>
+      <AuthProvider>
+        <PropertyProvider>
           <Routes>
             {/* Public routes using the PublicLayout */}
             <Route element={<PublicLayout />}>
@@ -78,9 +78,9 @@ const App: React.FC = () => {
             {/* Fallback for any unknown routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </AuthProvider>
-      </HashRouter>
-    </PropertyProvider>
+        </PropertyProvider>
+      </AuthProvider>
+    </HashRouter>
   );
 };
 

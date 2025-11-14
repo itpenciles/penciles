@@ -84,15 +84,16 @@ const Dashboard = () => {
     const totalProperties = properties.length;
     const positiveCashFlowCount = properties.filter(p => p.calculations.monthlyCashFlowWithDebt > 0).length;
 
-    // FIX: Explicitly typed the `reduce` accumulator as `Record<string, number>` to ensure
-    // the `count` variable is correctly inferred as a number, resolving the arithmetic type error.
-    const recommendationCounts = properties.reduce<Record<string, number>>((acc, p) => {
+    // FIX: The generic syntax `<...>` for `reduce` can be ambiguous in `.tsx` files, leading to incorrect type inference.
+    // Using a type assertion on the initial value `{}` ensures `recommendationCounts` is correctly typed,
+    // which in turn ensures `count` in the `map` function is a number, resolving the arithmetic operation error.
+    const recommendationCounts = properties.reduce((acc, p) => {
         const level = p.recommendation?.level;
         if (level) {
             acc[level] = (acc[level] || 0) + 1;
         }
         return acc;
-    }, {});
+    }, {} as Record<string, number>);
 
 
     const handleSelectProperty = useCallback((id: string) => {
@@ -129,6 +130,39 @@ const Dashboard = () => {
     const handleCompare = () => {
         if (selectedPropertyIds.length < 2) return;
         navigate(`/compare?ids=${selectedPropertyIds.join(',')}`);
+    };
+
+    // Helper function to render table content based on state to fix parsing error
+    const renderTableContent = () => {
+        if (loading) {
+            return <tr><td colSpan={7} className="text-center py-12 text-gray-500">Loading properties...</td></tr>;
+        }
+        if (error) {
+            return <tr><td colSpan={7} className="text-center py-12 text-red-500">{error}</td></tr>;
+        }
+        if (properties.length > 0) {
+            return properties.map(prop => 
+                <PropertyRow 
+                    key={prop.id} 
+                    property={prop} 
+                    isSelected={selectedPropertyIds.includes(prop.id)}
+                    onSelect={handleSelectProperty}
+                    onDelete={handleDelete}
+                />
+            );
+        }
+        return (
+            <tr>
+                <td colSpan={7}>
+                    <div className="text-center py-12 text-gray-500">
+                        <p>No properties analyzed yet.</p>
+                        <button onClick={() => navigate('/add-property')} className="mt-2 text-brand-blue font-semibold">
+                            Analyze your first property
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        );
     };
 
     return (
@@ -178,32 +212,7 @@ const Dashboard = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {loading ? (
-                                    <tr><td colSpan={7} className="text-center py-12 text-gray-500">Loading properties...</td></tr>
-                                ) : error ? (
-                                    <tr><td colSpan={7} className="text-center py-12 text-red-500">{error}</td></tr>
-                                ) : properties.length > 0 ? (
-                                    properties.map(prop => 
-                                        <PropertyRow 
-                                            key={prop.id} 
-                                            property={prop} 
-                                            isSelected={selectedPropertyIds.includes(prop.id)}
-                                            onSelect={handleSelectProperty}
-                                            onDelete={handleDelete}
-                                        />
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={7}>
-                                            <div className="text-center py-12 text-gray-500">
-                                                <p>No properties analyzed yet.</p>
-                                                <button onClick={() => navigate('/add-property')} className="mt-2 text-brand-blue font-semibold">
-                                                    Analyze your first property
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
+                                {renderTableContent()}
                             </tbody>
                         </table>
                     </div>
@@ -241,11 +250,11 @@ const Dashboard = () => {
                              <div className="space-y-2 text-sm">
                                 {totalProperties > 0 ? (
                                     Object.entries(recommendationCounts).map(([level, count]) => {
-                                        const percentage = ((count as number / totalProperties) * 100).toFixed(0);
+                                        const percentage = ((count / totalProperties) * 100).toFixed(0);
                                         return (
                                             <div className="flex justify-between" key={level}>
                                                 <span>{level}</span>
-                                                <span>{count as number} <span className="text-gray-500">{percentage}%</span></span>
+                                                <span>{count} <span className="text-gray-500">{percentage}%</span></span>
                                             </div>
                                         );
                                     })
