@@ -73,9 +73,8 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const { properties, dispatch, saveProperties } = useProperties();
+    const { properties, deleteProperty, loading, error } = useProperties();
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
 
     const avgCapRate = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.capRate, 0) / properties.length : 0;
     const avgMonthlyCashFlow = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0) / properties.length : 0;
@@ -111,32 +110,25 @@ const Dashboard = () => {
         });
     }, []);
     
-    const handleDelete = useCallback((idToDelete: string, address: string) => {
+    const handleDelete = useCallback(async (idToDelete: string, address: string) => {
         if (!idToDelete) {
             console.error('[DEBUG] handleDelete called with an invalid ID.');
             return;
         }
-        
-        console.log(`[DEBUG] handleDelete triggered for property: ${address} (ID: ${idToDelete})`);
-
-        console.log(`[DEBUG] Deleting property. Dispatching DELETE_PROPERTY action.`);
-        dispatch({ type: 'DELETE_PROPERTY', payload: idToDelete });
-        setSelectedPropertyIds(prev => prev.filter(id => id !== idToDelete));
-        console.log(`[DEBUG] Action dispatched. State update should follow.`);
-    }, [dispatch]);
+        if (window.confirm(`Are you sure you want to delete the property at ${address}?`)) {
+            try {
+                await deleteProperty(idToDelete);
+                setSelectedPropertyIds(prev => prev.filter(id => id !== idToDelete));
+            } catch (err) {
+                alert(`Failed to delete property: ${err}`);
+            }
+        }
+    }, [deleteProperty]);
 
 
     const handleCompare = () => {
         if (selectedPropertyIds.length < 2) return;
         navigate(`/compare?ids=${selectedPropertyIds.join(',')}`);
-    };
-
-    const handleSave = () => {
-        saveProperties();
-        setSaveStatus('saved');
-        setTimeout(() => {
-            setSaveStatus('idle');
-        }, 2000);
     };
 
     return (
@@ -147,23 +139,6 @@ const Dashboard = () => {
                     <p className="text-gray-600 mt-1">Analyze properties and maximize your returns</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <button
-                        onClick={handleSave}
-                        disabled={saveStatus === 'saved'}
-                        className="flex items-center bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-gray-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
-                        {saveStatus === 'saved' ? (
-                            <>
-                                <CheckIcon className="h-5 w-5 mr-2" />
-                                Saved!
-                            </>
-                        ) : (
-                            <>
-                                <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
-                                Save to Browser
-                            </>
-                        )}
-                    </button>
                     <button onClick={() => navigate('/add-property')} className="flex items-center bg-brand-blue text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-blue-700 transition">
                         <PlusIcon className="h-5 w-5 mr-2" />
                         Analyze New Property
@@ -203,25 +178,34 @@ const Dashboard = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {properties.map(prop => 
-                                    <PropertyRow 
-                                        key={prop.id} 
-                                        property={prop} 
-                                        isSelected={selectedPropertyIds.includes(prop.id)}
-                                        onSelect={handleSelectProperty}
-                                        onDelete={handleDelete}
-                                    />
+                                {loading ? (
+                                    <tr><td colSpan={7} className="text-center py-12 text-gray-500">Loading properties...</td></tr>
+                                ) : error ? (
+                                    <tr><td colSpan={7} className="text-center py-12 text-red-500">{error}</td></tr>
+                                ) : properties.length > 0 ? (
+                                    properties.map(prop => 
+                                        <PropertyRow 
+                                            key={prop.id} 
+                                            property={prop} 
+                                            isSelected={selectedPropertyIds.includes(prop.id)}
+                                            onSelect={handleSelectProperty}
+                                            onDelete={handleDelete}
+                                        />
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7}>
+                                            <div className="text-center py-12 text-gray-500">
+                                                <p>No properties analyzed yet.</p>
+                                                <button onClick={() => navigate('/add-property')} className="mt-2 text-brand-blue font-semibold">
+                                                    Analyze your first property
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 )}
                             </tbody>
                         </table>
-                         {properties.length === 0 && (
-                            <div className="text-center py-12 text-gray-500">
-                                <p>No properties analyzed yet.</p>
-                                <button onClick={() => navigate('/add-property')} className="mt-2 text-brand-blue font-semibold">
-                                    Analyze your first property
-                                </button>
-                            </div>
-                        )}
                     </div>
                 </div>
 

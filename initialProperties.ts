@@ -1,5 +1,5 @@
 import { Property } from '../types';
 
-// To save your analyzed properties, replace the content of this file
-// with the code you copy from the "Save Data" button in the dashboard.
+// This file is no longer used for data persistence.
+// Properties are now fetched from the secure backend database upon user login.
 export const initialProperties: Property[] = [];

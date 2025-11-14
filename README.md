@@ -2,48 +2,99 @@
 
 This is a powerful real estate analysis tool designed to help investors make data-driven decisions. It uses the Google Gemini API to analyze property data from various sources and provides comprehensive financial metrics and investment recommendations.
 
-## Local Development Setup
+This project is structured as a full-stack application:
+-   **Frontend:** A React application built with Vite located in the root directory.
+-   **Backend:** A Node.js/Express API server located in the `server/` directory.
+
+---
+
+## Frontend Development Setup
 
 ### Prerequisites
 
-1.  **Node.js and npm**: You must have Node.js (version 18 or newer) and npm installed. You can download them from [nodejs.org](https://nodejs.org/).
-2.  **A Code Editor**: Visual Studio Code is recommended.
-3.  **A Gemini API Key**: Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-4.  **A Google Client ID for OAuth**: To enable Google Sign-In, you'll need a Client ID. Follow the instructions [here](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid) to create one.
+1.  **Node.js and npm**: You must have Node.js (version 18 or newer) and npm installed.
+2.  **A Google Client ID for OAuth**: To enable Google Sign-In, you'll need a Client ID. Follow the instructions [here](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid) to create one.
 
-### Step 1: Install Dependencies
-
-Open your terminal, navigate to the project folder, and run this command to install all the required libraries:
-
-```bash
-npm install
-```
-
-### Step 2: Configure Your Environment Variables
+### Step 1: Configure Your Environment Variables
 
 1.  In the root of the project folder, create a new file named `.env`.
-2.  Open the `.env` file and add the following lines, replacing the placeholder values with your actual Gemini API key and your Google Client ID.
+2.  Open the `.env` file and add your Google Client ID.
 
     ```
-    API_KEY=YOUR_GEMINI_API_KEY_HERE
     VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com
     ```
     
-    _See `.env.example` for a template._
+    _Note: The `API_KEY` is now managed by the backend server._
 
-### Step 3: Run the Development Server
-
-Now, start the Vite development server by running this command in your terminal:
+### Step 2: Install Dependencies & Run
 
 ```bash
+# Install frontend dependencies
+npm install
+
+# Run the Vite development server (usually on http://localhost:5173/)
 npm run dev
 ```
 
-The terminal will show you a message indicating that the server is running, along with a local URL, which is usually `http://localhost:5173/`.
+---
 
-### Step 4: View the Application
+## Backend Development Setup
 
-Open your web browser and navigate to the URL provided by Vite (e.g., `http://localhost:5173/`). You should now see the landing page with a Google Sign-In button.
+### Prerequisites
+
+1.  **A Gemini API Key**: Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+2.  **PostgreSQL Database**: You need a running PostgreSQL database. You can run one locally using Docker or use a free hosted provider like [Supabase](https://supabase.com/) or [Render](https://render.com/).
+3.  **JWT Secret**: A long, random, secret string for signing session tokens. You can generate one using an online tool.
+
+### Step 1: Configure Your Backend Environment Variables
+
+In the same `.env` file in the project root, add the following backend variables:
+
+```
+# Backend Configuration
+API_KEY=YOUR_GEMINI_API_KEY_HERE
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+JWT_SECRET=YOUR_SUPER_SECRET_RANDOM_STRING_HERE
+```
+
+### Step 2: Set Up the Database
+
+Connect to your PostgreSQL database and run the following SQL commands to create the necessary tables:
+
+```sql
+CREATE TABLE "users" (
+  "id" SERIAL PRIMARY KEY,
+  "google_id" VARCHAR(255) UNIQUE NOT NULL,
+  "email" VARCHAR(255) UNIQUE NOT NULL,
+  "name" VARCHAR(255),
+  "profile_picture_url" TEXT,
+  "created_at" TIMESTAMPTZ DEFAULT (now())
+);
+
+CREATE TABLE "properties" (
+  "id" SERIAL PRIMARY KEY,
+  "user_id" INTEGER NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
+  "property_data" JSONB NOT NULL,
+  "created_at" TIMESTAMPTZ DEFAULT (now()),
+  "updated_at" TIMESTAMPTZ DEFAULT (now())
+);
+```
+
+### Step 3: Install Dependencies & Run
+
+You will need two separate terminal windows to run the frontend and backend simultaneously.
+
+```bash
+# In your second terminal window:
+
+# Install backend dependencies
+npm install
+
+# Run the backend Express server (usually on http://localhost:3000/)
+npm run start:server
+```
+
+The backend server will automatically read the `.env` file and connect to your database. You can now use the frontend application, and it will make API calls to your local backend server.
 
 ---
 
@@ -94,14 +145,3 @@ This error means there is **100% a configuration mismatch** between the URL in y
     -   **Windows/Linux:** `Ctrl + Shift + R`
     -   **Mac:** `Cmd + Shift + R`
 5.  Try clicking "Sign in with Google" again. The issue should now be resolved.
-
----
-
-### If `npm install` or `npm run dev` fails
-
-If you encounter errors during installation or startup (especially after a failed attempt), your `node_modules` directory might be corrupted. To fix this:
-
-1.  **Delete the `node_modules` folder.**
-2.  **Delete the `package-lock.json` file.**
-3.  Run `npm install` again.
-4.  Then run `npm run dev`.

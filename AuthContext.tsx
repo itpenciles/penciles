@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
+import apiClient from '../services/apiClient';
 
 interface AuthContextType {
     user: User | null;
     logout: () => void;
     isLoading: boolean;
     isAuthEnabled: boolean;
-    token: string | null;
     authError: string | null;
     clientIdForDebugging: string | null;
     handleGoogleLogin: (response: any) => void;
@@ -28,42 +28,25 @@ const isAuthEffectivelyEnabled = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'un
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(() => localStorage.getItem('authToken'));
     const [isLoading, setIsLoading] = useState(true);
     const [authError, setAuthError] = useState<string | null>(null);
     const [clientIdForDebugging, setClientIdForDebugging] = useState<string | null>(null);
     const navigate = useNavigate();
 
-    const handleGoogleLogin = useCallback((response: any) => {
+    const handleGoogleLogin = useCallback(async (response: any) => {
         setIsLoading(true);
-        console.log("Received Google credential:", response.credential);
-
+        setAuthError(null);
         try {
-            const token = response.credential;
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-
-            const decodedToken = JSON.parse(jsonPayload);
-
-            const userFromToken: User = {
-                id: decodedToken.sub,
-                name: decodedToken.name,
-                email: decodedToken.email,
-                profilePictureUrl: decodedToken.picture,
-            };
+            const res = await apiClient.post('/auth/google', { token: response.credential });
+            const { token, user } = res.data;
             
             localStorage.setItem('authToken', token);
-            setToken(token);
-            setUser(userFromToken);
-            setIsLoading(false);
+            setUser(user);
             navigate('/dashboard');
-
-        } catch (error) {
-            console.error("Error decoding token or logging in:", error);
-            setAuthError("Failed to decode the login credential. The token may be invalid or expired.");
+        } catch (error: any) {
+            console.error("Error logging in with backend:", error);
+            setAuthError(error.response?.data?.message || "An unexpected error occurred during login.");
+        } finally {
             setIsLoading(false);
         }
     }, [navigate]);
@@ -82,6 +65,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const storedToken = localStorage.getItem('authToken');
             if (storedToken) {
                  try {
+                     // The best practice is to have a /me endpoint to verify the token
+                     // For now, we decode it to check expiration and get user info
                      const base64Url = storedToken.split('.')[1];
                      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
                      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
@@ -90,14 +75,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                      const decodedToken = JSON.parse(jsonPayload);
 
                      if (decodedToken.exp * 1000 > Date.now()) {
-                         const mockUser: User = {
-                            id: decodedToken.sub,
+                        // In a real app, you'd fetch the user data from a /me endpoint
+                        // For this implementation, we assume the token is the source of truth for display purposes
+                         const userFromToken: User = {
+                            id: decodedToken.id,
                             name: decodedToken.name,
                             email: decodedToken.email,
-                            profilePictureUrl: decodedToken.picture,
+                            profilePictureUrl: decodedToken.profilePictureUrl,
                          };
-                         setUser(mockUser);
-                         setToken(storedToken);
+                         setUser(userFromToken);
                      } else {
                          localStorage.removeItem('authToken');
                      }
@@ -113,7 +99,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     const logout = () => {
         setUser(null);
-        setToken(null);
         localStorage.removeItem('authToken');
         if (isAuthEffectivelyEnabled && typeof window.google !== 'undefined') {
             window.google.accounts.id.disableAutoSelect();
@@ -126,7 +111,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         isLoading,
         isAuthEnabled: isAuthEffectivelyEnabled,
-        token,
         authError,
         clientIdForDebugging,
         handleGoogleLogin

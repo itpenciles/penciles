@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { Property, Financials, WholesaleInputs, SubjectToInputs, SellerFinancingInputs, Strategy } from '../types';
 import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../contexts/PropertyContext';
-import { reevaluatePropertyWithGemini } from '../services/geminiService';
 import { ArrowLeftIcon, CheckIcon } from '../constants';
 
 // --- Icons ---
@@ -52,7 +51,7 @@ const SELLER_FINANCING_EXIT_STRATEGIES: ExitPoint[] = [
 const PropertyDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { properties, dispatch } = useProperties();
+    const { properties, updateProperty } = useProperties();
     const [property, setProperty] = useState<Property | null>(null);
     const [editedProperty, setEditedProperty] = useState<Property | null>(null);
     const [activeStrategy, setActiveStrategy] = useState<Strategy>('Rental');
@@ -61,6 +60,7 @@ const PropertyDetail = () => {
 
 
     useEffect(() => {
+        if (!id) return;
         const foundProperty = properties.find(p => p.id === id);
         if (foundProperty) {
             setProperty(foundProperty);
@@ -74,17 +74,16 @@ const PropertyDetail = () => {
     }, [property, editedProperty]);
 
     const handleSaveChanges = async () => {
-        if (!editedProperty) return;
+        if (!editedProperty || !id) return;
         setIsReevaluating(true);
         setSaveError(null);
         try {
-            const newRecommendation = await reevaluatePropertyWithGemini(editedProperty, activeStrategy);
-            const fullyUpdatedProperty = { ...editedProperty, recommendation: newRecommendation };
-            dispatch({ type: 'UPDATE_PROPERTY', payload: fullyUpdatedProperty });
+            // The backend will handle the re-evaluation and save the updated property
+            await updateProperty(id, { ...editedProperty, recommendation: { ...editedProperty.recommendation, strategyAnalyzed: activeStrategy }});
             alert("Changes Saved & Re-evaluated!");
         } catch (e: any) {
-            console.error("Re-evaluation failed", e);
-            setSaveError(e.message || "Failed to re-evaluate with AI. Your changes have NOT been saved. Please try again.");
+            console.error("Update failed", e);
+            setSaveError(e.response?.data?.message || e.message || "Failed to save changes. Please try again.");
         } finally {
             setIsReevaluating(false);
         }
@@ -98,7 +97,7 @@ const PropertyDetail = () => {
     };
 
     if (!property || !editedProperty) {
-        return <div className="p-8">Property not found.</div>;
+        return <div className="p-8">Property not found or loading...</div>;
     }
 
     return (

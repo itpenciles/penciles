@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { analyzePropertyWithGemini } from '../services/geminiService';
 import { useProperties } from '../hooks/useProperties';
+import apiClient from '../services/apiClient';
 import Loader from './Loader';
 import { ArrowLeftIcon, MapPinIcon, LinkIcon } from '../constants';
+import { Property } from '../types';
 
 // --- Icons ---
 const GlobeAltIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" /></svg>;
 const PaperAirplaneIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>;
 const XCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+
+
+const analyzeAndSaveProperty = async (
+    inputType: 'url' | 'address' | 'coords' | 'location',
+    value: string,
+    addPropertyHook: (propertyData: Omit<Property, 'id'>) => Promise<Property>
+): Promise<Property> => {
+    // Step 1: Call backend to get AI analysis
+    const analysisResponse = await apiClient.post('/analyze', { inputType, value });
+    const analyzedData = analysisResponse.data;
+
+    // Step 2: Call backend to save the analyzed property to the user's account
+    const newProperty = await addPropertyHook(analyzedData);
+    return newProperty;
+};
+
 
 const AddProperty = () => {
     const [view, setView] = useState<'options' | 'url' | 'address' | 'coords'>('options');
@@ -21,7 +38,7 @@ const AddProperty = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
-    const { dispatch } = useProperties();
+    const { addProperty } = useProperties();
 
     // URL input handlers
     const handleUrlChange = (index: number, value: string) => {
@@ -48,12 +65,26 @@ const AddProperty = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const analysisPromises = validUrls.map(u => analyzePropertyWithGemini('url', u));
-            const newProperties = await Promise.all(analysisPromises);
-            dispatch({ type: 'ADD_MULTIPLE_PROPERTIES', payload: newProperties });
+            // We analyze and save them one by one
+            for (const url of validUrls) {
+                await analyzeAndSaveProperty('url', url, addProperty);
+            }
             navigate('/dashboard');
         } catch (e: any) {
-            setError(e.message || 'An unknown error occurred while analyzing one or more properties.');
+            setError(e.response?.data?.message || e.message || 'An unknown error occurred while analyzing one or more properties.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSinglePropertyAnalysis = async (inputType: 'address' | 'coords' | 'location', value: string) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const newProperty = await analyzeAndSaveProperty(inputType, value, addProperty);
+            navigate(`/property/${newProperty.id}`);
+        } catch (e: any) {
+            setError(e.response?.data?.message || e.message || 'An unknown error occurred while analyzing.');
         } finally {
             setIsLoading(false);
         }
@@ -64,17 +95,7 @@ const AddProperty = () => {
             setError('Please enter a valid address.');
             return;
         }
-        setIsLoading(true);
-        setError(null);
-        try {
-            const newProperty = await analyzePropertyWithGemini('address', address);
-            dispatch({ type: 'ADD_PROPERTY', payload: newProperty });
-            navigate(`/property/${newProperty.id}`);
-        } catch (e: any) {
-            setError(e.message || 'An unknown error occurred while analyzing the address.');
-        } finally {
-            setIsLoading(false);
-        }
+        await handleSinglePropertyAnalysis('address', address);
     };
     
     const handleCoordsAnalyze = async () => {
@@ -83,34 +104,15 @@ const AddProperty = () => {
             setError('Please enter valid latitude and longitude numbers.');
             return;
         }
-        setIsLoading(true);
-        setError(null);
-        try {
-            const newProperty = await analyzePropertyWithGemini('coords', `${lat},${lon}`);
-            dispatch({ type: 'ADD_PROPERTY', payload: newProperty });
-            navigate(`/property/${newProperty.id}`);
-        } catch (e: any) {
-            setError(e.message || 'An unknown error occurred while analyzing the coordinates.');
-        } finally {
-            setIsLoading(false);
-        }
+        await handleSinglePropertyAnalysis('coords', `${lat},${lon}`);
     };
 
     const handleCurrentLocation = () => {
-        setIsLoading(true);
         setError(null);
         navigator.geolocation.getCurrentPosition(
-            async (position) => {
+            (position) => {
                 const { latitude, longitude } = position.coords;
-                try {
-                    const newProperty = await analyzePropertyWithGemini('location', `${latitude},${longitude}`);
-                    dispatch({ type: 'ADD_PROPERTY', payload: newProperty });
-                    navigate(`/property/${newProperty.id}`);
-                } catch(e: any) {
-                    setError(e.message || "Could not analyze property for your location.");
-                } finally {
-                    setIsLoading(false);
-                }
+                handleSinglePropertyAnalysis('location', `${latitude},${longitude}`);
             },
             (err) => {
                 setError(`Geolocation error: ${err.message}`);

@@ -1,8 +1,10 @@
-import React, { createContext, useReducer, Dispatch, ReactNode } from 'react';
-import { Property, PropertyAction, Financials, CalculatedMetrics, WholesaleInputs, WholesaleCalculations, SubjectToInputs, SubjectToCalculations, SellerFinancingInputs, SellerFinancingCalculations } from '../types';
-import { initialProperties } from '../data/initialProperties';
+import React, { createContext, useState, Dispatch, ReactNode, SetStateAction, useEffect, useCallback } from 'react';
+import { Property, Financials, CalculatedMetrics, WholesaleInputs, WholesaleCalculations, SubjectToInputs, SubjectToCalculations, SellerFinancingInputs, SellerFinancingCalculations } from '../types';
+import apiClient from '../services/apiClient';
+import { useAuth } from './AuthContext';
 
-// --- CALCULATIONS ---
+
+// --- CALCULATIONS (These remain on the frontend for real-time adjustments) ---
 export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const { 
     purchasePrice, rehabCost, downPaymentPercent, monthlyRents, vacancyRate, 
@@ -101,61 +103,74 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
 };
 
 
-const propertyReducer = (state: Property[], action: PropertyAction): Property[] => {
-  switch (action.type) {
-    case 'ADD_PROPERTY':
-      return [action.payload, ...state];
-    case 'ADD_MULTIPLE_PROPERTIES':
-      return [...action.payload, ...state];
-    case 'UPDATE_PROPERTY':
-      return state.map(p => p.id === action.payload.id ? action.payload : p);
-    case 'DELETE_PROPERTY':
-      return state.filter(p => p.id !== action.payload);
-    default:
-      return state;
-  }
-};
-
-const LOCAL_STORAGE_KEY = 'itPencilsData';
-
-const initializeState = (): Property[] => {
-  try {
-    const storedProperties = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (storedProperties) {
-      const parsedProperties = JSON.parse(storedProperties);
-      if (Array.isArray(parsedProperties)) {
-        return parsedProperties;
-      }
-    }
-  } catch (error) {
-    console.error("Failed to parse properties from localStorage", error);
-  }
-  return initialProperties;
-};
-
 export const PropertyContext = createContext<{
   properties: Property[];
-  dispatch: Dispatch<PropertyAction>;
-  saveProperties: () => void;
+  setProperties: Dispatch<SetStateAction<Property[]>>;
+  addProperty: (propertyData: Omit<Property, 'id'>) => Promise<Property>;
+  updateProperty: (id: string, propertyData: Property) => Promise<Property>;
+  deleteProperty: (id: string) => Promise<void>;
+  loading: boolean;
+  error: string | null;
 }>({
   properties: [],
-  dispatch: () => null,
-  saveProperties: () => {},
+  setProperties: () => {},
+  addProperty: async () => ({} as Property),
+  updateProperty: async () => ({} as Property),
+  deleteProperty: async () => {},
+  loading: true,
+  error: null,
 });
 
 export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [properties, dispatch] = useReducer(propertyReducer, undefined, initializeState);
+  const { user } = useAuth();
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const saveProperties = () => {
+  const fetchProperties = useCallback(async () => {
+    if (!user) {
+        setProperties([]);
+        setLoading(false);
+        return;
+    };
+    setLoading(true);
+    setError(null);
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(properties));
-    } catch (error) {
-      console.error("Failed to save properties to localStorage", error);
+      const response = await apiClient.get('/properties');
+      setProperties(response.data);
+    } catch (err) {
+      setError('Failed to fetch properties.');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
+  }, [user]);
+
+  useEffect(() => {
+    fetchProperties();
+  }, [fetchProperties]);
+
+  const addProperty = async (propertyData: Omit<Property, 'id'>): Promise<Property> => {
+    const response = await apiClient.post('/properties', propertyData);
+    const newProperty = response.data;
+    setProperties(prev => [newProperty, ...prev]);
+    return newProperty;
+  };
+
+  const updateProperty = async (id: string, propertyData: Property): Promise<Property> => {
+    const response = await apiClient.put(`/properties/${id}`, propertyData);
+    const updatedProperty = response.data;
+    setProperties(prev => prev.map(p => (p.id === id ? updatedProperty : p)));
+    return updatedProperty;
+  };
+
+  const deleteProperty = async (id: string) => {
+    await apiClient.delete(`/properties/${id}`);
+    setProperties(prev => prev.filter(p => p.id !== id));
   };
 
   return (
-    <PropertyContext.Provider value={{ properties, dispatch, saveProperties }}>
+    <PropertyContext.Provider value={{ properties, setProperties, addProperty, updateProperty, deleteProperty, loading, error }}>
       {children}
     </PropertyContext.Provider>
   );
