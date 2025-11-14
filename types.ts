@@ -1,0 +1,183 @@
+export type Strategy = 'Rental' | 'Wholesale' | 'Subject-To' | 'Seller Financing';
+
+export interface Unit {
+  bedrooms: number;
+  bathrooms: number;
+}
+
+export interface Property {
+  id: string;
+  address: string;
+  propertyType: string;
+  imageUrl: string;
+  dateAnalyzed: string;
+  
+  details: {
+    bedrooms: number;
+    bathrooms: number;
+    sqft: number;
+    yearBuilt: number;
+    numberOfUnits: number;
+    unitDetails: Unit[];
+  };
+  
+  financials: Financials;
+  
+  marketAnalysis: {
+    safetyScore: number;
+    areaAverageRents: number[];
+    investmentScore: number;
+  };
+  
+  recommendation: Recommendation;
+
+  calculations: CalculatedMetrics;
+
+  // New analysis types for different strategies
+  wholesaleAnalysis?: {
+    inputs: WholesaleInputs;
+    calculations: WholesaleCalculations;
+  };
+  subjectToAnalysis?: {
+    inputs: SubjectToInputs;
+    calculations: SubjectToCalculations;
+  };
+  sellerFinancingAnalysis?: {
+    inputs: SellerFinancingInputs;
+    calculations: SellerFinancingCalculations;
+  };
+}
+
+export interface Financials {
+  listPrice: number;
+  estimatedValue: number;
+  purchasePrice: number;
+  rehabCost: number;
+  downPaymentPercent: number;
+  monthlyRents: number[];
+  vacancyRate: number;
+  maintenanceRate: number;
+  managementRate: number;
+  capexRate: number;
+  monthlyTaxes: number;
+  monthlyInsurance: number;
+
+  monthlyWaterSewer: number;
+  monthlyStreetLights: number;
+  monthlyGas: number;
+  monthlyElectric: number;
+  monthlyLandscaping: number;
+
+  loanInterestRate: number;
+  loanTermYears: number;
+  originationFeePercent: number;
+  closingFee: number;
+  processingFee: number;
+  appraisalFee: number;
+  titleFee: number;
+
+  // Seller Credits
+  sellerCreditTax: number;
+  sellerCreditSewer: number;
+  sellerCreditOrigination: number;
+  sellerCreditClosing: number;
+}
+
+export interface Recommendation {
+  level: 'Worth Pursuing' | 'Moderate Risk' | 'High Risk' | 'Avoid';
+  summary: string;
+  keyFactors: string[];
+  additionalNotes: string;
+  strategyAnalyzed?: Strategy;
+}
+
+export interface CalculatedMetrics {
+  downPaymentAmount: number;
+  totalCashToClose: number;
+  totalInvestment: number;
+  loanAmount: number;
+  monthlyDebtService: number; // Assuming fixed for simplicity
+  
+  grossAnnualRent: number;
+  vacancyLoss: number;
+  effectiveGrossIncome: number;
+  
+  maintenanceCost: number;
+  managementCost: number;
+  capexCost: number;
+  totalOperatingExpenses: number;
+  netOperatingIncome: number;
+
+  capRate: number;
+  allInCapRate: number;
+  cashOnCashReturn: number;
+  monthlyCashFlowNoDebt: number;
+  monthlyCashFlowWithDebt: number;
+  totalClosingCosts: number;
+  dscr: number;
+}
+
+// --- Wholesale Strategy ---
+export interface WholesaleInputs {
+  arv: number;
+  estimatedRehab: number;
+  maoPercentOfArv: number;
+  closingCost: number;
+  wholesaleFeeGoal: number;
+  sellerAsk: number;
+  isAssignable: boolean;
+}
+
+export interface WholesaleCalculations {
+  mao: number;
+  potentialFees: number;
+  isEligible: boolean;
+}
+
+// --- Subject-To Strategy ---
+export interface SubjectToInputs {
+  existingLoanBalance: number;
+  existingLoanRate: number;
+  monthlyPITI: number;
+  reinstatementNeeded: number;
+  sellerCashNeeded: number;
+  closingCosts: number;
+  marketRent: number;
+}
+
+export interface SubjectToCalculations {
+  monthlySpread: number;
+  cashNeeded: number;
+  cashOnCashReturn: number;
+}
+
+// --- Seller Financing Strategy ---
+export interface SellerFinancingInputs {
+  purchasePrice: number;
+  downPayment: number;
+  sellerLoanRate: number;
+  loanTerm: number; // in years
+  balloonYears: number; // 0 if none
+  paymentType: 'Amortization' | 'Interest Only';
+  marketRent: number;
+}
+
+export interface SellerFinancingCalculations {
+  monthlyPayment: number;
+  spreadVsMarketRent: number;
+  returnOnDp: number;
+}
+
+
+export type PropertyAction =
+  | { type: 'ADD_PROPERTY'; payload: Property }
+  | { type: 'ADD_MULTIPLE_PROPERTIES'; payload: Property[] }
+  | { type: 'UPDATE_PROPERTY'; payload: Property }
+  | { type: 'DELETE_PROPERTY'; payload: string }; // id
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  profilePictureUrl?: string;
+}
