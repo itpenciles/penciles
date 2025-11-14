@@ -1,0 +1,87 @@
+import React from 'react';
+import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useAuth, AuthProvider } from './contexts/AuthContext';
+import { PropertyProvider } from './contexts/PropertyContext';
+
+// Layouts
+import Sidebar from './components/Sidebar';
+import PublicLayout from './components/PublicLayout';
+
+// Public Pages
+import LandingPage from './components/LandingPage';
+import AboutPage from './components/AboutPage';
+import FeaturesPage from './components/FeaturesPage';
+import PricingPage from './components/PricingPage';
+import ContactPage from './components/ContactPage';
+import LoginPage from './components/LoginPage';
+
+// App Pages
+import Dashboard from './components/Dashboard';
+import AddProperty from './components/AddProperty';
+import PropertyDetail from './components/PropertyDetail';
+import ComparisonPage from './components/ComparisonPage';
+
+// A component to protect routes that require authentication.
+const ProtectedRoute: React.FC = () => {
+    const { user, isAuthEnabled, isLoading } = useAuth();
+
+    if (isLoading) {
+        // You can render a loading spinner here
+        return <div>Loading...</div>;
+    }
+
+    if (isAuthEnabled && !user) {
+        // If auth is on and there's no user, redirect to the login page.
+        return <Navigate to="/login" replace />;
+    }
+
+    // If auth is disabled, or if the user is logged in, show the content.
+    return <Outlet />;
+};
+
+// The main layout for the core application with the sidebar
+const MainLayout = () => (
+  <div className="flex h-screen bg-gray-100 font-sans">
+    <Sidebar />
+    <main className="flex-1 overflow-y-auto">
+      <Outlet />
+    </main>
+  </div>
+);
+
+const App: React.FC = () => {
+  return (
+    <PropertyProvider>
+      <HashRouter>
+        <AuthProvider>
+          <Routes>
+            {/* Public routes using the PublicLayout */}
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/features" element={<FeaturesPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/login" element={<LoginPage />} />
+            </Route>
+
+            {/* Protected app routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<MainLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/add-property" element={<AddProperty />} />
+                <Route path="/property/:id" element={<PropertyDetail />} />
+                <Route path="/compare" element={<ComparisonPage />} />
+              </Route>
+            </Route>
+            
+            {/* Fallback for any unknown routes */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </HashRouter>
+    </PropertyProvider>
+  );
+};
+
+export default App;
