@@ -23,7 +23,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid Google token.' });
         }
 
-        const { sub: googleId, email, name, picture: profilePictureUrl } = payload;
+        const { email, name, picture: profilePictureUrl } = payload;
 
         // The production database seems to be missing the `google_id` column.
         // We will use `email` as the unique identifier for the upsert operation,
