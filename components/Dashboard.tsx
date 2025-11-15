@@ -86,8 +86,8 @@ const Dashboard = () => {
 
     // FIX: When using `reduce` to create an object, the initial value `{}` can lead to incorrect type inference for the accumulator.
     // This caused `count` to be a non-numeric type later, resulting in an arithmetic error.
-    // By explicitly typing the accumulator `acc` in the callback, we ensure `recommendationCounts` is correctly typed as `Record<string, number>`.
-    const recommendationCounts = properties.reduce((acc: Record<string, number>, p) => {
+    // By providing a generic type argument to `reduce`, we ensure `recommendationCounts` is correctly typed as `Record<string, number>`.
+    const recommendationCounts = properties.reduce<Record<string, number>>((acc, p) => {
         const level = p.recommendation?.level;
         if (level) {
             acc[level] = (acc[level] || 0) + 1;

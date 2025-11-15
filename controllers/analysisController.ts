@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { analyzePropertyWithGemini } from '../services/geminiService';
+import { analyzePropertyWithGemini } from '../services/geminiService.js';
 
 export const analyzeProperty = async (req: Request, res: Response) => {
     const { inputType, value } = req.body;

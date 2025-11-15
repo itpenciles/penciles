@@ -5,9 +5,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Import routes
-import authRoutes from './routes/authRoutes';
-import propertyRoutes from './routes/propertyRoutes';
-import analysisRoutes from './routes/analysisRoutes';
+import authRoutes from './routes/authRoutes.js';
+import propertyRoutes from './routes/propertyRoutes.js';
+import analysisRoutes from './routes/analysisRoutes.js';
 
 // Load environment variables
 dotenv.config();

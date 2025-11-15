@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Property, Financials, Recommendation, Strategy } from '../../types';
-import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../../contexts/PropertyContext';
+import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../utils/calculations.js';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 

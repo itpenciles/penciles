@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { getProperties, addProperty, updateProperty, deleteProperty } from '../controllers/propertyController';
-import { authMiddleware } from '../middleware/authMiddleware';
+import { getProperties, addProperty, updateProperty, deleteProperty } from '../controllers/propertyController.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

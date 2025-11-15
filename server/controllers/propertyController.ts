@@ -1,5 +1,5 @@
 import { Response, Request } from 'express';
-import { query } from '../db';
+import { query } from '../db.js';
 import { Property } from '../../types';
 
 // FIX: Correctly extend the express.Request type to include the user payload.
