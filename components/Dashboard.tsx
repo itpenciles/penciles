@@ -1,5 +1,8 @@
 
 
+
+
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
@@ -250,11 +253,11 @@ const Dashboard = () => {
                              <div className="space-y-2 text-sm">
                                 {totalProperties > 0 ? (
                                     Object.entries(recommendationCounts).map(([level, count]) => {
-                                        const percentage = totalProperties > 0 ? ((count / totalProperties) * 100).toFixed(0) : 0;
+                                        // FIX: Explicitly cast `count` to a Number to prevent potential type errors during arithmetic operations.
+                                        const percentage = totalProperties > 0 ? ((Number(count) / totalProperties) * 100).toFixed(0) : 0;
                                         return (
                                             <div className="flex justify-between" key={level}>
                                                 <span>{level}</span>
-                                                {/* FIX: Replaced `{count} <span...` with `{count}{' '}<span...` to prevent a JSX parsing error. The space is now explicitly a string literal, separating the number from the opening tag of the span element and preventing it from being interpreted as a less-than operator. */}
                                                 <span>{count}{' '}<span className="text-gray-500">({percentage}%)</span></span>
                                             </div>
                                         );

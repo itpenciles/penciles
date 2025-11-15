@@ -25,19 +25,18 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
 
         const { sub: googleId, email, name, picture: profilePictureUrl } = payload;
 
-        // Use PostgreSQL's "UPSERT" functionality (INSERT ... ON CONFLICT)
-        // This will create a new user if their google_id doesn't exist,
-        // or update their name and profile picture if it does.
-        // This is robust and handles both new and returning users in one query.
+        // The production database seems to be missing the `google_id` column.
+        // We will use `email` as the unique identifier for the upsert operation,
+        // which is more robust against schema variations.
         const userUpsertQuery = `
-            INSERT INTO users (google_id, email, name, profile_picture_url)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (google_id) DO UPDATE 
-            SET name = EXCLUDED.name, profile_picture_url = EXCLUDED.profile_picture_url, email = EXCLUDED.email
+            INSERT INTO users (email, name, profile_picture_url)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (email) DO UPDATE 
+            SET name = EXCLUDED.name, profile_picture_url = EXCLUDED.profile_picture_url
             RETURNING id, name, email, profile_picture_url;
         `;
 
-        const userResult = await query(userUpsertQuery, [googleId, email, name, profilePictureUrl]);
+        const userResult = await query(userUpsertQuery, [email, name, profilePictureUrl]);
         const user: User = userResult.rows[0];
         
         // Create JWT with user info from our database
