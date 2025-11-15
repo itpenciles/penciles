@@ -156,7 +156,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 },
             });
 
-            rawResponseForDebugging = response.text.trim();
+            rawResponseForDebugging = (response.text ?? '').trim();
             
             let jsonString = rawResponseForDebugging;
             if (jsonString.startsWith("```json")) {
@@ -232,9 +232,15 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 }
             };
             
-            newProperty.wholesaleAnalysis.calculations = calculateWholesaleMetrics(newProperty.wholesaleAnalysis.inputs);
-            newProperty.subjectToAnalysis.calculations = calculateSubjectToMetrics(newProperty.subjectToAnalysis.inputs);
-            newProperty.sellerFinancingAnalysis.calculations = calculateSellerFinancingMetrics(newProperty.sellerFinancingAnalysis.inputs);
+            if (newProperty.wholesaleAnalysis) {
+                newProperty.wholesaleAnalysis.calculations = calculateWholesaleMetrics(newProperty.wholesaleAnalysis.inputs);
+            }
+            if (newProperty.subjectToAnalysis) {
+                newProperty.subjectToAnalysis.calculations = calculateSubjectToMetrics(newProperty.subjectToAnalysis.inputs);
+            }
+            if (newProperty.sellerFinancingAnalysis) {
+                newProperty.sellerFinancingAnalysis.calculations = calculateSellerFinancingMetrics(newProperty.sellerFinancingAnalysis.inputs);
+            }
 
             console.log(`Successfully analyzed property with model: ${model}`);
             return newProperty;
@@ -365,7 +371,7 @@ export const reevaluatePropertyWithGemini = async (property: Property, strategy:
                 },
             });
 
-            rawResponseForDebugging = response.text.trim();
+            rawResponseForDebugging = (response.text ?? '').trim();
             const data = JSON.parse(rawResponseForDebugging);
             
             if (data.level && data.summary && Array.isArray(data.keyFactors)) {

@@ -35,14 +35,14 @@ app.use('/api/properties', propertyRoutes);
 app.use('/api/analyze', analysisRoutes);
 
 // Simple root API endpoint for health checks
-app.get('/api', (req, res) => {
+app.get('/api', (_req, res) => {
     res.json({ message: 'It Pencils API is running!' });
 });
 
 // The "catchall" handler for client-side routing
 // For any request that doesn't match one of the API routes above,
 // send back React's index.html file.
-app.get('*', (req, res) => {
+app.get('*', (_req, res) => {
     res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
