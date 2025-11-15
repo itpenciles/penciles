@@ -1,3 +1,5 @@
+
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
@@ -84,10 +86,10 @@ const Dashboard = () => {
     const totalProperties = properties.length;
     const positiveCashFlowCount = properties.filter(p => p.calculations.monthlyCashFlowWithDebt > 0).length;
 
-    // FIX: When using `reduce` to create an object, the initial value `{}` can lead to incorrect type inference for the accumulator.
-    // This caused `count` to be a non-numeric type later, resulting in an arithmetic error.
-    // By providing a generic type argument to `reduce`, we ensure `recommendationCounts` is correctly typed as `Record<string, number>`.
-    const recommendationCounts = properties.reduce<Record<string, number>>((acc, p) => {
+    // FIX: When using `reduce` with an empty object `{}` as an initial value, TypeScript infers the accumulator's type too narrowly.
+    // This can cause `count` to be inferred as an incorrect type, leading to a type error. Explicitly typing the accumulator
+    // in the callback function ensures it is correctly typed.
+    const recommendationCounts = properties.reduce((acc: Record<string, number>, p) => {
         const level = p.recommendation?.level;
         if (level) {
             acc[level] = (acc[level] || 0) + 1;

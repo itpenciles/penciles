@@ -41,13 +41,27 @@ EXECUTE PROCEDURE trigger_set_timestamp();
 
 */
 
+const dbUrl = process.env.DATABASE_URL;
+
+if (!dbUrl) {
+    console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    console.error("!!! FATAL ERROR: DATABASE_URL environment variable not set !!!");
+    console.error("!!! The application cannot connect to the database.        !!!");
+    console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+} else {
+    console.log("DATABASE_URL found. Attempting to connect to database...");
+    if (dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')) {
+        console.warn("WARNING: DATABASE_URL is pointing to localhost. This is usually only for local development.");
+    }
+}
+
 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: dbUrl,
 });
 
 pool.on('connect', () => {
-    console.log('Connected to the database');
+    console.log('Successfully connected to the database');
 });
 
 pool.on('error', (err) => {

@@ -10,6 +10,12 @@ const LoginPage: React.FC = () => {
     const navigate = useNavigate();
     const googleButtonRef = useRef<HTMLDivElement>(null);
     const [gsiError, setGsiError] = useState<string | null>(null);
+    const [currentOrigin, setCurrentOrigin] = useState('');
+
+    useEffect(() => {
+        // Set the current origin dynamically for the troubleshooting guide
+        setCurrentOrigin(window.location.origin);
+    }, []);
 
     useEffect(() => {
         if (user) {
@@ -103,9 +109,9 @@ const LoginPage: React.FC = () => {
                                                 <h4 className="font-semibold">Troubleshooting Steps:</h4>
                                                 <ul className="list-disc list-inside text-xs mt-1 space-y-1">
                                                     <li>Ensure the Client ID below exactly matches the one in your Google Console.</li>
-                                                    <li>In Google Console, verify "Authorized JavaScript origins" includes `http://localhost:5173`.</li>
+                                                    <li>In Google Console, verify "Authorized JavaScript origins" includes <code className="bg-yellow-100 text-yellow-900 p-1 rounded">{currentOrigin}</code>.</li>
                                                      <li>Make sure "Authorized redirect URIs" is **empty**.</li>
-                                                    <li>After changing your `.env` file, **you must restart the server.**</li>
+                                                    <li>After changing your `.env` file or server environment variables, **you must restart/re-deploy the server.**</li>
                                                 </ul>
                                                  <p className="font-mono bg-yellow-100 text-yellow-900 p-2 mt-2 rounded break-all select-all text-xs">
                                                     Current Client ID: {clientIdForDebugging}

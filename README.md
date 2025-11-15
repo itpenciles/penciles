@@ -98,6 +98,23 @@ The backend server will automatically read the `.env` file and connect to your d
 
 ---
 
+## Deployment
+
+When you deploy your application to a hosting provider like Render, Heroku, or Vercel, you **must** configure your environment variables in the provider's dashboard. The `.env` file is only for local development and is not uploaded.
+
+### Step-by-Step for Render
+
+1.  Go to your **Render Dashboard** and select your service.
+2.  Navigate to the **"Environment"** tab.
+3.  Under "Environment Variables," add a new variable for each of the following keys from your `.env` file. Copy the values exactly.
+    -   `VITE_GOOGLE_CLIENT_ID`
+    -   `API_KEY`
+    -   `DATABASE_URL` (Ensure this points to a production database that Render can access, not `localhost`).
+    -   `JWT_SECRET`
+4.  After adding the variables, Render will automatically trigger a new deployment to apply the settings.
+
+---
+
 ## Troubleshooting
 
 ### Error: `Configuration Error`, `The given origin is not allowed...`, or a 403 error from `accounts.google.com`
@@ -126,9 +143,11 @@ This error means there is **100% a configuration mismatch** between the URL in y
 3.  **Check "Authorized JavaScript origins":**
     -   This section tells Google which websites are allowed to use this Client ID.
     -   Click **"+ ADD URI"**.
-    -   Add entries that **exactly match** your browser's origin. To be safe, add both common local addresses:
+    -   Add entries that **exactly match** your browser's origin. For local development, add both:
         - `http://localhost:5173`
         - `http://127.0.0.1:5173`
+    -   For your live deployed site (e.g., on Render), add your production URL:
+        - `https://your-app-name.onrender.com`
     -   **Critical:** Check for typos. It must be `http`, not `https`. There must be **NO trailing slash (`/`)**. The port number must match what's in your browser.
 
 4.  **Check "Authorized redirect URIs":**
