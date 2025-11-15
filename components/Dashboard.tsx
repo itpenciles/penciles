@@ -84,9 +84,9 @@ const Dashboard = () => {
     const totalProperties = properties.length;
     const positiveCashFlowCount = properties.filter(p => p.calculations.monthlyCashFlowWithDebt > 0).length;
 
-    // FIX: The generic syntax `<...>` for `reduce` can be ambiguous in `.tsx` files, leading to incorrect type inference.
-    // Using a type assertion on the initial value `{}` ensures `recommendationCounts` is correctly typed,
-    // which in turn ensures `count` in the `map` function is a number, resolving the arithmetic operation error.
+    // FIX: When using `reduce` to create an object, the initial value `{}` can lead to incorrect type inference for the accumulator.
+    // This caused `count` to be a non-numeric type later, resulting in an arithmetic error.
+    // By asserting the initial value's type as `Record<string, number>`, we ensure `recommendationCounts` is correctly typed.
     const recommendationCounts = properties.reduce((acc, p) => {
         const level = p.recommendation?.level;
         if (level) {
