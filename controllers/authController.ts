@@ -23,24 +23,22 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid Google token.' });
         }
 
-        // We only care about email and name from Google to avoid schema errors
         const { email, name } = payload;
-
-        // This query now completely ignores `profile_picture_url` to prevent database errors
-        // if the column does not exist in the production schema.
+        
+        // FIX: This query now includes a placeholder for `password_hash` to satisfy the NOT NULL constraint
+        // for users who sign up with Google. This makes the login system compatible with schemas
+        // that were originally designed for password-based authentication.
         const userUpsertQuery = `
-            INSERT INTO users (email, name)
-            VALUES ($1, $2)
+            INSERT INTO users (email, name, password_hash)
+            VALUES ($1, $2, 'oauth_placeholder')
             ON CONFLICT (email) DO UPDATE 
             SET name = EXCLUDED.name
             RETURNING id, name, email;
         `;
 
         const userResult = await query(userUpsertQuery, [email, name]);
-        // The user object from the DB will not have profile_picture_url
         const user: Omit<User, 'profilePictureUrl'> = userResult.rows[0];
         
-        // Create JWT. The profilePictureUrl will be undefined, and the frontend will use its fallback.
         const jwtToken = jwt.sign(
             { 
                 id: user.id, 
@@ -57,7 +55,6 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                // profilePictureUrl is intentionally omitted
             }
         });
 

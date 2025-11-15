@@ -66,6 +66,7 @@ CREATE TABLE "users" (
   "id" SERIAL PRIMARY KEY,
   "email" VARCHAR(255) UNIQUE NOT NULL,
   "name" VARCHAR(255),
+  "password_hash" VARCHAR(255), -- Can be NULL for Google OAuth users
   "created_at" TIMESTAMPTZ DEFAULT (now())
 );
 
