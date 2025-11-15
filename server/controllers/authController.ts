@@ -4,9 +4,18 @@ import jwt from 'jsonwebtoken';
 import { query } from '../db.js';
 import { User } from '../../types';
 
-const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
+// Use a single, clearly named constant for the Client ID from environment variables.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 export const handleGoogleLogin = async (req: Request, res: Response) => {
+    // Add a guard clause at the top of the function for better error reporting.
+    if (!GOOGLE_CLIENT_ID) {
+        console.error('FATAL: GOOGLE_CLIENT_ID is not configured on the server.');
+        // Provide a clear error message to the frontend.
+        return res.status(500).json({ message: 'Authentication is not configured correctly on the server. The Google Client ID is missing.' });
+    }
+
     const { token } = req.body;
     if (!token) {
         return res.status(400).json({ message: 'Google token is required.' });
@@ -15,7 +24,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,
-            audience: process.env.VITE_GOOGLE_CLIENT_ID,
+            audience: GOOGLE_CLIENT_ID,
         });
         const payload = ticket.getPayload();
 
@@ -60,6 +69,6 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
 
     } catch (error) {
         console.error('Google login error:', error);
-        res.status(500).json({ message: 'Server error during authentication.' });
+        res.status(500).json({ message: 'Server error during authentication. This may be due to an incorrect Google Client ID configuration on the server.' });
     }
 };

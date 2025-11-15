@@ -8,55 +8,32 @@ This project is structured as a full-stack application:
 
 ---
 
-## Frontend Development Setup
+## Development Setup
 
 ### Prerequisites
 
 1.  **Node.js and npm**: You must have Node.js (version 18 or newer) and npm installed.
 2.  **A Google Client ID for OAuth**: To enable Google Sign-In, you'll need a Client ID. Follow the instructions [here](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid) to create one.
+3.  **A Gemini API Key**: Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+4.  **PostgreSQL Database**: You need a running PostgreSQL database. You can run one locally using Docker or use a free hosted provider like [Supabase](https://supabase.com/) or [Render](https://render.com/).
+5.  **JWT Secret**: A long, random, secret string for signing session tokens. You can generate one using an online tool.
+
 
 ### Step 1: Configure Your Environment Variables
 
 1.  In the root of the project folder, create a new file named `.env`.
-2.  Open the `.env` file and add your Google Client ID.
+2.  Open the `.env` file and add all your secret keys and URLs.
 
     ```
-    VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com
+    # Backend Configuration
+    API_KEY=YOUR_GEMINI_API_KEY_HERE
+    DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+    JWT_SECRET=YOUR_SUPER_SECRET_RANDOM_STRING_HERE
+
+    # Google Auth Configuration (used by both frontend and backend)
+    GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com
     ```
     
-    _Note: The `API_KEY` is now managed by the backend server._
-
-### Step 2: Install Dependencies & Run
-
-```bash
-# Install frontend dependencies
-npm install
-
-# Run the Vite development server (usually on http://localhost:5173/)
-npm run dev
-```
-
----
-
-## Backend Development Setup
-
-### Prerequisites
-
-1.  **A Gemini API Key**: Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-2.  **PostgreSQL Database**: You need a running PostgreSQL database. You can run one locally using Docker or use a free hosted provider like [Supabase](https://supabase.com/) or [Render](https://render.com/).
-3.  **JWT Secret**: A long, random, secret string for signing session tokens. You can generate one using an online tool.
-
-### Step 1: Configure Your Backend Environment Variables
-
-In the same `.env` file in the project root, add the following backend variables:
-
-```
-# Backend Configuration
-API_KEY=YOUR_GEMINI_API_KEY_HERE
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
-JWT_SECRET=YOUR_SUPER_SECRET_RANDOM_STRING_HERE
-```
-
 ### Step 2: Set Up the Database
 
 Connect to your PostgreSQL database and run the following SQL commands to create the necessary tables:
@@ -83,17 +60,23 @@ CREATE TABLE "properties" (
 
 You will need two separate terminal windows to run the frontend and backend simultaneously.
 
+**Terminal 1: Frontend**
 ```bash
-# In your second terminal window:
-
-# Install backend dependencies
+# Install dependencies (only needs to be done once)
 npm install
+
+# Run the Vite development server (usually on http://localhost:5173/)
+npm run dev
+```
+
+**Terminal 2: Backend**
+```bash
+# No need to install again if you already ran `npm install` in the root.
 
 # Run the backend Express server (usually on http://localhost:3000/)
 npm run start:server
 ```
-
-The backend server will automatically read the `.env` file and connect to your database. You can now use the frontend application, and it will make API calls to your local backend server.
+The frontend and backend will automatically read the `.env` file from the project root. You can now use the application.
 
 ---
 
@@ -106,10 +89,10 @@ When you deploy your application to a hosting provider like Render, Heroku, or V
 1.  Go to your **Render Dashboard** and select your service.
 2.  Navigate to the **"Environment"** tab.
 3.  Under "Environment Variables," add a new variable for each of the following keys from your `.env` file. Copy the values exactly.
-    -   `VITE_GOOGLE_CLIENT_ID`
     -   `API_KEY`
     -   `DATABASE_URL` (Ensure this points to a production database that Render can access, not `localhost`).
     -   `JWT_SECRET`
+    -   `GOOGLE_CLIENT_ID`
 4.  After adding the variables, Render will automatically trigger a new deployment to apply the settings.
 
 ---
@@ -118,19 +101,19 @@ When you deploy your application to a hosting provider like Render, Heroku, or V
 
 ### Error: `Configuration Error`, `The given origin is not allowed...`, or a 403 error from `accounts.google.com`
 
-This error means there is **100% a configuration mismatch** between the URL in your browser, your `.env` file, and your settings in your Google Cloud Console. The application code is working correctly, but Google is denying the login request. Follow this checklist **exactly** to fix it.
+This error means there is **100% a configuration mismatch** between the URL in your browser, your environment variables, and your settings in your Google Cloud Console. The application code is working correctly, but Google is denying the login request. Follow this checklist **exactly** to fix it.
 
-#### ✅ Step 1: Check Your Browser URL & `.env` File
+#### ✅ Step 1: Check Your Browser URL & Environment Variables
 
 1.  **Look at your browser's address bar.** It will most likely say `http://localhost:5173`. Note the exact origin (the `http://...:port` part).
 2.  **Go to the login page.** It will now show a **"Configuration Notice"** box with the exact Client ID the app is currently using.
-3.  **Compare this Client ID** character-for-character with the Client ID shown in your Google Cloud Console.
-4.  If they don't match, copy the correct ID from Google Console, paste it into your `.env` file, and **immediately proceed to the next step.**
+3.  **Compare this Client ID** character-for-character with the Client ID you have in your `.env` file (for local development) or in your Render Environment Variables (for production).
+4.  If they don't match, copy the correct ID from Google Console, paste it into your `.env` file or Render settings, and **immediately proceed to the next step.**
 
 <br>
 
 > **❗️ MOST COMMON MISTAKE: You MUST restart the server!**
-> The server only reads the `.env` file when it first starts. After you save any changes to `.env`, you **must stop your development server** (press `Ctrl + C` in the terminal) and **restart it** with `npm run dev`. If you don't, the app will keep using the old, incorrect Client ID.
+> The server only reads environment variables when it first starts. After you save any changes to `.env` (local) or your Render settings (production), you **must stop your local server** (`Ctrl + C`) and **restart it** with `npm run dev` and `npm run start:server`. For Render, saving the variables will trigger a new deployment automatically.
 
 <br>
 

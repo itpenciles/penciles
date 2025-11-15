@@ -25,7 +25,8 @@ export default defineConfig(({ mode }) => {
       'global': {},
       // Expose environment variables to the client-side code
       'process.env.API_KEY': JSON.stringify(env.API_KEY),
-      'process.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(env.VITE_GOOGLE_CLIENT_ID)
+      // Read the single GOOGLE_CLIENT_ID from .env and expose it to the client as VITE_GOOGLE_CLIENT_ID
+      'process.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(env.GOOGLE_CLIENT_ID)
     }
   }
 })
