@@ -25,17 +25,16 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
 
         const { sub: googleId, email, name, picture: profilePictureUrl } = payload;
 
-        // Check if user exists
-        // FIX: Alias profile_picture_url to match the camelCase User type.
-        let userResult = await query('SELECT id, name, email, profile_picture_url AS "profilePictureUrl" FROM users WHERE google_id = $1', [googleId]);
-        let user: User & { id: string };
+        // Check if user exists.
+        // We no longer query for profile_picture_url to avoid schema errors for older databases.
+        let userResult = await query('SELECT id, name, email FROM users WHERE google_id = $1', [googleId]);
+        let user: Omit<User, 'profilePictureUrl'> & { id: string };
 
         if (userResult.rows.length === 0) {
-            // Create a new user
-            // FIX: Alias profile_picture_url on return to match the camelCase User type.
+            // Create a new user without the profile picture URL.
             const newUserResult = await query(
-                'INSERT INTO users (google_id, email, name, profile_picture_url) VALUES ($1, $2, $3, $4) RETURNING id, name, email, profile_picture_url AS "profilePictureUrl"',
-                [googleId, email, name, profilePictureUrl]
+                'INSERT INTO users (google_id, email, name) VALUES ($1, $2, $3) RETURNING id, name, email',
+                [googleId, email, name]
             );
             user = newUserResult.rows[0];
         } else {
@@ -43,10 +42,10 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             user = userResult.rows[0];
         }
         
-        // Create JWT
-        // FIX: Use camelCase profilePictureUrl to match the property from the aliased query.
+        // Create JWT. We'll add the profilePictureUrl from the Google payload directly here.
+        // It won't be persisted in the DB, but will be available to the client for the session.
         const jwtToken = jwt.sign(
-            { id: user.id, name: user.name, email: user.email, profilePictureUrl: user.profilePictureUrl }, 
+            { id: user.id, name: user.name, email: user.email, profilePictureUrl: profilePictureUrl }, 
             process.env.JWT_SECRET!, 
             { expiresIn: '7d' }
         );
@@ -57,8 +56,8 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                // FIX: Use camelCase profilePictureUrl to match the User type.
-                profilePictureUrl: user.profilePictureUrl
+                // We return the profile picture from Google's payload, not the database.
+                profilePictureUrl: profilePictureUrl
             }
         });
 

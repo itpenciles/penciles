@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
@@ -253,8 +254,8 @@ const Dashboard = () => {
                                         return (
                                             <div className="flex justify-between" key={level}>
                                                 <span>{level}</span>
-                                                {/* FIX: Replaced adjacent JSX expressions with a literal space to prevent parsing errors. */}
-                                                <span>{count} <span className="text-gray-500">({percentage}%)</span></span>
+                                                {/* FIX: Using an explicit string literal for the space `{' '}` prevents the JSX parser from misinterpreting `{count} <span...` as a less-than comparison, which can cause a type error. */}
+                                                <span>{count}{' '}<span className="text-gray-500">({percentage}%)</span></span>
                                             </div>
                                         );
                                     })
