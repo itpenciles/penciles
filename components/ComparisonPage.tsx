@@ -14,7 +14,6 @@ const recommendationRank: { [key: string]: number } = {
 };
 
 // Define types for metrics and headers
-// FIX: Add 'type' to Metric to create a discriminated union, which resolves type errors when mapping over metrics.
 type Metric = {
     type: 'metric';
     label: string;
@@ -40,7 +39,6 @@ const ComparisonPage = () => {
     const idsToCompare = searchParams.get('ids')?.split(',') || [];
     const propertiesToCompare = properties.filter(p => idsToCompare.includes(p.id));
 
-    // FIX: Add 'type: "metric"' to metric objects to conform to the new discriminated union type.
     const metrics: ComparisonItem[] = [
         { type: 'header', label: 'purchase-header', title: 'Purchase Details' },
         { type: 'metric', label: 'Purchase Price', getValue: (p: Property) => p.financials.purchasePrice, format: formatCurrency, isBetter: 'low' },
@@ -115,29 +113,28 @@ const ComparisonPage = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {metrics.map(metric => {
-                                // FIX: Type guarding via discriminated union allows safe access to properties like 'type', 'title', 'getValue', and 'format'.
-                                if (metric.type === 'header') {
+                            {metrics.map(item => {
+                                if (item.type === 'header') {
                                     return (
-                                        <tr key={metric.label}>
+                                        <tr key={item.label}>
                                             <td colSpan={propertiesToCompare.length + 1} className="py-2 px-4 text-sm font-semibold text-gray-800 sticky left-0 bg-gray-100 z-10">
-                                                {metric.title}
+                                                {item.title}
                                             </td>
                                         </tr>
                                     );
                                 }
 
-                                const bestValue = getBestValue(metric);
+                                const bestValue = getBestValue(item);
                                 return (
-                                    <tr key={metric.label}>
-                                        <td className="py-4 px-4 font-medium text-gray-600 sticky left-0 bg-white z-10">{metric.label}</td>
+                                    <tr key={item.label}>
+                                        <td className="py-4 px-4 font-medium text-gray-600 sticky left-0 bg-white z-10">{item.label}</td>
                                         {propertiesToCompare.map(p => {
-                                            const value = metric.getValue(p);
+                                            const value = item.getValue(p);
                                             const isBest = value === bestValue && propertiesToCompare.length > 1;
                                             return (
                                                 <td key={p.id} className={`py-4 px-4 text-sm font-semibold text-gray-800 transition-colors ${isBest ? 'bg-green-50' : ''}`}>
                                                     <span className={`${isBest ? 'text-green-700 font-bold' : ''}`}>
-                                                        {metric.format(value)}
+                                                        {item.format(value)}
                                                     </span>
                                                 </td>
                                             );

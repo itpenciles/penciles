@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
@@ -86,16 +85,14 @@ const Dashboard = () => {
     const totalProperties = properties.length;
     const positiveCashFlowCount = properties.filter(p => p.calculations.monthlyCashFlowWithDebt > 0).length;
 
-    // FIX: When using `reduce` with an empty object `{}` as an initial value, TypeScript infers the accumulator's type too narrowly.
-    // This can cause `count` to be inferred as an incorrect type, leading to a type error. Explicitly typing the accumulator
-    // in the callback function ensures it is correctly typed.
-    const recommendationCounts = properties.reduce((acc: Record<string, number>, p) => {
+    // By providing a type for the initial value, we ensure the result of `reduce` is correctly typed as `Record<string, number>`.
+    const recommendationCounts = properties.reduce((acc, p) => {
         const level = p.recommendation?.level;
         if (level) {
             acc[level] = (acc[level] || 0) + 1;
         }
         return acc;
-    }, {});
+    }, {} as Record<string, number>);
 
 
     const handleSelectProperty = useCallback((id: string) => {
@@ -230,7 +227,7 @@ const Dashboard = () => {
                                 <span className="font-bold text-green-600">{avgCapRate.toFixed(1)}%</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.max(0, (avgCapRate / 8) * 100)}%` }}></div>
+                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(100, (avgCapRate / 8) * 100)}%` }}></div>
                             </div>
                             <p className="text-xs text-gray-500 mt-1">Target: 8% cap rate</p>
                         </div>
@@ -239,7 +236,7 @@ const Dashboard = () => {
                             <div className="flex justify-between items-center text-sm mb-1">
                                 <span className="font-semibold text-gray-700">Total Monthly Cash Flow</span>
                                 <span className="font-bold text-green-600 text-lg">
-                                    ${properties.reduce((sum, p) => sum + p.calculations.monthlyCashFlowWithDebt, 0).toLocaleString()}
+                                    {formatCurrency(properties.reduce((sum, p) => sum + p.calculations.monthlyCashFlowWithDebt, 0))}
                                 </span>
                             </div>
                              <p className="text-xs text-gray-500">
@@ -252,11 +249,12 @@ const Dashboard = () => {
                              <div className="space-y-2 text-sm">
                                 {totalProperties > 0 ? (
                                     Object.entries(recommendationCounts).map(([level, count]) => {
-                                        const percentage = ((count / totalProperties) * 100).toFixed(0);
+                                        const percentage = totalProperties > 0 ? ((count / totalProperties) * 100).toFixed(0) : 0;
                                         return (
                                             <div className="flex justify-between" key={level}>
                                                 <span>{level}</span>
-                                                <span>{count} <span className="text-gray-500">{percentage}%</span></span>
+                                                {/* FIX: Replaced adjacent JSX expressions with a literal space to prevent parsing errors. */}
+                                                <span>{count} <span className="text-gray-500">({percentage}%)</span></span>
                                             </div>
                                         );
                                     })
