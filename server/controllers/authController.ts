@@ -25,27 +25,29 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
 
         const { sub: googleId, email, name, picture: profilePictureUrl } = payload;
 
-        // Check if user exists.
-        // We no longer query for profile_picture_url to avoid schema errors for older databases.
-        let userResult = await query('SELECT id, name, email FROM users WHERE google_id = $1', [googleId]);
-        let user: Omit<User, 'profilePictureUrl'> & { id: string };
+        // Use PostgreSQL's "UPSERT" functionality (INSERT ... ON CONFLICT)
+        // This will create a new user if their google_id doesn't exist,
+        // or update their name and profile picture if it does.
+        // This is robust and handles both new and returning users in one query.
+        const userUpsertQuery = `
+            INSERT INTO users (google_id, email, name, profile_picture_url)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (google_id) DO UPDATE 
+            SET name = EXCLUDED.name, profile_picture_url = EXCLUDED.profile_picture_url, email = EXCLUDED.email
+            RETURNING id, name, email, profile_picture_url;
+        `;
 
-        if (userResult.rows.length === 0) {
-            // Create a new user without the profile picture URL.
-            const newUserResult = await query(
-                'INSERT INTO users (google_id, email, name) VALUES ($1, $2, $3) RETURNING id, name, email',
-                [googleId, email, name]
-            );
-            user = newUserResult.rows[0];
-        } else {
-            // User exists
-            user = userResult.rows[0];
-        }
+        const userResult = await query(userUpsertQuery, [googleId, email, name, profilePictureUrl]);
+        const user: User = userResult.rows[0];
         
-        // Create JWT. We'll add the profilePictureUrl from the Google payload directly here.
-        // It won't be persisted in the DB, but will be available to the client for the session.
+        // Create JWT with user info from our database
         const jwtToken = jwt.sign(
-            { id: user.id, name: user.name, email: user.email, profilePictureUrl: profilePictureUrl }, 
+            { 
+                id: user.id, 
+                name: user.name, 
+                email: user.email, 
+                profilePictureUrl: user.profilePictureUrl 
+            }, 
             process.env.JWT_SECRET!, 
             { expiresIn: '7d' }
         );
@@ -56,8 +58,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                // We return the profile picture from Google's payload, not the database.
-                profilePictureUrl: profilePictureUrl
+                profilePictureUrl: user.profilePictureUrl
             }
         });
 

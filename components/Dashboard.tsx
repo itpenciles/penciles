@@ -254,7 +254,7 @@ const Dashboard = () => {
                                         return (
                                             <div className="flex justify-between" key={level}>
                                                 <span>{level}</span>
-                                                {/* FIX: Using an explicit string literal for the space `{' '}` prevents the JSX parser from misinterpreting `{count} <span...` as a less-than comparison, which can cause a type error. */}
+                                                {/* FIX: Replaced `{count} <span...` with `{count}{' '}<span...` to prevent a JSX parsing error. The space is now explicitly a string literal, separating the number from the opening tag of the span element and preventing it from being interpreted as a less-than operator. */}
                                                 <span>{count}{' '}<span className="text-gray-500">({percentage}%)</span></span>
                                             </div>
                                         );
