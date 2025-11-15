@@ -23,29 +23,29 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid Google token.' });
         }
 
-        const { email, name, picture: profilePictureUrl } = payload;
+        // We only care about email and name from Google to avoid schema errors
+        const { email, name } = payload;
 
-        // The production database seems to be missing the `google_id` column.
-        // We will use `email` as the unique identifier for the upsert operation,
-        // which is more robust against schema variations.
+        // This query now completely ignores `profile_picture_url` to prevent database errors
+        // if the column does not exist in the production schema.
         const userUpsertQuery = `
-            INSERT INTO users (email, name, profile_picture_url)
-            VALUES ($1, $2, $3)
+            INSERT INTO users (email, name)
+            VALUES ($1, $2)
             ON CONFLICT (email) DO UPDATE 
-            SET name = EXCLUDED.name, profile_picture_url = EXCLUDED.profile_picture_url
-            RETURNING id, name, email, profile_picture_url;
+            SET name = EXCLUDED.name
+            RETURNING id, name, email;
         `;
 
-        const userResult = await query(userUpsertQuery, [email, name, profilePictureUrl]);
-        const user: User = userResult.rows[0];
+        const userResult = await query(userUpsertQuery, [email, name]);
+        // The user object from the DB will not have profile_picture_url
+        const user: Omit<User, 'profilePictureUrl'> = userResult.rows[0];
         
-        // Create JWT with user info from our database
+        // Create JWT. The profilePictureUrl will be undefined, and the frontend will use its fallback.
         const jwtToken = jwt.sign(
             { 
                 id: user.id, 
                 name: user.name, 
-                email: user.email, 
-                profilePictureUrl: user.profilePictureUrl 
+                email: user.email,
             }, 
             process.env.JWT_SECRET!, 
             { expiresIn: '7d' }
@@ -57,7 +57,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                profilePictureUrl: user.profilePictureUrl
+                // profilePictureUrl is intentionally omitted
             }
         });
 

@@ -64,10 +64,8 @@ Connect to your PostgreSQL database and run the following SQL commands to create
 ```sql
 CREATE TABLE "users" (
   "id" SERIAL PRIMARY KEY,
-  "google_id" VARCHAR(255) UNIQUE NOT NULL,
   "email" VARCHAR(255) UNIQUE NOT NULL,
   "name" VARCHAR(255),
-  "profile_picture_url" TEXT,
   "created_at" TIMESTAMPTZ DEFAULT (now())
 );
 

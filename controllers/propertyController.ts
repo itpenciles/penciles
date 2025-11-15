@@ -19,7 +19,7 @@ export const getProperties = async (req: AuthRequest, res: Response) => {
         // The property object is stored in property_data, and we also need the db id
         const properties = result.rows.map(row => ({
             ...row.property_data,
-            id: row.id
+            id: row.id.toString() // Ensure ID is a string for frontend consistency
         }));
         res.status(200).json(properties);
     } catch (error) {
@@ -31,17 +31,19 @@ export const getProperties = async (req: AuthRequest, res: Response) => {
 // Add a new property
 export const addProperty = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
+    // The property data from the body does not have an ID yet.
     const propertyData: Omit<Property, 'id'> = req.body;
-    const propertyId = new Date().toISOString(); // Generate a unique ID like before
 
     try {
+        // Let the database generate the ID (SERIAL PRIMARY KEY). We don't pass an ID.
         const result = await query(
-            'INSERT INTO properties (id, user_id, property_data) VALUES ($1, $2, $3) RETURNING id, property_data',
-            [propertyId, userId, propertyData]
+            'INSERT INTO properties (user_id, property_data) VALUES ($1, $2) RETURNING id, property_data',
+            [userId, propertyData]
         );
+        // The returned ID from the database is the source of truth.
         const newProperty = {
             ...result.rows[0].property_data,
-            id: result.rows[0].id
+            id: result.rows[0].id.toString() // Ensure ID is a string, as frontend expects
         };
         res.status(201).json(newProperty);
     } catch (error) {
@@ -61,7 +63,7 @@ export const updateProperty = async (req: AuthRequest, res: Response) => {
 
     try {
         const result = await query(
-            'UPDATE properties SET property_data = $1 WHERE id = $2 AND user_id = $3 RETURNING id, property_data',
+            'UPDATE properties SET property_data = $1, updated_at = now() WHERE id = $2 AND user_id = $3 RETURNING id, property_data',
             [dataToStore, id, userId]
         );
 
@@ -71,7 +73,7 @@ export const updateProperty = async (req: AuthRequest, res: Response) => {
         
         const updatedProperty = {
             ...result.rows[0].property_data,
-            id: result.rows[0].id
+            id: result.rows[0].id.toString() // Ensure ID is a string
         };
         res.status(200).json(updatedProperty);
     } catch (error) {
