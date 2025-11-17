@@ -121,18 +121,33 @@ Property to analyze: ${inputDescription}.
     *   **Step 2:** Calculate the annual insurance premium by multiplying this value by 0.005 (which represents 0.5% of the property value).
     *   **Step 3:** Calculate \`monthlyInsurance\` by dividing the annual premium by 12.
     *   **Step 4:** You MUST add the following sentence to the \`recommendation.additionalNotes\`: "Note: Monthly insurance is an estimate calculated as 0.5% of the property's value annually." If you also sourced tax data from Zillow, this note should come after the Zillow note.
+5.  **Determine Neighborhood Safety (\`safetyScore\`):**
+    *   You MUST use your search tool to research the crime rates for the specific neighborhood of the property address.
+    *   Your primary source for this research MUST be **https://communitycrimemap.com/map**. Navigate to this site, input the property's address, and analyze the density and types of recent crimes (e.g., assault, burglary, theft) in the immediate vicinity (within a 0.5 to 1-mile radius).
+    *   Based on this data, generate a \`safetyScore\` from 0 to 100, where 100 is extremely safe (virtually no crime) and 0 is extremely dangerous.
+    *   **Score Calibration:**
+        *   **80-100:** Very low crime, few to no incidents, predominantly safe area.
+        *   **60-79:** Below average crime. Mostly petty crime, violent crime is rare.
+        *   **40-59:** Average crime. A mix of property crimes and some more serious incidents. Requires caution.
+        *   **20-39:** Above average to high crime. Frequent property crimes and a noticeable presence of violent crime.
+        *   **0-19:** Very high crime. A dangerous area with frequent and serious criminal activity.
+    *   The \`safetyScore\` MUST be a direct reflection of the data from the crime map. Do not use generic city-wide scores or other sources unless the primary one is unavailable.
 
 **General Instructions:**
-5.  Extract all other relevant data points from the page.
-6.  Only after following the critical instructions above, if some secondary information is *still* missing (e.g., specific utility costs like water/sewer), you may provide a reasonable estimate based on the property's location, type, and size.
-7.  Identify the number of units. For multi-unit properties, provide rent estimates for each unit in the 'monthlyRents' array. Also provide a breakdown of each unit's bedrooms and bathrooms in the 'details.unitDetails' array. The 'marketAnalysis.areaAverageRents' array must also correspond to each unit, providing the market rent for a comparable unit (e.g., same bed/bath count). For single-family homes, all arrays ('monthlyRents', 'unitDetails', 'areaAverageRents') should contain a single element.
-8.  **Recommendation Logic (for a standard Rental strategy):** Your recommendation must be grounded in financial reality and a holistic view of key performance indicators. Your analysis must be critical and objective.
-    - **'Worth Pursuing'**: This is reserved for properties that are strong across multiple metrics. It must have **strong positive cash flow**, a healthy **Cash-on-Cash Return** (ideally >8-10%), a safe **Debt Service Coverage Ratio (DSCR)** (ideally >1.25), and a **Cap Rate** that is at or above the market average for the area. A deal must be compelling from both a cash flow and returns perspective.
-    - **'Moderate Risk'**: This applies to properties with a mixed financial profile. Examples: break-even or slightly negative cash flow but a strong cap rate (signaling a value-add opportunity); good cash flow but a weaker DSCR (e.g., 1.1-1.2); or solid returns but in a volatile market. Clearly state the factors that create the risk.
-    - **'High Risk'**: Use this for properties with significant financial flaws. This includes clear **negative cash flow**, a **negative or very low Cash-on-Cash return**, and a **DSCR below 1.0**. Also use this for properties that are clearly overpriced (very low cap rate for the market).
-    - **'Avoid'**: This is for properties that are fundamentally unsound investments due to severe negative cash flow, an exorbitant price far above market value, or critical location/condition flaws.
-    **Crucially, do not just look at one metric in isolation. A recommendation of 'Worth Pursuing' requires a confluence of positive indicators. Prioritize realistic day-one performance over speculative appreciation.**
-9. Your final output MUST be a single, valid JSON object that strictly adheres to the schema provided below. Do not include any other text, markdown formatting, or explanations before or after the JSON object.
+6.  Extract all other relevant data points from the page.
+7.  Only after following the critical instructions above, if some secondary information is *still* missing (e.g., specific utility costs like water/sewer), you may provide a reasonable estimate based on the property's location, type, and size.
+8.  Identify the number of units. For multi-unit properties, provide rent estimates for each unit in the 'monthlyRents' array. Also provide a breakdown of each unit's bedrooms and bathrooms in the 'details.unitDetails' array. The 'marketAnalysis.areaAverageRents' array must also correspond to each unit, providing the market rent for a comparable unit (e.g., same bed/bath count). For single-family homes, all arrays ('monthlyRents', 'unitDetails', 'areaAverageRents') should contain a single element.
+9.  **Recommendation Logic (for a standard Rental strategy):** Your recommendation must be grounded in a balanced assessment of both financial metrics and **location quality**. Your analysis must be critical, objective, and hyper-aware of neighborhood safety.
+    - **Safety is Paramount:** The \`marketAnalysis.safetyScore\` is a critical factor. A low score indicates higher risks of vacancy, tenant issues, and property damage that can nullify strong on-paper financials.
+        -   **Safety Score < 40:** The property is in a challenging area. It CANNOT be rated 'Worth Pursuing'. It must be rated 'High Risk' or 'Avoid', and you must explicitly state that the low safety score is the primary reason.
+        -   **Safety Score 40-60:** This is a 'Moderate Risk' area. A property here can only be 'Worth Pursuing' if the financial metrics are **exceptionally strong** (e.g., CoC > 15%, very high cash flow) to compensate for the added location risk. Otherwise, it defaults to 'Moderate Risk'. You must mention the safety as a key factor.
+    - **Financial Health:**
+        - **'Worth Pursuing'**: Reserved for properties with strong financials **AND** an acceptable safety score (>60). Must have strong positive cash flow, a healthy Cash-on-Cash Return (>8-10%), a safe DSCR (>1.25), and a good Cap Rate.
+        - **'Moderate Risk'**: Properties with a mixed financial profile (e.g., break-even cash flow, borderline DSCR) OR strong financials in a borderline safety area (40-60 score).
+        - **'High Risk'**: Properties with significant financial flaws (clear negative cash flow, very low CoC, DSCR < 1.0) OR properties in a low safety area (<40 score).
+        - **'Avoid'**: Properties that are fundamentally unsound due to severe negative cash flow, an exorbitant price, OR being in a very poor location.
+    **Crucially, do not just look at one metric in isolation. A great financial deal in a terrible area is a bad deal. Your recommendation must reflect this reality.**
+10. Your final output MUST be a single, valid JSON object that strictly adheres to the schema provided below. Do not include any other text, markdown formatting, or explanations before or after the JSON object.
     
 JSON Schema:
 ${schemaString}
@@ -323,11 +338,15 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
         case 'Rental':
         default:
             recommendationLogic = `
-- **Your recommendation must be based on the standard 'Rental' strategy.**
-- **'Worth Pursuing'**: This is reserved for properties that are strong across multiple metrics. It must have **strong positive cash flow**, a healthy **Cash-on-Cash Return** (ideally >8-10%), a safe **Debt Service Coverage Ratio (DSCR)** (ideally >1.25), and a **Cap Rate** that is at or above the market average for the area. A deal must be compelling from both a cash flow and returns perspective.
-- **'Moderate Risk'**: This applies to properties with a mixed financial profile. Examples: break-even or slightly negative cash flow but a strong cap rate (signaling a value-add opportunity); good cash flow but a weaker DSCR (e.g., 1.1-1.2); or solid returns but in a volatile market. Clearly state the factors that create the risk.
-- **'High Risk'**: Use this for properties with significant financial flaws. This includes clear **negative cash flow**, a **negative or very low Cash-on-Cash return**, and a **DSCR below 1.0**. Also use this for properties that are clearly overpriced (very low cap rate for the market).
-- **'Avoid'**: This is for properties that are fundamentally unsound investments due to severe negative cash flow, an exorbitant price far above market value, or critical location/condition flaws.`;
+- **Your recommendation must be based on a balanced assessment of both financial metrics and location quality for the 'Rental' strategy.**
+- **Safety is Paramount:** The \`marketAnalysis.safetyScore\` is a critical factor. A low score indicates higher risks of vacancy, tenant issues, and property damage that can nullify strong on-paper financials.
+    - **Safety Score < 40:** The property is in a challenging area. It CANNOT be rated 'Worth Pursuing'. It must be rated 'High Risk' or 'Avoid', and you must explicitly state that the low safety score is the primary reason.
+    - **Safety Score 40-60:** This is a 'Moderate Risk' area. A property here can only be 'Worth Pursuing' if the financial metrics are **exceptionally strong** (e.g., CoC > 15%, very high cash flow) to compensate for the added location risk. Otherwise, it defaults to 'Moderate Risk'. You must mention the safety as a key factor.
+- **Financial Health:**
+    - **'Worth Pursuing'**: Reserved for properties with strong financials **AND** an acceptable safety score (>60). Must have strong positive cash flow, a healthy Cash-on-Cash Return (>8-10%), a safe DSCR (>1.25), and a good Cap Rate.
+    - **'Moderate Risk'**: Properties with a mixed financial profile (e.g., break-even cash flow, borderline DSCR) OR strong financials in a borderline safety area (40-60 score).
+    - **'High Risk'**: Properties with significant financial flaws (clear negative cash flow, very low CoC, DSCR < 1.0) OR properties in a low safety area (<40 score).
+    - **'Avoid'**: Properties that are fundamentally unsound due to severe negative cash flow, an exorbitant price, OR being in a very poor location.`;
             break;
     }
 
@@ -341,9 +360,9 @@ ${dataString}
     
 Instructions:
 1.  **Analyze the provided data based on the "${strategy}" strategy.** Pay close attention to the user-adjusted inputs and the resulting calculations for that specific strategy. Do not use external search tools; base your entire analysis on the data given.
-2.  **Recommendation Logic:** Your new recommendation must be strictly grounded in the provided financial metrics for the chosen strategy. Your analysis must be critical and objective.
+2.  **Recommendation Logic:** Your new recommendation must be strictly grounded in a balanced assessment of the provided financial metrics **and the property's location quality (safetyScore)** for the chosen strategy. Your analysis must be critical and objective.
     ${recommendationLogic}
-    **Crucially, do not just look at one metric in isolation. A recommendation of 'Worth Pursuing' requires a confluence of positive indicators relevant to the chosen strategy.**
+    **Crucially, do not just look at one metric in isolation. A great financial deal in a terrible area is a bad deal. Your recommendation must reflect this reality.**
 3.  Your final output MUST be a single, valid JSON object that strictly adheres to the schema provided below. Do not include any other text, markdown formatting, or explanations before or after the JSON object. Ensure the 'strategyAnalyzed' field is set to "${strategy}".
     
 JSON Schema:
