@@ -18,8 +18,7 @@ const analyzeAndSaveProperty = async (
     addPropertyHook: (propertyData: Omit<Property, 'id'>) => Promise<Property>
 ): Promise<Property> => {
     // Step 1: Call backend to get AI analysis
-    const analysisResponse = await apiClient.post('/analyze', { inputType, value });
-    const analyzedData = analysisResponse.data;
+    const analyzedData = await apiClient.post('/analyze', { inputType, value });
 
     // Step 2: Call backend to save the analyzed property to the user's account
     const newProperty = await addPropertyHook(analyzedData);

@@ -38,7 +38,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setAuthError(null);
         try {
             const res = await apiClient.post('/auth/google', { token: response.credential });
-            const { token, user } = res.data;
+            // FIX: The apiClient returns the JSON body directly, not an object with a `data` property.
+            // This was causing a TypeError on destructuring.
+            const { token, user } = res;
             
             localStorage.setItem('authToken', token);
             setUser(user);

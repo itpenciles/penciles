@@ -136,8 +136,8 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get('/properties');
-      setProperties(response.data);
+      const fetchedProperties = await apiClient.get('/properties');
+      setProperties(fetchedProperties);
     } catch (err) {
       setError('Failed to fetch properties.');
       console.error(err);
@@ -151,15 +151,13 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
   }, [fetchProperties]);
 
   const addProperty = async (propertyData: Omit<Property, 'id'>): Promise<Property> => {
-    const response = await apiClient.post('/properties', propertyData);
-    const newProperty = response.data;
+    const newProperty = await apiClient.post('/properties', propertyData);
     setProperties(prev => [newProperty, ...prev]);
     return newProperty;
   };
 
   const updateProperty = async (id: string, propertyData: Property): Promise<Property> => {
-    const response = await apiClient.put(`/properties/${id}`, propertyData);
-    const updatedProperty = response.data;
+    const updatedProperty = await apiClient.put(`/properties/${id}`, propertyData);
     setProperties(prev => prev.map(p => (p.id === id ? updatedProperty : p)));
     return updatedProperty;
   };

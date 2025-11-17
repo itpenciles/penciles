@@ -32,20 +32,21 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid Google token.' });
         }
 
-        const { email, name } = payload;
+        const { sub: googleId, email, name } = payload;
         
-        // FIX: This query now includes a placeholder for `password_hash` to satisfy the NOT NULL constraint
-        // for users who sign up with Google. This makes the login system compatible with schemas
-        // that were originally designed for password-based authentication.
+        // This query finds a user by email, and if found, updates their name and links their google_id.
+        // If no user is found by email, it inserts a new user with all the details from Google.
+        // This robustly handles both new sign-ups and linking Google to an existing email-based account.
         const userUpsertQuery = `
-            INSERT INTO users (email, name, password_hash)
-            VALUES ($1, $2, 'oauth_placeholder')
+            INSERT INTO users (email, name, google_id, password_hash)
+            VALUES ($1, $2, $3, 'oauth_placeholder')
             ON CONFLICT (email) DO UPDATE 
-            SET name = EXCLUDED.name
+            SET name = EXCLUDED.name,
+                google_id = EXCLUDED.google_id
             RETURNING id, name, email;
         `;
 
-        const userResult = await query(userUpsertQuery, [email, name]);
+        const userResult = await query(userUpsertQuery, [email, name, googleId]);
         const user: Omit<User, 'profilePictureUrl'> = userResult.rows[0];
         
         const jwtToken = jwt.sign(
