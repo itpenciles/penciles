@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { Property, Financials, WholesaleInputs, SubjectToInputs, SellerFinancingInputs, Strategy } from '../types';
 import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../contexts/PropertyContext';
-import { ArrowLeftIcon, CheckIcon } from '../constants';
+import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon } from '../constants';
 
 // --- Icons ---
 const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -101,9 +101,9 @@ const PropertyDetail = () => {
     }
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 bg-gray-50">
+        <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 print-container">
             <header className="mb-6">
-                <button onClick={() => navigate('/dashboard')} className="flex items-center text-sm font-semibold text-gray-600 hover:text-gray-900 mb-4">
+                <button onClick={() => navigate('/dashboard')} className="flex items-center text-sm font-semibold text-gray-600 hover:text-gray-900 mb-4 no-print">
                     <ArrowLeftIcon className="h-5 w-5 mr-2" />
                     Back to Dashboard
                 </button>
@@ -119,7 +119,9 @@ const PropertyDetail = () => {
             <div className="flex flex-col lg:flex-row gap-8">
                 <div className="flex-grow space-y-8">
                     <PropertyDetailsCard property={editedProperty} />
-                    <StrategySelector activeStrategy={activeStrategy} setActiveStrategy={setActiveStrategy} />
+                    <div className="no-print">
+                        <StrategySelector activeStrategy={activeStrategy} setActiveStrategy={setActiveStrategy} />
+                    </div>
                     <FinancialAnalysisCard 
                         property={editedProperty} 
                         setProperty={setEditedProperty}
@@ -135,7 +137,9 @@ const PropertyDetail = () => {
                 <div className="w-full lg:w-96 flex-shrink-0 space-y-8">
                     <InvestmentRecommendationCard property={editedProperty} />
                     <MarketAnalysisCard property={editedProperty} />
-                    <GoogleMapCard address={editedProperty.address} />
+                    <div className="no-print">
+                        <GoogleMapCard address={editedProperty.address} />
+                    </div>
                 </div>
             </div>
         </div>
@@ -146,7 +150,7 @@ const PropertyDetail = () => {
 const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrategy: Strategy, setActiveStrategy: (s: Strategy) => void }) => {
     const strategies: Strategy[] = ['Rental', 'Wholesale', 'Subject-To', 'Seller Financing'];
     return (
-        <div className="bg-white p-2 rounded-xl shadow-sm">
+        <div className="bg-white p-2 rounded-xl shadow-sm printable-card">
             <div className="flex flex-col sm:flex-row justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-800 px-4 mb-2 sm:mb-0">Strategy Option</h2>
                 <div className="flex flex-wrap border border-gray-200 rounded-lg p-0.5">
@@ -176,7 +180,7 @@ const RecommendationBadge = ({ level }: { level: Property['recommendation']['lev
 };
 
 const PropertyDetailsCard = ({ property }: { property: Property }) => (
-    <div className="bg-white p-6 rounded-xl shadow-sm">
+    <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Property Details</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center mb-4">
             <DetailItem label="Bedrooms" value={property.details.bedrooms.toString()} />
@@ -214,7 +218,7 @@ const InvestmentRecommendationCard = ({ property }: { property: Property }) => {
     const isRentalStrategy = recommendation.strategyAnalyzed === 'Rental';
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-green-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-green-200 printable-card">
             <div className="flex items-start mb-2">
                 <CheckCircleIcon className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
                 <div>
@@ -262,7 +266,7 @@ const MarketAnalysisCard = ({ property }: { property: Property }) => {
     const { safetyScore } = property.marketAnalysis;
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Market Analysis</h2>
             <div className="space-y-4">
                 <div>
@@ -328,7 +332,7 @@ const GoogleMapCard = ({ address }: { address: string }) => {
     const mapSrc = `https://www.google.com/maps?q=${encodedAddress}&layer=c&output=svembed`;
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Location & Street View</h2>
             <div className="h-64 rounded-lg overflow-hidden border border-gray-200">
                 <iframe
@@ -353,6 +357,10 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
     useEffect(() => {
         setActiveTab('Metrics');
     }, [activeStrategy]);
+
+    const handlePrint = () => {
+        window.print();
+    };
 
     const renderTabs = () => {
         const tabs = activeStrategy === 'Rental'
@@ -402,12 +410,36 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
             <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">Financial Analysis: {activeStrategy.replace('-', ' ')}</h2>
-                {renderTabs()}
+                <div className="flex items-center space-x-2">
+                    <div className="no-print">{renderTabs()}</div>
+                    <button onClick={handlePrint} title="Print Report" className="p-2 text-gray-500 hover:bg-gray-100 rounded-md no-print">
+                        <DocumentArrowDownIcon className="h-5 w-5" />
+                    </button>
+                </div>
             </div>
-            <div>{renderContent()}</div>
+            {/* Content for screen view */}
+            <div className="screen-only">{renderContent()}</div>
+            {/* Content for print view */}
+            <div className="print-only">
+                {activeStrategy === 'Rental' && (
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Key Metrics</h3>
+                            <MetricsTab property={property} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Expense Breakdown</h3>
+                            <ExpensesTab property={property} />
+                        </div>
+                    </div>
+                )}
+                {activeStrategy === 'Wholesale' && <WholesaleMetricsTab property={property} />}
+                {activeStrategy === 'Subject-To' && <SubjectToMetricsTab property={property} />}
+                {activeStrategy === 'Seller Financing' && <SellerFinancingMetricsTab property={property} />}
+            </div>
         </div>
     );
 };
@@ -728,8 +760,9 @@ const WholesaleMetricsTab = ({ property }: { property: Property }) => {
                     <span className="font-bold text-lg">{calcs.isEligible ? 'This deal is eligible!' : 'This deal is NOT eligible based on your MAO.'}</span>
                  </div>
             </div>
-
-            <ExitStrategyGuide title="Wholesale Exit Options" strategies={WHOLESALE_EXIT_STRATEGIES} />
+            <div className="screen-only">
+                <ExitStrategyGuide title="Wholesale Exit Options" strategies={WHOLESALE_EXIT_STRATEGIES} />
+            </div>
         </div>
     );
 };
@@ -795,7 +828,9 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
                 </div>
             </div>
 
-            <ExitStrategyGuide title="Subject-To Exit Options" strategies={SUBJECT_TO_EXIT_STRATEGIES} />
+            <div className="screen-only">
+                <ExitStrategyGuide title="Subject-To Exit Options" strategies={SUBJECT_TO_EXIT_STRATEGIES} />
+            </div>
         </div>
     );
 };
@@ -866,7 +901,9 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
                 </div>
             </div>
 
-            <ExitStrategyGuide title="Seller Financing Exit Options" strategies={SELLER_FINANCING_EXIT_STRATEGIES} />
+            <div className="screen-only">
+                <ExitStrategyGuide title="Seller Financing Exit Options" strategies={SELLER_FINANCING_EXIT_STRATEGIES} />
+            </div>
         </div>
     );
 };
@@ -917,7 +954,7 @@ const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasC
 // --- COMMON & UTILITY COMPONENTS ---
 
 const SaveChangesFooter = ({ onSave, onReset, hasChanges, isLoading, error }: { onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => (
-    <div className="mt-6">
+    <div className="mt-6 no-print">
         {error && <div className="bg-red-100 border border-red-300 text-red-800 text-sm p-3 rounded-md mb-4">{error}</div>}
         <div className="flex justify-end items-center space-x-4">
             {hasChanges ? (
@@ -985,7 +1022,7 @@ const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
     const originationFeeAmount = calcs.loanAmount * (financials.originationFeePercent / 100);
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Investment Summary (Rental Strategy)</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 {/* Upfront Costs Section */}

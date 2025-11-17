@@ -5,3 +5,53 @@
 html {
   scroll-behavior: smooth;
 }
+
+@media print {
+  body {
+    background-color: white !important;
+  }
+  
+  /* Helper class to hide elements from printing */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Helper class to only show on screen */
+  .screen-only {
+    display: none !important;
+  }
+
+  /* Helper class to only show for printing */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Style cards for a cleaner report look */
+  .printable-card {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+    padding: 1rem !important;
+    break-inside: avoid; /* Prevents cards from splitting across pages */
+  }
+  
+  /* Reset layout for printing */
+  .print-container {
+    padding: 1rem !important;
+  }
+
+  /* Ensure text is readable */
+  * {
+    color: black !important;
+    background-color: transparent !important;
+  }
+
+  a {
+    text-decoration: none;
+  }
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
