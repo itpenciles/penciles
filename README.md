@@ -180,3 +180,31 @@ This can happen if you have multiple databases within one PostgreSQL instance (e
 2.  **Confirm this is the database you intended.** If not, correct the `DATABASE_URL` in your Render Environment settings.
 3.  If the name is correct, it means the schema inside `'your_db_name'` is wrong.
 4.  **Connect your database client directly to `'your_db_name'`** and run the `ALTER TABLE` commands from Scenario 1. This ensures you are updating the correct database that your application is actively connected to.
+
+#### Scenario 3: Starting Over with a Fresh Database (The Ultimate Fix)
+
+If you are still facing persistent database issues, the fastest and most reliable solution is to create a new, clean database and point your application to it. This eliminates any possibility of hidden misconfigurations.
+
+**Step 1: Create the New Database in Render**
+1.  Go to your **[Render Dashboard](https://dashboard.render.com/)**.
+2.  Click the **"New +"** button, then select **"PostgreSQL"**.
+3.  Give it a unique name (e.g., `it-pencils-db`), select a region, and click **"Create Database"**.
+4.  Wait for the new database status to become **"Available"**.
+
+**Step 2: Connect and Set Up the Schema**
+1.  Click on your new database's name in Render to view its details.
+2.  Scroll to the **"Connections"** section and copy the **"External Database URL"**.
+3.  Use this URL in your database client (DBeaver, TablePlus, etc.) to connect to the new, empty database.
+4.  Run the `CREATE TABLE` scripts from the "Set Up the Database" section of this README to create the `users` and `properties` tables.
+
+**Step 3: Update Your Application's `DATABASE_URL`**
+1.  Go back to your new database's page on the Render dashboard.
+2.  From the "Connections" section, copy the **"Internal Database URL"**.
+    *   **Crucial:** Use the **Internal URL** for your app service. It's faster and more secure.
+3.  Navigate to your main web service (the "It Pencils" application) in Render.
+4.  Go to the **"Environment"** tab.
+5.  Find the `DATABASE_URL` environment variable and edit it.
+6.  Paste the new **Internal Database URL** you just copied.
+7.  Click **"Save Changes"**.
+
+Render will automatically trigger a new deployment. Once it's live, your application will be connected to the fresh, correctly configured database, and all schema-related login issues will be resolved.

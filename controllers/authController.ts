@@ -41,8 +41,8 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
         const { sub: googleId, email, name, picture: profilePictureUrl } = payload;
         
         const userUpsertQuery = `
-            INSERT INTO users (email, name, google_id, profile_picture_url, password_hash)
-            VALUES ($1, $2, $3, $4, 'oauth_placeholder')
+            INSERT INTO users (email, name, google_id, profile_picture_url)
+            VALUES ($1, $2, $3, $4)
             ON CONFLICT (email) DO UPDATE 
             SET name = EXCLUDED.name,
                 google_id = EXCLUDED.google_id,
