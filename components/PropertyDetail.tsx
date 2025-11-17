@@ -102,8 +102,16 @@ const PropertyDetail = () => {
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 print-container">
-            <header className="mb-6">
-                <button onClick={() => navigate('/dashboard')} className="flex items-center text-sm font-semibold text-gray-600 hover:text-gray-900 mb-4 no-print">
+            {/* Print-only header for a clean report title */}
+            <div className="print-only text-center mb-8">
+                <h1 className="text-3xl font-bold">{editedProperty.address}</h1>
+                <p className="text-lg text-gray-700">Investment Analysis Report</p>
+                <p className="text-sm text-gray-500">Date Generated: {new Date().toLocaleDateString()}</p>
+            </div>
+
+            {/* Screen header is now hidden during printing */}
+            <header className="mb-6 no-print">
+                <button onClick={() => navigate('/dashboard')} className="flex items-center text-sm font-semibold text-gray-600 hover:text-gray-900 mb-4">
                     <ArrowLeftIcon className="h-5 w-5 mr-2" />
                     Back to Dashboard
                 </button>
@@ -116,7 +124,7 @@ const PropertyDetail = () => {
                 </div>
             </header>
 
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex flex-col lg:flex-row gap-8 property-detail-layout">
                 <div className="flex-grow space-y-8">
                     <PropertyDetailsCard property={editedProperty} />
                     <div className="no-print">

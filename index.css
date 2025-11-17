@@ -48,6 +48,18 @@ html {
   a {
     text-decoration: none;
   }
+
+  /* Force single-column layout for the main content area */
+  .property-detail-layout {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  /* Ensure columns take full width and have space between them */
+  .property-detail-layout > div {
+    width: 100% !important;
+    margin-bottom: 1.5rem; /* Add some space between stacked sections */
+  }
 }
 
 @media screen {

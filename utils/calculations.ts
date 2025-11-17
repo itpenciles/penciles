@@ -6,8 +6,10 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
     purchasePrice, rehabCost, downPaymentPercent, monthlyRents, vacancyRate, 
     maintenanceRate, managementRate, capexRate, monthlyTaxes, monthlyInsurance,
     monthlyWaterSewer, monthlyStreetLights, monthlyGas, monthlyElectric, monthlyLandscaping,
+    monthlyHoaFee, operatingMiscFee,
     loanInterestRate, loanTermYears, originationFeePercent, closingFee, 
     processingFee, appraisalFee, titleFee,
+    brokerAgentFee, homeWarrantyFee, attorneyFee, closingMiscFee,
     sellerCreditTax, sellerCreditSewer, sellerCreditOrigination, sellerCreditClosing
   } = financials;
 
@@ -15,7 +17,7 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const loanAmount = purchasePrice - downPaymentAmount;
 
   const originationFeeAmount = loanAmount * (originationFeePercent / 100);
-  const otherClosingFees = closingFee + processingFee + appraisalFee + titleFee;
+  const otherClosingFees = (closingFee || 0) + (processingFee || 0) + (appraisalFee || 0) + (titleFee || 0) + (brokerAgentFee || 0) + (homeWarrantyFee || 0) + (attorneyFee || 0) + (closingMiscFee || 0);
   const totalClosingCosts = otherClosingFees + originationFeeAmount;
   
   const totalSellerCredits = (sellerCreditTax || 0) + (sellerCreditSewer || 0) + (sellerCreditOrigination || 0) + (sellerCreditClosing || 0);
@@ -37,8 +39,8 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const maintenanceCost = grossAnnualRent * (maintenanceRate / 100);
   const managementCost = grossAnnualRent * (managementRate / 100);
   const capexCost = grossAnnualRent * (capexRate / 100);
-  const annualUtilities = (monthlyWaterSewer + monthlyStreetLights + monthlyGas + monthlyElectric + monthlyLandscaping) * 12;
-  const totalOperatingExpensesAnnual = maintenanceCost + managementCost + capexCost + (monthlyTaxes * 12) + (monthlyInsurance * 12) + annualUtilities;
+  const annualUtilities = ((monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) + (monthlyElectric || 0) + (monthlyLandscaping || 0)) * 12;
+  const totalOperatingExpensesAnnual = maintenanceCost + managementCost + capexCost + (monthlyTaxes * 12) + (monthlyInsurance * 12) + annualUtilities + ((monthlyHoaFee || 0) * 12) + ((operatingMiscFee || 0) * 12);
   
   const netOperatingIncomeAnnual = effectiveGrossIncome - totalOperatingExpensesAnnual;
   
