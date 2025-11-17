@@ -68,6 +68,10 @@ export interface Financials {
   monthlyElectric: number;
   monthlyLandscaping: number;
 
+  // New Operating Expenses
+  monthlyHoaFee: number;
+  operatingMiscFee: number;
+
   loanInterestRate: number;
   loanTermYears: number;
   originationFeePercent: number;
@@ -75,6 +79,12 @@ export interface Financials {
   processingFee: number;
   appraisalFee: number;
   titleFee: number;
+  
+  // New Closing Costs
+  brokerAgentFee: number;
+  homeWarrantyFee: number;
+  attorneyFee: number;
+  closingMiscFee: number;
 
   // Seller Credits
   sellerCreditTax: number;

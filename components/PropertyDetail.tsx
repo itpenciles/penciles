@@ -481,7 +481,7 @@ const ExpensesTab = ({ property }: { property: Property }) => {
     const { 
         monthlyTaxes, monthlyInsurance, monthlyWaterSewer, monthlyStreetLights, 
         monthlyGas, monthlyElectric, monthlyLandscaping, vacancyRate, 
-        maintenanceRate, managementRate, capexRate 
+        maintenanceRate, managementRate, capexRate, monthlyHoaFee, operatingMiscFee
     } = property.financials;
     const totalMonthlyRent = property.financials.monthlyRents.reduce((a, b) => a + b, 0);
 
@@ -501,6 +501,8 @@ const ExpensesTab = ({ property }: { property: Property }) => {
                  <ExpenseRow label={`CapEx Reserves (${capexRate}%)`} value={`${formatCurrency(calcs.capexCost)}/month`} valueYear={`${formatCurrency(calcs.capexCost*12)}/year`} isSub />
                  <ExpenseRow label="Property Taxes" value={`${formatCurrency(monthlyTaxes)}/month`} valueYear={`${formatCurrency(monthlyTaxes * 12)}/year`} isSub />
                  <ExpenseRow label="Insurance" value={`${formatCurrency(monthlyInsurance)}/month`} valueYear={`${formatCurrency(monthlyInsurance*12)}/year`} isSub />
+                 <ExpenseRow label="HOA Fee" value={`${formatCurrency(monthlyHoaFee)}/month`} valueYear={`${formatCurrency(monthlyHoaFee*12)}/year`} isSub />
+                 <ExpenseRow label="Misc. Fees" value={`${formatCurrency(operatingMiscFee)}/month`} valueYear={`${formatCurrency(operatingMiscFee*12)}/year`} isSub />
                  <h5 className="font-semibold text-gray-600 text-xs uppercase pt-2">Utilities</h5>
                  <ExpenseRow label="Water/Sewer" value={`${formatCurrency(monthlyWaterSewer)}/month`} valueYear={`${formatCurrency(monthlyWaterSewer*12)}/year`} isSub />
                  <ExpenseRow label="Street Lights" value={`${formatCurrency(monthlyStreetLights)}/month`} valueYear={`${formatCurrency(monthlyStreetLights*12)}/year`} isSub />
@@ -577,6 +579,10 @@ const AdjustTab = ({ property, setProperty, onSave, onReset, hasChanges, isLoadi
                     <InputField label="Processing Fee ($)" name="processingFee" value={property.financials.processingFee} onChange={handleInputChange} />
                     <InputField label="Appraisal Fee ($)" name="appraisalFee" value={property.financials.appraisalFee} onChange={handleInputChange} />
                     <InputField label="Title Fee ($)" name="titleFee" value={property.financials.titleFee} onChange={handleInputChange} />
+                    <InputField label="Broker/Agent Fee ($)" name="brokerAgentFee" value={property.financials.brokerAgentFee || 0} onChange={handleInputChange} />
+                    <InputField label="Home Warranty Fee ($)" name="homeWarrantyFee" value={property.financials.homeWarrantyFee || 0} onChange={handleInputChange} />
+                    <InputField label="Attorney Fee ($)" name="attorneyFee" value={property.financials.attorneyFee || 0} onChange={handleInputChange} />
+                    <InputField label="Misc Closing Fees ($)" name="closingMiscFee" value={property.financials.closingMiscFee || 0} onChange={handleInputChange} />
                 </div>
             </div>
 
@@ -617,13 +623,15 @@ const AdjustTab = ({ property, setProperty, onSave, onReset, hasChanges, isLoadi
                     <InputField label="Monthly Property Taxes ($)" name="monthlyTaxes" value={property.financials.monthlyTaxes} onChange={handleInputChange} />
                     <InputField label="Monthly Insurance ($)" name="monthlyInsurance" value={property.financials.monthlyInsurance} onChange={handleInputChange} />
                 </div>
-                <h5 className="font-semibold text-gray-600 text-sm pt-2 -mb-2">Utilities</h5>
+                <h5 className="font-semibold text-gray-600 text-sm pt-2 -mb-2">Utilities & Other</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <InputField label="Water/Sewer ($)" name="monthlyWaterSewer" value={property.financials.monthlyWaterSewer} onChange={handleInputChange} />
                     <InputField label="Street Lights ($)" name="monthlyStreetLights" value={property.financials.monthlyStreetLights} onChange={handleInputChange} />
                     <InputField label="Gas ($)" name="monthlyGas" value={property.financials.monthlyGas} onChange={handleInputChange} />
                     <InputField label="Electric ($)" name="monthlyElectric" value={property.financials.monthlyElectric} onChange={handleInputChange} />
                     <InputField label="Landscaping ($)" name="monthlyLandscaping" value={property.financials.monthlyLandscaping} onChange={handleInputChange} />
+                    <InputField label="HOA Fee ($)" name="monthlyHoaFee" value={property.financials.monthlyHoaFee || 0} onChange={handleInputChange} />
+                    <InputField label="Misc Operating Fees ($)" name="operatingMiscFee" value={property.financials.operatingMiscFee || 0} onChange={handleInputChange} />
                 </div>
             </div>
             
@@ -971,10 +979,10 @@ const SliderField = ({ label, name, value, onChange, unit, min, max, step, displ
 
 const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
     const calcs = property.calculations;
-    const { rehabCost } = property.financials;
-    const totalMonthlyRent = property.financials.monthlyRents.reduce((a, b) => a + b, 0);
-    const totalSellerCredits = (property.financials.sellerCreditTax || 0) + (property.financials.sellerCreditSewer || 0) + (property.financials.sellerCreditOrigination || 0) + (property.financials.sellerCreditClosing || 0);
-
+    const financials = property.financials; // Get financials for itemized costs
+    const totalMonthlyRent = financials.monthlyRents.reduce((a, b) => a + b, 0);
+    const totalSellerCredits = (financials.sellerCreditTax || 0) + (financials.sellerCreditSewer || 0) + (financials.sellerCreditOrigination || 0) + (financials.sellerCreditClosing || 0);
+    const originationFeeAmount = calcs.loanAmount * (financials.originationFeePercent / 100);
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -985,8 +993,18 @@ const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
                     <h3 className="text-lg font-semibold text-gray-700 mb-3 pb-2 border-b">Upfront Costs (Cash to Close)</h3>
                     <div className="space-y-2 text-sm">
                         <SummaryRow label="Down Payment" value={formatCurrency(calcs.downPaymentAmount)} />
-                        <SummaryRow label="Rehab Cost" value={formatCurrency(rehabCost)} />
-                        <SummaryRow label="Closing Costs" value={formatCurrency(calcs.totalClosingCosts)} />
+                        <SummaryRow label="Rehab Cost" value={formatCurrency(financials.rehabCost)} />
+                        <h4 className="font-semibold text-gray-600 text-xs uppercase pt-2">Closing Costs</h4>
+                        <SummaryRow label="Origination Fee" value={formatCurrency(originationFeeAmount)} isSub />
+                        <SummaryRow label="Closing Fee" value={formatCurrency(financials.closingFee)} isSub />
+                        <SummaryRow label="Processing Fee" value={formatCurrency(financials.processingFee)} isSub />
+                        <SummaryRow label="Appraisal Fee" value={formatCurrency(financials.appraisalFee)} isSub />
+                        <SummaryRow label="Title Fee" value={formatCurrency(financials.titleFee)} isSub />
+                        <SummaryRow label="Broker/Agent Fee" value={formatCurrency(financials.brokerAgentFee || 0)} isSub />
+                        <SummaryRow label="Home Warranty Fee" value={formatCurrency(financials.homeWarrantyFee || 0)} isSub />
+                        <SummaryRow label="Attorney Fee" value={formatCurrency(financials.attorneyFee || 0)} isSub />
+                        <SummaryRow label="Misc. Fees" value={formatCurrency(financials.closingMiscFee || 0)} isSub />
+                        <SummaryRow label="Total Closing Costs" value={formatCurrency(calcs.totalClosingCosts)} isSubTotal />
                         <SummaryRow label="Less: Seller Credits" value={formatCurrency(totalSellerCredits)} isNegative />
                         <SummaryRow label="Total Cash To Close" value={formatCurrency(calcs.totalCashToClose)} isTotal />
                     </div>
@@ -1006,14 +1024,14 @@ const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
         </div>
     );
 };
-const SummaryRow = ({ label, value, isTotal = false, isSubTotal = false, isNegative = false }: { label: string, value: string, isTotal?: boolean, isSubTotal?: boolean, isNegative?: boolean }) => {
+const SummaryRow = ({ label, value, isTotal = false, isSubTotal = false, isNegative = false, isSub = false }: { label: string, value: string, isTotal?: boolean, isSubTotal?: boolean, isNegative?: boolean, isSub?: boolean }) => {
     const baseClasses = "flex justify-between items-center";
     const totalClasses = isTotal ? "pt-2 mt-2 border-t font-bold" : "";
-    const subTotalClasses = isSubTotal ? "pt-2 border-t" : "";
-
+    const subTotalClasses = isSubTotal ? "pt-2 mt-2 border-t" : "";
+    
     return (
         <div className={`${baseClasses} ${totalClasses} ${subTotalClasses}`}>
-            <span className={`text-gray-600 ${isTotal ? 'text-gray-800' : ''}`}>{label}</span>
+            <span className={`text-gray-600 ${isTotal ? 'text-gray-800' : ''} ${isSub ? 'pl-4' : ''}`}>{label}</span>
             <span className={`font-semibold ${isTotal ? 'text-lg text-gray-900' : 'text-gray-700'} ${isNegative ? 'text-red-600' : ''}`}>{isNegative ? '-' + value: value}</span>
         </div>
     );

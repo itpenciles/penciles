@@ -44,7 +44,13 @@ const responseSchema = {
                 monthlyStreetLights: { type: Type.NUMBER, description: 'Estimated monthly cost for street lights, if applicable.' },
                 monthlyGas: { type: Type.NUMBER, description: 'Estimated monthly cost for gas utility for common areas.' },
                 monthlyElectric: { type: Type.NUMBER, description: 'Estimated monthly cost for common area electricity.' },
-                monthlyLandscaping: { type: Type.NUMBER, description: 'Estimated monthly cost for landscaping services.' }
+                monthlyLandscaping: { type: Type.NUMBER, description: 'Estimated monthly cost for landscaping services.' },
+                monthlyHoaFee: { type: Type.NUMBER, description: 'Estimated monthly Homeowners Association (HOA) fees.' },
+                operatingMiscFee: { type: Type.NUMBER, description: 'Any other miscellaneous monthly operating fees.' },
+                brokerAgentFee: { type: Type.NUMBER, description: 'Estimated one-time Broker or Agent fee as part of closing costs.' },
+                homeWarrantyFee: { type: Type.NUMBER, description: 'Estimated one-time Home Warranty fee as part of closing costs.' },
+                attorneyFee: { type: Type.NUMBER, description: 'Estimated one-time Attorney fee as part of closing costs.' },
+                closingMiscFee: { type: Type.NUMBER, description: 'Any other miscellaneous one-time fees as part of closing costs.' }
             }
         },
         marketAnalysis: {
@@ -185,8 +191,12 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
             const data = JSON.parse(jsonString);
 
             const initialFinancials: Financials = {
-                ...data.financials,
-                purchasePrice: data.financials.listPrice,
+                listPrice: data.financials.listPrice,
+                estimatedValue: data.financials.estimatedValue,
+                monthlyRents: data.financials.monthlyRents,
+                monthlyTaxes: data.financials.monthlyTaxes,
+                monthlyInsurance: data.financials.monthlyInsurance,
+                purchasePrice: data.financials.listPrice, // Default purchasePrice to listPrice
                 rehabCost: 0,
                 downPaymentPercent: 25,
                 vacancyRate: 8,
@@ -198,6 +208,8 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 monthlyGas: data.financials.monthlyGas || 0,
                 monthlyElectric: data.financials.monthlyElectric || 0,
                 monthlyLandscaping: data.financials.monthlyLandscaping || 0,
+                monthlyHoaFee: data.financials.monthlyHoaFee || 0,
+                operatingMiscFee: data.financials.operatingMiscFee || 0,
                 loanInterestRate: 6.5,
                 loanTermYears: 30,
                 originationFeePercent: 1,
@@ -205,6 +217,10 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 processingFee: 0,
                 appraisalFee: 0,
                 titleFee: 0,
+                brokerAgentFee: data.financials.brokerAgentFee || 0,
+                homeWarrantyFee: data.financials.homeWarrantyFee || 0,
+                attorneyFee: data.financials.attorneyFee || 0,
+                closingMiscFee: data.financials.closingMiscFee || 0,
                 sellerCreditTax: 0,
                 sellerCreditSewer: 0,
                 sellerCreditOrigination: 0,
