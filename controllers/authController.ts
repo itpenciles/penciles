@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import { query } from '../db.js';
+import { query, pool } from '../db.js';
 import { User } from '../../types';
 
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
@@ -76,8 +76,26 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
 
     } catch (error: any) {
         console.error('Google login error:', error);
+
+        // Postgres error code for 'undefined_column'
+        if (error.code === '42703' && error.message.includes('google_id')) {
+            const dbHost = pool.options.host || 'unknown host';
+            const dbName = pool.options.database || 'unknown database';
+
+            const detailedMessage = `Database Schema Mismatch on '${dbName}@${dbHost}'. The 'users' table is missing the required 'google_id' column. Please connect your database tool to this exact host and run the ALTER TABLE script from the README.`;
+            
+            return res.status(500).json({
+                message: detailedMessage,
+                type: 'DB_SCHEMA_MISMATCH', // Add a type for the frontend to key off of
+                details: {
+                    host: dbHost,
+                    database: dbName,
+                }
+            });
+        }
         
         if (error.message && error.message.includes('does not exist')) {
+            // This is a more generic fallback now
             return res.status(500).json({
                 message: "Database schema error. The application might be connected to the wrong database. Please check your server logs for the connected database name and verify your DATABASE_URL environment variable."
             });

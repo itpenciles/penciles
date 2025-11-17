@@ -8,7 +8,7 @@ interface AuthContextType {
     logout: () => void;
     isLoading: boolean;
     isAuthEnabled: boolean;
-    authError: string | null;
+    authError: any | null;
     clientIdForDebugging: string | null;
     handleGoogleLogin: (response: any) => void;
 }
@@ -29,7 +29,7 @@ const isAuthEffectivelyEnabled = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'un
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [authError, setAuthError] = useState<string | null>(null);
+    const [authError, setAuthError] = useState<any | null>(null);
     const [clientIdForDebugging, setClientIdForDebugging] = useState<string | null>(null);
     const navigate = useNavigate();
 
@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             navigate('/dashboard');
         } catch (error: any) {
             console.error("Error logging in with backend:", error);
-            setAuthError(error.response?.data?.message || "An unexpected error occurred during login.");
+            setAuthError(error);
         } finally {
             setIsLoading(false);
         }
@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setClientIdForDebugging(GOOGLE_CLIENT_ID || 'Not Found in environment variables');
         if (!isAuthEffectivelyEnabled) {
             console.warn("VITE_GOOGLE_CLIENT_ID is not configured. Google Sign-In is disabled.");
-            setAuthError("Configuration Error: Your Google Client ID is missing or is a placeholder. Please check your .env file and restart your server.");
+            setAuthError({ message: "Configuration Error: Your Google Client ID is missing or is a placeholder. Please check your .env file and restart your server." });
             setIsLoading(false);
             return;
         }

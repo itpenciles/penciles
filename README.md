@@ -93,7 +93,8 @@ When you deploy your application to a hosting provider like Render, Heroku, or V
 2.  Navigate to the **"Environment"** tab.
 3.  Under "Environment Variables," add a new variable for each of the following keys from your `.env` file. Copy the values exactly.
     -   `API_KEY`
-    -   `DATABASE_URL` (Ensure this points to a production database that Render can access, not `localhost`).
+    -   `DATABASE_URL`: This is your full connection string from your PostgreSQL provider.
+        -   **CRITICAL:** The last part of this URL is your database name (e.g., `.../my_database`). Double-check that this is the correct database where you ran the setup scripts. If you created a database named `itPenciles`, the URL must end with `/itPenciles`.
     -   `JWT_SECRET`
     -   `VITE_GOOGLE_CLIENT_ID`
 4.  After adding the variables, Render will automatically trigger a new deployment to apply the settings.
@@ -150,13 +151,15 @@ This error means there is **100% a configuration mismatch** between the URL in y
     -   **Mac:** `Cmd + Shift + R`
 5.  Try clicking "Sign in with Google" again. The issue should now be resolved.
 
-### ✅ Fixing Database Errors: `column "google_id" does not exist`
+### ✅ Fixing Database Errors
 
-If you see a 500 Internal Server Error after logging in, and your Render logs show an error like `column "google_id" of relation "users" does not exist`, it means your database schema is out of date. You likely created the tables before the Google-specific columns were added.
+#### Scenario 1: `column "google_id" does not exist`
+
+If you see a 500 Internal Server Error after logging in, and your server logs show an error like `column "google_id" of relation "users" does not exist`, it means your database schema is out of date. You likely created the `users` table before the Google-specific columns were added.
 
 **Do not drop your tables.** You can fix this without losing any data.
 
-1.  Connect to your PostgreSQL database.
+1.  Connect to your PostgreSQL database with your database client (DBeaver, pgAdmin, etc.).
 2.  Run the following SQL commands to add the missing columns:
 
 ```sql
@@ -168,3 +171,12 @@ ALTER TABLE "users" ADD COLUMN "profile_picture_url" TEXT;
 ```
 
 After running these commands, the error will be resolved. You do not need to redeploy your application.
+
+#### Scenario 2: What if I'm connected to the right database, but still get the error?
+
+This can happen if you have multiple databases within one PostgreSQL instance (e.g., `itPenciles`, `terrace_db`, `postgres`). Your `DATABASE_URL` might be pointing to a database where you forgot to run the setup scripts.
+
+1.  **Check your server logs** for the line `✅ Successfully connected to database: 'your_db_name'`. This tells you exactly which database the application is using.
+2.  **Confirm this is the database you intended.** If not, correct the `DATABASE_URL` in your Render Environment settings.
+3.  If the name is correct, it means the schema inside `'your_db_name'` is wrong.
+4.  **Connect your database client directly to `'your_db_name'`** and run the `ALTER TABLE` commands from Scenario 1. This ensures you are updating the correct database that your application is actively connected to.

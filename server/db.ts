@@ -22,19 +22,45 @@ console.log("DATABASE_URL found. Attempting to connect to database...");
 
 const isProduction = !dbUrl.includes('localhost') && !dbUrl.includes('127.0.0.1');
 
-const pool = new Pool({
+export const pool = new Pool({
     connectionString: dbUrl,
     ssl: isProduction ? { rejectUnauthorized: false } : false,
 });
 
-pool.on('connect', () => {
+pool.on('connect', async (client) => {
     try {
         const dbConnectionUrl = new URL(dbUrl);
         const dbName = dbConnectionUrl.pathname.slice(1); // Remove leading slash
         const host = dbConnectionUrl.hostname;
         console.log(`✅ Successfully connected to database: '${dbName}' on host '${host}'.`);
+
+        // --- [NEW] Table Schema Inspector ---
+        console.log(`--- [DB Inspector] ---`);
+        console.log(`Inspecting schema for 'public.users' table...`);
+        const schemaResult = await client.query(
+            `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' ORDER BY ordinal_position;`
+        );
+        
+        if (schemaResult.rows.length === 0) {
+            console.error(`❌ CRITICAL ERROR: The 'public.users' table was NOT FOUND in the '${dbName}' database.`);
+            console.error(`   This is the reason for login failures. Please run the setup SQL script against this database.`);
+        } else {
+            console.log(`✅ Found ${schemaResult.rows.length} columns in 'public.users':`);
+            const columns = schemaResult.rows.map(row => `   - ${row.column_name} (${row.data_type})`).join('\n');
+            console.log(columns);
+            
+            const hasGoogleId = schemaResult.rows.some(row => row.column_name === 'google_id');
+            if (hasGoogleId) {
+                console.log(`✅ 'google_id' column is present.`);
+            } else {
+                console.error(`❌ CRITICAL ERROR: The 'google_id' column is MISSING from the 'public.users' table.`);
+                console.error(`   This is the reason for login failures. Please run the ALTER TABLE script against this database.`);
+            }
+        }
+        console.log(`----------------------`);
+
     } catch (e) {
-        console.error("Could not parse DATABASE_URL to display database name, but connection was successful.");
+        console.error("Could not parse DATABASE_URL or inspect schema, but connection was successful.", e);
     }
 });
 

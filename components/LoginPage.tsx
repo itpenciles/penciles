@@ -5,6 +5,69 @@ import { BuildingOfficeIcon, ExclamationTriangleIcon } from '../constants';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+const DatabaseMismatchErrorDisplay: React.FC<{ details: { host: string; database: string } }> = ({ details }) => (
+    <>
+        <h3 className="font-semibold">Database Mismatch Detected!</h3>
+        <p className="mt-1">
+            Your login failed because the application is connected to a database with an outdated table structure. This is the final step to fix it!
+        </p>
+        
+        <div className="mt-3 pt-3 border-t border-yellow-200">
+            <p className="font-bold text-xs">The application server reports it is connected to:</p>
+            <div className="mt-1 font-mono bg-yellow-100 text-yellow-900 p-2 rounded text-xs">
+                <div><strong>Database:</strong> {details.database}</div>
+                <div><strong>Host:</strong> {details.host}</div>
+            </div>
+            <p className="mt-2 text-xs">The `users` table in this database is missing the required `google_id` column.</p>
+
+            <h4 className="font-bold mt-3">Definitive Solution:</h4>
+            <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
+                <li>Open your database tool (DBeaver, TablePlus, etc.).</li>
+                <li>Create a <strong>NEW</strong> connection or <strong>EDIT</strong> your existing one.</li>
+                <li>Ensure the "Host" / "Server Address" field <strong>EXACTLY</strong> matches the host shown above.</li>
+                <li>Connect and select the database shown above.</li>
+                <li>Run the `ALTER TABLE` commands from the project's `README.md` file to add the missing columns.</li>
+                <li>Once complete, refresh this page and try logging in again.</li>
+            </ol>
+        </div>
+    </>
+);
+
+const DatabaseErrorDisplay = () => (
+    <>
+        <h3 className="font-semibold">Database Schema Error Detected!</h3>
+        <p className="mt-1">
+            The login is failing because the server is connected to a database where the `users` table has the wrong structure. Let's verify exactly what the server sees.
+        </p>
+        
+        <div className="mt-3 pt-3 border-t border-yellow-200">
+            <h4 className="font-bold">The Definitive Database Check:</h4>
+            <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
+                <li>
+                    Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
+                </li>
+                <li>
+                    Look for a message block at the top of your logs that starts with:<br/>
+                    <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">--- [DB Inspector] ---</code>
+                </li>
+                <li>
+                    Inside that block, you will see a list of columns the server has found in the `public.users` table.
+                </li>
+                <li>
+                    <strong>Check if `google_id (character varying)` is in that list.</strong>
+                </li>
+                <li>
+                    <strong>If `google_id` is MISSING from the log:</strong> This is definitive proof your application is connected to a database with an outdated schema. 
+                    You must run the `ALTER TABLE` commands from the `README.md` file on the correct database instance that your `DATABASE_URL` is pointing to.
+                </li>
+                <li>
+                    This usually happens when you have multiple database instances (e.g., one on your computer, one on Render) and the update script was run on the wrong one. Double-check your connection details in your database tool.
+                </li>
+            </ol>
+        </div>
+    </>
+);
+
 const LoginPage: React.FC = () => {
     const { user, isLoading, authError, isAuthEnabled, clientIdForDebugging, handleGoogleLogin } = useAuth();
     const navigate = useNavigate();
@@ -71,8 +134,10 @@ const LoginPage: React.FC = () => {
 
     }, [isAuthEnabled, isLoading, user, handleGoogleLogin]);
     
-    const finalError = authError || gsiError;
-    const isDatabaseError = authError && authError.toLowerCase().includes('database');
+    const finalError = authError?.response?.data?.message || authError?.message || gsiError;
+    const errorType = authError?.response?.data?.type;
+    const errorDetails = authError?.response?.data?.details;
+    const isGenericDatabaseError = !errorType && finalError && typeof finalError === 'string' && finalError.toLowerCase().includes('database');
 
     const ClientIdErrorDisplay = () => (
         <>
@@ -111,37 +176,6 @@ const LoginPage: React.FC = () => {
         </>
     );
 
-    const DatabaseErrorDisplay = () => (
-        <>
-            <h3 className="font-semibold">Database Connection Issue Detected!</h3>
-            <p className="mt-1">
-                Your login was successful, but the server failed to save your data. This is because the server is connected to the **wrong database**.
-            </p>
-            
-            <div className="mt-3 pt-3 border-t border-yellow-200">
-                <h4 className="font-bold">Final Database Checklist:</h4>
-                <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
-                    <li>
-                        Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
-                    </li>
-                    <li>
-                        Look for a message at the top of your logs that says:<br/>
-                        <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">✅ Successfully connected to database: 'your_db_name'</code>
-                    </li>
-                    <li>
-                        Compare <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">'your_db_name'</code> from the log with the database you configured (e.g., <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">'terrace_db'</code>). They **MUST** be the same.
-                    </li>
-                    <li>
-                        <strong>If they do NOT match:</strong> Go to your <strong>"Environment"</strong> tab in Render and edit your `DATABASE_URL` variable. The database name is the part at the very end of the URL after the last slash (`/`). Correct it to match your intended database name and save the change.
-                    </li>
-                    <li>
-                         A new deployment will start automatically, and the issue will be resolved.
-                    </li>
-                </ol>
-            </div>
-        </>
-    );
-
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
             <div className="max-w-md w-full mx-auto">
@@ -165,7 +199,13 @@ const LoginPage: React.FC = () => {
                                         <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
                                     </div>
                                     <div className="ml-3">
-                                        {isDatabaseError ? <DatabaseErrorDisplay /> : <ClientIdErrorDisplay />}
+                                        {errorType === 'DB_SCHEMA_MISMATCH' && errorDetails ? (
+                                            <DatabaseMismatchErrorDisplay details={errorDetails} />
+                                        ) : isGenericDatabaseError ? (
+                                            <DatabaseErrorDisplay />
+                                        ) : (
+                                            <ClientIdErrorDisplay />
+                                        )}
                                     </div>
                                 </div>
                             </div>
