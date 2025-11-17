@@ -45,6 +45,7 @@ CREATE TABLE "users" (
   "email" VARCHAR(255) UNIQUE NOT NULL,
   "name" VARCHAR(255),
   "google_id" VARCHAR(255) UNIQUE, -- Stores unique Google user ID
+  "profile_picture_url" TEXT, -- Stores URL for user's avatar
   "password_hash" VARCHAR(255), -- Can be NULL for Google OAuth users
   "created_at" TIMESTAMPTZ DEFAULT (now())
 );
@@ -101,14 +102,14 @@ When you deploy your application to a hosting provider like Render, Heroku, or V
 
 ## Troubleshooting
 
-### Error: `Configuration Error`, `The given origin is not allowed...`, or a 403 error from `accounts.google.com`
+### ✅ Fixing Google Login Errors: "Blocked a frame...", "origin is not allowed", or a 403 error
 
 This error means there is **100% a configuration mismatch** between the URL in your browser, your environment variables, and your settings in your Google Cloud Console. The application code is working correctly, but Google is denying the login request. Follow this checklist **exactly** to fix it.
 
-#### ✅ Step 1: Check Your Browser URL & Environment Variables
+#### Step 1: Check Your Browser URL & Environment Variables
 
 1.  **Look at your browser's address bar.** It will most likely say `http://localhost:5173`. Note the exact origin (the `http://...:port` part).
-2.  **Go to the login page.** It will now show a **"Configuration Notice"** box with the exact Client ID the app is currently using.
+2.  **Go to the login page.** It will now show a **"Configuration Error"** box with the exact Client ID the app is currently using.
 3.  **Compare this Client ID** character-for-character with the Client ID you have in your `.env` file (for local development) or in your Render Environment Variables (for production).
 4.  If they don't match, copy the correct ID from Google Console, paste it into your `.env` file (with the `VITE_` prefix) or Render settings, and **immediately proceed to the next step.**
 
@@ -119,7 +120,7 @@ This error means there is **100% a configuration mismatch** between the URL in y
 
 <br>
 
-#### ✅ Step 2: Verify Google Cloud Console Settings
+#### Step 2: Verify Google Cloud Console Settings
 
 1.  Go to the **Google Cloud Console Credentials page**: [https://console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials).
 2.  Select the correct project, then click on your "OAuth 2.0 Client ID" to edit it.
@@ -139,7 +140,7 @@ This error means there is **100% a configuration mismatch** between the URL in y
     -   The Google Sign-In library used in this app does not use redirects. Having a redirect URI configured **will cause an error**.
     -   If there are any entries here, click the trash can icon next to each one to remove them.
 
-#### ✅ Step 3: Save and Hard Reload
+#### Step 3: Save and Hard Reload
 
 1.  Click the blue **"Save"** button at the bottom of the Google Cloud Console page.
 2.  **Wait for 1-2 minutes.** It can take a moment for Google's settings to update across their servers.

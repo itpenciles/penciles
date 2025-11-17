@@ -1,5 +1,7 @@
 {
   "name": "It-Pencils refactor for server",
   "description": "A real estate deal analyzer to help investors determine if a deal pencils by calculating key financial metrics and providing AI-powered recommendations.",
-  "requestFramePermissions": ["geolocation"]
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }

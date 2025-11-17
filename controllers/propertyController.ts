@@ -1,6 +1,7 @@
 import { Response, Request } from 'express';
 import { query } from '../db.js';
 import { Property } from '../../types';
+import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
 
 // FIX: Correctly extend the express.Request type to include the user payload.
 // Using an intersection type to ensure all properties from the base Request are included, as `extends` was not working correctly.
@@ -62,15 +63,29 @@ export const updateProperty = async (req: AuthRequest, res: Response) => {
     const { id: propertyId, ...dataToStore } = propertyData;
 
     try {
+        // Step 1: Get a fresh AI recommendation based on the user's changes.
+        const newRecommendation = await reevaluatePropertyWithGemini(
+            propertyData, 
+            propertyData.recommendation.strategyAnalyzed || 'Rental'
+        );
+
+        // Step 2: Merge the new recommendation into the property data.
+        const updatedDataToStore = {
+            ...dataToStore,
+            recommendation: newRecommendation,
+        };
+
+        // Step 3: Save the fully updated object to the database.
         const result = await query(
             'UPDATE properties SET property_data = $1, updated_at = now() WHERE id = $2 AND user_id = $3 RETURNING id, property_data',
-            [dataToStore, id, userId]
+            [updatedDataToStore, id, userId]
         );
 
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Property not found or user not authorized.' });
         }
         
+        // Step 4: Return the complete, re-evaluated property to the frontend.
         const updatedProperty = {
             ...result.rows[0].property_data,
             id: result.rows[0].id.toString() // Ensure ID is a string

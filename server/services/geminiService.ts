@@ -10,6 +10,7 @@ const responseSchema = {
     properties: {
         address: { type: Type.STRING, description: 'Full property address, including city, state, and zip code.' },
         propertyType: { type: Type.STRING, description: 'e.g., Single-Family, Duplex, Quadplex, etc.' },
+        imageUrl: { type: Type.STRING, description: 'A direct URL to a representative, high-quality image of the property.' },
         details: {
             type: Type.OBJECT,
             properties: {
@@ -200,7 +201,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
             const newProperty: Omit<Property, 'id'> = {
                 address: data.address,
                 propertyType: data.propertyType,
-                imageUrl: `https://picsum.photos/seed/${new Date().getTime()}/200/150`,
+                imageUrl: data.imageUrl,
                 dateAnalyzed: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 details: {
                     sqft: data.details.sqft,

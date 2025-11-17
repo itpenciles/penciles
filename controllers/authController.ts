@@ -32,28 +32,30 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid Google token.' });
         }
 
-        const { sub: googleId, email, name } = payload;
+        const { sub: googleId, email, name, picture: profilePictureUrl } = payload;
         
-        // This query finds a user by email, and if found, updates their name and links their google_id.
+        // This query finds a user by email, and if found, updates their name and links their google_id and profile picture.
         // If no user is found by email, it inserts a new user with all the details from Google.
         // This robustly handles both new sign-ups and linking Google to an existing email-based account.
         const userUpsertQuery = `
-            INSERT INTO users (email, name, google_id, password_hash)
-            VALUES ($1, $2, $3, 'oauth_placeholder')
+            INSERT INTO users (email, name, google_id, profile_picture_url, password_hash)
+            VALUES ($1, $2, $3, $4, 'oauth_placeholder')
             ON CONFLICT (email) DO UPDATE 
             SET name = EXCLUDED.name,
-                google_id = EXCLUDED.google_id
-            RETURNING id, name, email;
+                google_id = EXCLUDED.google_id,
+                profile_picture_url = EXCLUDED.profile_picture_url
+            RETURNING id, name, email, profile_picture_url;
         `;
 
-        const userResult = await query(userUpsertQuery, [email, name, googleId]);
-        const user: Omit<User, 'profilePictureUrl'> = userResult.rows[0];
+        const userResult = await query(userUpsertQuery, [email, name, googleId, profilePictureUrl]);
+        const user: User = userResult.rows[0];
         
         const jwtToken = jwt.sign(
             { 
                 id: user.id, 
                 name: user.name, 
                 email: user.email,
+                profilePictureUrl: user.profilePictureUrl,
             }, 
             process.env.JWT_SECRET!, 
             { expiresIn: '7d' }
@@ -65,6 +67,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
+                profilePictureUrl: user.profilePictureUrl,
             }
         });
 

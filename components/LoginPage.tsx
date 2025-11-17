@@ -102,16 +102,17 @@ const LoginPage: React.FC = () => {
                                         <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
                                     </div>
                                     <div className="ml-3">
-                                        <h3 className="font-semibold">Configuration Notice</h3>
+                                        <h3 className="font-semibold">Google Sign-In Configuration Error</h3>
                                         <p className="mt-1">{finalError}</p>
                                         {clientIdForDebugging && (
                                             <div className="mt-3 pt-3 border-t border-yellow-200">
-                                                <h4 className="font-semibold">Troubleshooting Steps:</h4>
-                                                <ul className="list-disc list-inside text-xs mt-1 space-y-1">
-                                                    <li>Ensure the Client ID below exactly matches the one in your Google Console.</li>
-                                                    <li>In Google Console, verify "Authorized JavaScript origins" includes <code className="bg-yellow-100 text-yellow-900 p-1 rounded">{currentOrigin}</code>.</li>
-                                                     <li>Make sure "Authorized redirect URIs" is **empty**.</li>
-                                                    <li>After changing your `.env` file or server environment variables, **you must restart/re-deploy the server.**</li>
+                                                <h4 className="font-semibold">How to Fix This:</h4>
+                                                <p className="text-xs mt-1">This error, including the <strong className="font-semibold">"Blocked a frame with origin..."</strong> message in your console, is almost always caused by a mismatch between your app's URL and your Google Cloud Console settings.</p>
+                                                <ul className="list-disc list-inside text-xs mt-2 space-y-1">
+                                                    <li>In Google Console, "Authorized JavaScript origins" **MUST** include your app's exact origin: <code className="bg-yellow-100 text-yellow-900 p-1 rounded">{currentOrigin}</code></li>
+                                                    <li>The "Authorized redirect URIs" section **MUST be empty**. This is critical.</li>
+                                                    <li>The Client ID below must exactly match the one in your Google Console.</li>
+                                                    <li>After any change to your <code className="bg-yellow-100 text-yellow-900 p-1 rounded">.env</code> file, you **MUST restart your server**.</li>
                                                 </ul>
                                                  <p className="font-mono bg-yellow-100 text-yellow-900 p-2 mt-2 rounded break-all select-all text-xs">
                                                     Current Client ID: {clientIdForDebugging}
