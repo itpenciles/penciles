@@ -12,6 +12,20 @@ import analysisRoutes from './routes/analysisRoutes.js';
 // Load environment variables
 dotenv.config();
 
+// --- STARTUP DIAGNOSTICS ---
+console.log('--- SERVER STARTUP ---');
+const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
+if (clientId && clientId !== 'undefined' && !clientId.includes('YOUR_GOOGLE_CLIENT_ID_HERE')) {
+    console.log(`✅ VITE_GOOGLE_CLIENT_ID loaded successfully.`);
+    console.log(`   Server will use Client ID ending in: ...${clientId.slice(-15)}`);
+} else {
+    console.error(`❌ FATAL: VITE_GOOGLE_CLIENT_ID is MISSING or is a placeholder!`);
+    console.error(`   The application will not function correctly without it.`);
+}
+console.log('----------------------');
+// --- END DIAGNOSTICS ---
+
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 

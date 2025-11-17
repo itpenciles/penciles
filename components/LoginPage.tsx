@@ -10,12 +10,6 @@ const LoginPage: React.FC = () => {
     const navigate = useNavigate();
     const googleButtonRef = useRef<HTMLDivElement>(null);
     const [gsiError, setGsiError] = useState<string | null>(null);
-    const [currentOrigin, setCurrentOrigin] = useState('');
-
-    useEffect(() => {
-        // Set the current origin dynamically for the troubleshooting guide
-        setCurrentOrigin(window.location.origin);
-    }, []);
 
     useEffect(() => {
         if (user) {
@@ -102,23 +96,37 @@ const LoginPage: React.FC = () => {
                                         <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
                                     </div>
                                     <div className="ml-3">
-                                        <h3 className="font-semibold">Google Sign-In Configuration Error</h3>
-                                        <p className="mt-1">{finalError}</p>
+                                        <h3 className="font-semibold">We're very close! Let's solve this.</h3>
+                                        <p className="mt-1">
+                                            The server is rejecting the login. This almost always means the server is using a different (likely outdated) Client ID than the one on this page, even if you've updated it in Render.
+                                        </p>
                                         
                                         <div className="mt-3 pt-3 border-t border-yellow-200">
-                                            <h4 className="font-semibold">How to Fix This:</h4>
-                                            <p className="text-xs mt-1">This error means there's a configuration mismatch. Please check the following settings carefully:</p>
-                                            <ul className="list-disc list-inside text-xs mt-2 space-y-1">
-                                                <li>Your app's "Authorized JavaScript origin" in Google Console **MUST** be: <code className="bg-yellow-100 text-yellow-900 p-1 rounded">{currentOrigin}</code></li>
-                                                <li>The "Authorized redirect URIs" section in Google Console **MUST be empty**.</li>
-                                                <li>The Client ID in your Render dashboard must exactly match the one in Google Console.</li>
-                                                <li>After changing environment variables, you **MUST** trigger a new deployment on Render.</li>
-                                            </ul>
-                                            <p className="font-semibold mt-3 text-xs">Diagnostic Info:</p>
+                                            <h4 className="font-bold">Final Debugging Checklist:</h4>
+                                            <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
+                                                <li>
+                                                    Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
+                                                </li>
+                                                <li>
+                                                    Look for a message block at the top of your logs that says:<br/>
+                                                    <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">--- SERVER STARTUP ---</code>
+                                                </li>
+                                                <li>
+                                                    Inside that block, find the line:<br/>
+                                                    <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">Server will use Client ID ending in: ...xxxxxxxxxxxxxxx</code>
+                                                </li>
+                                                <li>
+                                                    <strong>Compare the ID from your logs</strong> to the ID this page is using below. They **MUST** match exactly.
+                                                </li>
+                                                <li>
+                                                    <strong>If they do NOT match:</strong> Go to your <strong>"Environment"</strong> tab in Render, confirm the `VITE_GOOGLE_CLIENT_ID` is correct, then click <strong>"Manual Deploy" &gt; "Deploy latest commit"</strong> to force the server to restart with the new, correct value.
+                                                </li>
+                                            </ol>
+
+                                            <p className="font-semibold mt-3 text-xs">This Page is Using:</p>
                                             <p className="font-mono bg-yellow-100 text-yellow-900 p-2 mt-1 rounded break-all select-all text-xs">
-                                                Client-side ID being used: {clientIdForDebugging}
+                                                {clientIdForDebugging}
                                             </p>
-                                            <p className="text-xs mt-1">Check if the server-side ID snippet in the error message above matches this one.</p>
                                         </div>
                                     </div>
                                 </div>
