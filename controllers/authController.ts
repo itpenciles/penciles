@@ -4,11 +4,9 @@ import jwt from 'jsonwebtoken';
 import { query } from '../db.js';
 import { User } from '../../types';
 
-// Use a single, clearly named constant for the Client ID from environment variables.
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-// Helper to create a snippet of the Client ID for safe logging
 const getClientIdSnippet = (clientId: string | undefined): string => {
     if (!clientId || clientId.length < 10) {
         return "Not defined or too short";
@@ -19,10 +17,8 @@ const getClientIdSnippet = (clientId: string | undefined): string => {
 export const handleGoogleLogin = async (req: Request, res: Response) => {
     console.log(`[AUTH] handleGoogleLogin triggered. Server is using Google Client ID ending in: ...${getClientIdSnippet(GOOGLE_CLIENT_ID)}`);
 
-    // Add a guard clause at the top of the function for better error reporting.
     if (!GOOGLE_CLIENT_ID) {
         console.error('FATAL: VITE_GOOGLE_CLIENT_ID is not configured on the server.');
-        // Provide a clear error message to the frontend.
         return res.status(500).json({ message: 'Authentication is not configured correctly on the server. The Google Client ID is missing.' });
     }
 
@@ -44,9 +40,6 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
 
         const { sub: googleId, email, name, picture: profilePictureUrl } = payload;
         
-        // This query finds a user by email, and if found, updates their name and links their google_id and profile picture.
-        // If no user is found by email, it inserts a new user with all the details from Google.
-        // This robustly handles both new sign-ups and linking Google to an existing email-based account.
         const userUpsertQuery = `
             INSERT INTO users (email, name, google_id, profile_picture_url, password_hash)
             VALUES ($1, $2, $3, $4, 'oauth_placeholder')
@@ -81,11 +74,18 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Google login error:', error);
+        
+        if (error.message && error.message.includes('does not exist')) {
+            return res.status(500).json({
+                message: "Database schema error. The application might be connected to the wrong database. Please check your server logs for the connected database name and verify your DATABASE_URL environment variable."
+            });
+        }
+        
         const serverIdSnippet = getClientIdSnippet(GOOGLE_CLIENT_ID);
         res.status(500).json({ 
-            message: `Server error during authentication. This may be due to a mismatch with the Google Client ID. The server is currently configured with a Client ID snippet: ${serverIdSnippet}. Please ensure this matches your settings in the Render dashboard exactly.`
+            message: `Server error during authentication. This may be due to an incorrect Google Client ID configuration on the server. The server is currently configured with a Client ID snippet: ${serverIdSnippet}. Please ensure this matches your settings in the Render dashboard exactly.`
         });
     }
 };

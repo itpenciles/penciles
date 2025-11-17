@@ -72,6 +72,75 @@ const LoginPage: React.FC = () => {
     }, [isAuthEnabled, isLoading, user, handleGoogleLogin]);
     
     const finalError = authError || gsiError;
+    const isDatabaseError = authError && authError.toLowerCase().includes('database');
+
+    const ClientIdErrorDisplay = () => (
+        <>
+            <h3 className="font-semibold">We're very close! Let's solve this.</h3>
+            <p className="mt-1">
+                The server is rejecting the login. This almost always means the server is using a different (likely outdated) Client ID than the one on this page, even if you've updated it in Render.
+            </p>
+            
+            <div className="mt-3 pt-3 border-t border-yellow-200">
+                <h4 className="font-bold">Final Debugging Checklist:</h4>
+                <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
+                    <li>
+                        Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
+                    </li>
+                    <li>
+                        Look for a message block at the top of your logs that says:<br/>
+                        <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">--- SERVER STARTUP ---</code>
+                    </li>
+                    <li>
+                        Inside that block, find the line:<br/>
+                        <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">Server will use Client ID ending in: ...xxxxxxxxxxxxxxx</code>
+                    </li>
+                    <li>
+                        <strong>Compare the ID from your logs</strong> to the ID this page is using below. They **MUST** match exactly.
+                    </li>
+                    <li>
+                        <strong>If they do NOT match:</strong> Go to your <strong>"Environment"</strong> tab in Render, confirm the `VITE_GOOGLE_CLIENT_ID` is correct, then click <strong>"Manual Deploy" &gt; "Deploy latest commit"</strong> to force the server to restart with the new, correct value.
+                    </li>
+                </ol>
+
+                <p className="font-semibold mt-3 text-xs">This Page is Using:</p>
+                <p className="font-mono bg-yellow-100 text-yellow-900 p-2 mt-1 rounded break-all select-all text-xs">
+                    {clientIdForDebugging}
+                </p>
+            </div>
+        </>
+    );
+
+    const DatabaseErrorDisplay = () => (
+        <>
+            <h3 className="font-semibold">Database Connection Issue Detected!</h3>
+            <p className="mt-1">
+                Your login was successful, but the server failed to save your data. This is because the server is connected to the **wrong database**.
+            </p>
+            
+            <div className="mt-3 pt-3 border-t border-yellow-200">
+                <h4 className="font-bold">Final Database Checklist:</h4>
+                <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
+                    <li>
+                        Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
+                    </li>
+                    <li>
+                        Look for a message at the top of your logs that says:<br/>
+                        <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">✅ Successfully connected to database: 'your_db_name'</code>
+                    </li>
+                    <li>
+                        Compare <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">'your_db_name'</code> from the log with the database you configured (e.g., <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">'terrace_db'</code>). They **MUST** be the same.
+                    </li>
+                    <li>
+                        <strong>If they do NOT match:</strong> Go to your <strong>"Environment"</strong> tab in Render and edit your `DATABASE_URL` variable. The database name is the part at the very end of the URL after the last slash (`/`). Correct it to match your intended database name and save the change.
+                    </li>
+                    <li>
+                         A new deployment will start automatically, and the issue will be resolved.
+                    </li>
+                </ol>
+            </div>
+        </>
+    );
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
@@ -96,38 +165,7 @@ const LoginPage: React.FC = () => {
                                         <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
                                     </div>
                                     <div className="ml-3">
-                                        <h3 className="font-semibold">We're very close! Let's solve this.</h3>
-                                        <p className="mt-1">
-                                            The server is rejecting the login. This almost always means the server is using a different (likely outdated) Client ID than the one on this page, even if you've updated it in Render.
-                                        </p>
-                                        
-                                        <div className="mt-3 pt-3 border-t border-yellow-200">
-                                            <h4 className="font-bold">Final Debugging Checklist:</h4>
-                                            <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
-                                                <li>
-                                                    Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
-                                                </li>
-                                                <li>
-                                                    Look for a message block at the top of your logs that says:<br/>
-                                                    <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">--- SERVER STARTUP ---</code>
-                                                </li>
-                                                <li>
-                                                    Inside that block, find the line:<br/>
-                                                    <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">Server will use Client ID ending in: ...xxxxxxxxxxxxxxx</code>
-                                                </li>
-                                                <li>
-                                                    <strong>Compare the ID from your logs</strong> to the ID this page is using below. They **MUST** match exactly.
-                                                </li>
-                                                <li>
-                                                    <strong>If they do NOT match:</strong> Go to your <strong>"Environment"</strong> tab in Render, confirm the `VITE_GOOGLE_CLIENT_ID` is correct, then click <strong>"Manual Deploy" &gt; "Deploy latest commit"</strong> to force the server to restart with the new, correct value.
-                                                </li>
-                                            </ol>
-
-                                            <p className="font-semibold mt-3 text-xs">This Page is Using:</p>
-                                            <p className="font-mono bg-yellow-100 text-yellow-900 p-2 mt-1 rounded break-all select-all text-xs">
-                                                {clientIdForDebugging}
-                                            </p>
-                                        </div>
+                                        {isDatabaseError ? <DatabaseErrorDisplay /> : <ClientIdErrorDisplay />}
                                     </div>
                                 </div>
                             </div>

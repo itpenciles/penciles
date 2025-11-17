@@ -149,3 +149,22 @@ This error means there is **100% a configuration mismatch** between the URL in y
     -   **Windows/Linux:** `Ctrl + Shift + R`
     -   **Mac:** `Cmd + Shift + R`
 5.  Try clicking "Sign in with Google" again. The issue should now be resolved.
+
+### ✅ Fixing Database Errors: `column "google_id" does not exist`
+
+If you see a 500 Internal Server Error after logging in, and your Render logs show an error like `column "google_id" of relation "users" does not exist`, it means your database schema is out of date. You likely created the tables before the Google-specific columns were added.
+
+**Do not drop your tables.** You can fix this without losing any data.
+
+1.  Connect to your PostgreSQL database.
+2.  Run the following SQL commands to add the missing columns:
+
+```sql
+-- Adds the column to store the unique Google user ID
+ALTER TABLE "users" ADD COLUMN "google_id" VARCHAR(255) UNIQUE;
+
+-- Adds the column to store the URL for the user's profile picture
+ALTER TABLE "users" ADD COLUMN "profile_picture_url" TEXT;
+```
+
+After running these commands, the error will be resolved. You do not need to redeploy your application.
