@@ -7,8 +7,15 @@ html {
 }
 
 @media print {
-  body {
+  body, #root, .app-layout {
     background-color: white !important;
+    height: auto !important;
+    overflow: visible !important;
+    font-size: 10pt; /* Adjust font size for better print readability */
+  }
+
+  main {
+    overflow: visible !important;
   }
   
   /* Helper class to hide elements from printing */
@@ -36,7 +43,7 @@ html {
   
   /* Reset layout for printing */
   .print-container {
-    padding: 1rem !important;
+    padding: 0 !important; /* Use full page width */
   }
 
   /* Ensure text is readable */
@@ -49,16 +56,22 @@ html {
     text-decoration: none;
   }
 
-  /* Force single-column layout for the main content area */
+  /* Create a two-column layout for printing */
   .property-detail-layout {
-    flex-direction: column !important;
-    gap: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    gap: 1rem !important;
   }
 
-  /* Ensure columns take full width and have space between them */
-  .property-detail-layout > div {
-    width: 100% !important;
-    margin-bottom: 1.5rem; /* Add some space between stacked sections */
+  /* Define column widths for the report */
+  .property-detail-layout > div:first-child {
+    width: 65% !important;
+  }
+
+  .property-detail-layout > div:last-child {
+    width: 35% !important;
   }
 }
 

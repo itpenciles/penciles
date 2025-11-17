@@ -41,7 +41,7 @@ const ProtectedRoute: React.FC = () => {
 
 // The main layout for the core application with the sidebar
 const MainLayout = () => (
-  <div className="flex h-screen bg-gray-100 font-sans">
+  <div className="flex h-screen bg-gray-100 font-sans app-layout">
     <Sidebar />
     <main className="flex-1 overflow-y-auto">
       <Outlet />
