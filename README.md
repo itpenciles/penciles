@@ -31,7 +31,8 @@ This project is structured as a full-stack application:
     JWT_SECRET=YOUR_SUPER_SECRET_RANDOM_STRING_HERE
 
     # Google Auth Configuration (used by both frontend and backend)
-    GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com
+    # IMPORTANT: This variable MUST be prefixed with "VITE_" to be accessible by the frontend code.
+    VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com
     ```
     
 ### Step 2: Set Up the Database
@@ -93,7 +94,7 @@ When you deploy your application to a hosting provider like Render, Heroku, or V
     -   `API_KEY`
     -   `DATABASE_URL` (Ensure this points to a production database that Render can access, not `localhost`).
     -   `JWT_SECRET`
-    -   `GOOGLE_CLIENT_ID`
+    -   `VITE_GOOGLE_CLIENT_ID`
 4.  After adding the variables, Render will automatically trigger a new deployment to apply the settings.
 
 ---
@@ -109,7 +110,7 @@ This error means there is **100% a configuration mismatch** between the URL in y
 1.  **Look at your browser's address bar.** It will most likely say `http://localhost:5173`. Note the exact origin (the `http://...:port` part).
 2.  **Go to the login page.** It will now show a **"Configuration Notice"** box with the exact Client ID the app is currently using.
 3.  **Compare this Client ID** character-for-character with the Client ID you have in your `.env` file (for local development) or in your Render Environment Variables (for production).
-4.  If they don't match, copy the correct ID from Google Console, paste it into your `.env` file or Render settings, and **immediately proceed to the next step.**
+4.  If they don't match, copy the correct ID from Google Console, paste it into your `.env` file (with the `VITE_` prefix) or Render settings, and **immediately proceed to the next step.**
 
 <br>
 

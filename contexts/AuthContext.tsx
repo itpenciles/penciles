@@ -22,7 +22,7 @@ declare global {
   }
 }
 
-const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const isAuthEffectivelyEnabled = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'undefined' && !GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID_HERE'));
 
 
@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // This effect runs on initial load to check for an existing session
     useEffect(() => {
-        setClientIdForDebugging(GOOGLE_CLIENT_ID || 'Not Found in .env file');
+        setClientIdForDebugging(GOOGLE_CLIENT_ID || 'Not Found in environment variables');
         if (!isAuthEffectivelyEnabled) {
             console.warn("VITE_GOOGLE_CLIENT_ID is not configured. Google Sign-In is disabled.");
             setAuthError("Configuration Error: Your Google Client ID is missing or is a placeholder. Please check your .env file and restart your server.");

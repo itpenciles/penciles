@@ -23,10 +23,6 @@ export default defineConfig(({ mode }) => {
       // Some libraries expect a `global` object to be defined.
       // This prevents 'global is not defined' errors in the browser.
       'global': {},
-      // Expose environment variables to the client-side code
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
-      // Read the single GOOGLE_CLIENT_ID from .env and expose it to the client as VITE_GOOGLE_CLIENT_ID
-      'process.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(env.GOOGLE_CLIENT_ID)
     }
   }
 })

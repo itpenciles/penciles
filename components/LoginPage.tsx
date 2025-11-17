@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { BuildingOfficeIcon, ExclamationTriangleIcon } from '../constants';
 
-const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const LoginPage: React.FC = () => {
     const { user, isLoading, authError, isAuthEnabled, clientIdForDebugging, handleGoogleLogin } = useAuth();
