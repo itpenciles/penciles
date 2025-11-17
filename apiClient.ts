@@ -50,6 +50,11 @@ const apiClient = {
             throw error;
         }
 
+        // Handle successful responses with no content (e.g., 204 for DELETE)
+        if (response.status === 204) {
+            return null;
+        }
+
         return response.json();
     }
 };
