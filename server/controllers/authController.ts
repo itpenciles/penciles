@@ -8,7 +8,17 @@ import { User } from '../../types';
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
+// Helper to create a snippet of the Client ID for safe logging
+const getClientIdSnippet = (clientId: string | undefined): string => {
+    if (!clientId || clientId.length < 10) {
+        return "Not defined or too short";
+    }
+    return `${clientId.substring(0, 4)}...${clientId.substring(clientId.length - 4)}`;
+}
+
 export const handleGoogleLogin = async (req: Request, res: Response) => {
+    console.log(`[AUTH] handleGoogleLogin triggered. Server is using Google Client ID ending in: ...${getClientIdSnippet(GOOGLE_CLIENT_ID)}`);
+
     // Add a guard clause at the top of the function for better error reporting.
     if (!GOOGLE_CLIENT_ID) {
         console.error('FATAL: VITE_GOOGLE_CLIENT_ID is not configured on the server.');
@@ -73,6 +83,9 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
 
     } catch (error) {
         console.error('Google login error:', error);
-        res.status(500).json({ message: 'Server error during authentication. This may be due to an incorrect Google Client ID configuration on the server.' });
+        const serverIdSnippet = getClientIdSnippet(GOOGLE_CLIENT_ID);
+        res.status(500).json({ 
+            message: `Server error during authentication. This may be due to a mismatch with the Google Client ID. The server is currently configured with a Client ID snippet: ${serverIdSnippet}. Please ensure this matches your settings in the Render dashboard exactly.`
+        });
     }
 };
