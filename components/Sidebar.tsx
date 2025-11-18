@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { BuildingOfficeIcon, ArrowRightOnRectangleIcon } from '../constants';
 import { SIDEBAR_LINKS } from '../constants';
 import { useProperties } from '../hooks/useProperties';
@@ -7,7 +7,8 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = () => {
   const { properties } = useProperties();
-  const { user, logout } = useAuth();
+  const { user, logout, analysisStatus } = useAuth();
+  const navigate = useNavigate();
 
   const propertiesAnalyzed = properties.length;
   const avgCapRate =
@@ -15,12 +16,58 @@ const Sidebar = () => {
       ? properties.reduce((acc, p) => acc + p.calculations.capRate, 0) / properties.length
       : 0;
 
+  const renderAnalysisUsage = () => {
+    if (!user || !analysisStatus) return null;
+
+    const { count, limit } = analysisStatus;
+    
+    if (limit === 'Unlimited') {
+        return <p className="text-sm font-semibold text-green-600">Unlimited Analyses</p>;
+    }
+    
+    const percentage = limit > 0 ? (count / limit) * 100 : 0;
+
+    return (
+        <div>
+            <div className="flex justify-between items-center text-xs mb-1">
+                <span className="font-medium text-gray-600">Analyses Used</span>
+                <span className="font-semibold text-gray-800">{count} / {limit}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                <div 
+                    className="bg-brand-blue h-1.5 rounded-full" 
+                    style={{ width: `${percentage}%` }}
+                ></div>
+            </div>
+            {user.subscriptionTier === 'Free' && <p className="text-xs text-gray-500 mt-1 text-center">Lifetime Limit</p>}
+        </div>
+    );
+  };
+
   return (
     <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col no-print">
       <div className="h-16 flex items-center px-4 border-b border-gray-200">
         <BuildingOfficeIcon className="h-8 w-8 text-brand-blue" />
         <span className="ml-2 text-xl font-bold text-gray-800">It Pencils</span>
       </div>
+
+      {user?.subscriptionTier && (
+        <div className="px-4 py-4 border-b border-gray-200">
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-semibold text-gray-800">{user.subscriptionTier} Plan</h3>
+                {user.subscriptionTier !== 'Team' && (
+                    <button 
+                        onClick={() => navigate('/pricing')}
+                        className="text-xs font-bold text-brand-blue hover:underline"
+                    >
+                        Upgrade
+                    </button>
+                )}
+            </div>
+            {renderAnalysisUsage()}
+        </div>
+      )}
+
       <nav className="flex-1 px-2 py-4 space-y-2">
         <span className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Analysis Tools</span>
         {SIDEBAR_LINKS.map((link) => (

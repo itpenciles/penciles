@@ -75,7 +75,7 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
 const Dashboard = () => {
     const navigate = useNavigate();
     const { properties, deleteProperty, loading, error } = useProperties();
-    const { user, featureAccess } = useAuth();
+    const { featureAccess } = useAuth();
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
 
     const avgCapRate = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.capRate, 0) / properties.length : 0;
@@ -191,22 +191,6 @@ const Dashboard = () => {
                     <p className="text-gray-600 mt-1">Analyze properties and maximize your returns</p>
                 </div>
                 <div className="flex items-center space-x-4">
-                    {user?.subscriptionTier && (
-                        <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-gray-600">Your Plan:</span>
-                            <span className="px-3 py-1 text-sm font-semibold text-purple-800 bg-purple-100 rounded-full">
-                                {user.subscriptionTier}
-                            </span>
-                            {user.subscriptionTier !== 'Team' && (
-                                <button 
-                                    onClick={() => navigate('/pricing')}
-                                    className="text-sm font-semibold text-brand-blue hover:underline"
-                                >
-                                    Upgrade
-                                </button>
-                            )}
-                        </div>
-                    )}
                     <button onClick={() => navigate('/add-property')} className="flex items-center bg-brand-blue text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-blue-700 transition">
                         <PlusIcon className="h-5 w-5 mr-2" />
                         Analyze New Property
