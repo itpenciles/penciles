@@ -14,8 +14,13 @@ const SubscriptionPage = () => {
             name: 'Free',
             price: 0,
             description: 'For investors just getting started and wanting to try the platform.',
-            features: ['3 AI Property Analyses (Lifetime)', 'Standard Rental Analysis', 'Save Properties to Browser'],
+            features: [
+                '3 AI Property Analyses (Lifetime)',
+                'Standard Rental Analysis',
+                'Save Properties to Browser',
+            ],
             cta: 'Continue with Free',
+            isPopular: false,
             action: async () => {
                 setIsLoading(true);
                 await updateSubscription('Free');
@@ -23,19 +28,55 @@ const SubscriptionPage = () => {
             }
         },
         {
+            name: 'Starter',
+            price: 9,
+            description: 'For active investors analyzing a few deals a month.',
+            features: [
+                '15 AI Property Analyses per Month',
+                'Standard Rental Analysis',
+                'Property Comparison Tool (up to 4)',
+                'Save Properties to Browser',
+                'Email Support',
+            ],
+            cta: 'Choose Starter',
+            isPopular: false,
+            action: () => navigate('/checkout/starter')
+        },
+        {
             name: 'Pro',
             price: 29,
             description: 'For serious investors and small teams who need advanced tools.',
-            features: ['100 AI Analyses/Month', 'All Creative Finance Calculators', 'Property Comparison Tool', 'Priority Support'],
-            cta: 'Upgrade to Pro',
+            features: [
+                '100 AI Property Analyses per Month',
+                'All Creative Finance Calculators (Wholesale, Sub-To, Seller Financing)',
+                'Property Comparison Tool (up to 4)',
+                'Save & Export Data',
+                'Priority Email Support',
+            ],
+            cta: 'Choose Pro',
             isPopular: true,
             action: () => navigate('/checkout/pro')
+        },
+        {
+            name: 'Team',
+            price: 79,
+            description: 'For professional teams and brokerages needing high volume and collaboration.',
+            features: [
+                'Unlimited AI Property Analyses',
+                'All Pro Features Included',
+                'Multi-user Access (coming soon)',
+                'Centralized Team Dashboard (coming soon)',
+                'Dedicated Support',
+            ],
+            cta: 'Contact Sales',
+            isPopular: false,
+            action: () => navigate('/contact')
         },
     ];
 
     return (
         <div className="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-4">
-             <div className="text-center max-w-4xl w-full">
+             <div className="text-center max-w-7xl w-full">
                 <div className="flex justify-center items-center mb-4">
                     <BuildingOfficeIcon className="h-10 w-10 text-brand-blue" />
                     <h1 className="ml-3 text-3xl font-bold text-gray-800">Welcome to It Pencils</h1>
@@ -46,7 +87,7 @@ const SubscriptionPage = () => {
                     You're almost in! Select a plan to continue to your dashboard. You can always upgrade later.
                 </p>
 
-                <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-start">
                     {plans.map(plan => (
                         <div key={plan.name} className={`bg-white p-8 rounded-xl shadow-lg border text-left ${plan.isPopular ? 'border-brand-blue' : 'border-gray-200'} relative`}>
                             {plan.isPopular && <span className="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 bg-brand-blue text-white text-xs font-bold px-3 py-1 rounded-full">MOST POPULAR</span>}
