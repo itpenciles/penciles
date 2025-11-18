@@ -83,20 +83,26 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
         console.error('Google login error:', error);
 
         // Postgres error code for 'undefined_column'
-        if (error.code === '42703' && (error.message.includes('google_id') || error.message.includes('subscription_tier'))) {
-            const dbHost = pool.options.host || 'unknown host';
-            const dbName = pool.options.database || 'unknown database';
+        if (error.code === '42703') {
+            const match = error.message.match(/column "([^"]+)"/);
+            const missingColumn = match ? match[1] : 'a required column';
 
-            const detailedMessage = `Database Schema Mismatch on '${dbName}@${dbHost}'. The 'users' table is missing a required column (e.g., 'google_id' or 'subscription_tier'). Please connect your database tool to this exact host and run the ALTER TABLE script from the README.`;
-            
-            return res.status(500).json({
-                message: detailedMessage,
-                type: 'DB_SCHEMA_MISMATCH', // Add a type for the frontend to key off of
-                details: {
-                    host: dbHost,
-                    database: dbName,
-                }
-            });
+            // Check if the missing column is one we expect during setup
+            if (['google_id', 'subscription_tier', 'updated_at'].includes(missingColumn)) {
+                const dbHost = pool.options.host || 'unknown host';
+                const dbName = pool.options.database || 'unknown database';
+                const detailedMessage = `Database Schema Mismatch on '${dbName}@${dbHost}'. The 'users' table is missing the '${missingColumn}' column. Please run the ALTER TABLE script from the README.`;
+                
+                return res.status(500).json({
+                    message: detailedMessage,
+                    type: 'DB_SCHEMA_MISMATCH',
+                    details: {
+                        host: dbHost,
+                        database: dbName,
+                        column: missingColumn, // Pass the specific column name
+                    }
+                });
+            }
         }
         
         if (error.message && error.message.includes('does not exist')) {

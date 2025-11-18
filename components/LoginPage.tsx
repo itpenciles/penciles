@@ -5,7 +5,7 @@ import { BuildingOfficeIcon, ExclamationTriangleIcon } from '../constants';
 
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
 
-const DatabaseMismatchErrorDisplay: React.FC<{ details: { host: string; database: string } }> = ({ details }) => (
+const DatabaseMismatchErrorDisplay: React.FC<{ details: { host: string; database: string, column?: string } }> = ({ details }) => (
     <>
         <h3 className="font-semibold">Database Mismatch Detected!</h3>
         <p className="mt-1">
@@ -18,7 +18,9 @@ const DatabaseMismatchErrorDisplay: React.FC<{ details: { host: string; database
                 <div><strong>Database:</strong> {details.database}</div>
                 <div><strong>Host:</strong> {details.host}</div>
             </div>
-            <p className="mt-2 text-xs">The `users` table in this database is missing the required `google_id` column.</p>
+            <p className="mt-2 text-xs">
+                The `users` table in this database is missing the required <code className="font-bold text-yellow-900 bg-yellow-200 px-1 py-0.5 rounded">{details.column || 'required'}</code> column.
+            </p>
 
             <h4 className="font-bold mt-3">Definitive Solution:</h4>
             <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
