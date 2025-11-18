@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
-import { PlusIcon, ChartBarIcon, ArrowTrendingUpIcon, BanknotesIcon, ExclamationTriangleIcon, DocumentArrowDownIcon, XMarkIcon, CheckIcon } from '../constants';
+import { PlusIcon, ChartBarIcon, ArrowTrendingUpIcon, BanknotesIcon, ExclamationTriangleIcon, LockClosedIcon } from '../constants';
 import { Property } from '../types';
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
@@ -29,40 +29,67 @@ interface PropertyRowProps {
     isSelected: boolean;
     onSelect: (id: string) => void;
     onDelete: (id: string, address: string) => void;
+    isLocked: boolean;
 }
 
-const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelected, onSelect, onDelete }) => {
+const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelected, onSelect, onDelete, isLocked }) => {
     const navigate = useNavigate();
     const { calculations, recommendation } = property;
     const recColor = recommendation?.level === 'Worth Pursuing' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
 
+    const rowOpacity = isLocked ? 'opacity-60 bg-gray-50' : 'hover:bg-gray-50';
+    const textColor = isLocked ? 'text-gray-500' : 'text-gray-800';
+
     return (
-        <tr className="border-b border-gray-200 hover:bg-gray-50">
+        <tr className={`border-b border-gray-200 ${rowOpacity}`}>
             <td className="py-3 px-4">
                 <div className="flex items-center">
                     <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
+                        className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue disabled:bg-gray-100 disabled:cursor-not-allowed"
                         checked={isSelected}
                         onChange={() => onSelect(property.id)}
+                        disabled={isLocked}
                     />
                     <div className="ml-4">
-                        <p className="font-semibold text-gray-800">{property.address}</p>
+                        <p className={`font-semibold ${textColor}`}>{property.address}</p>
                         <p className="text-sm text-gray-500">{property.propertyType}</p>
                     </div>
                 </div>
             </td>
             <td className="py-3 px-4 text-sm text-gray-600">{property.dateAnalyzed}</td>
-            <td className="py-3 px-4 text-sm font-semibold text-green-600">{calculations.capRate.toFixed(1)}%</td>
-            <td className="py-3 px-4 text-sm font-semibold text-gray-700">{formatCurrency(calculations.monthlyCashFlowNoDebt)}</td>
-            <td className="py-3 px-4 text-sm font-semibold text-red-600">{calculations.cashOnCashReturn.toFixed(1)}%</td>
-            <td className="py-3 px-4"><span className={`px-2 py-1 text-xs font-medium rounded-full ${recColor}`}>{recommendation?.level}</span></td>
+            <td className={`py-3 px-4 text-sm font-semibold ${isLocked ? 'text-gray-400' : 'text-green-600'}`}>{calculations.capRate.toFixed(1)}%</td>
+            <td className={`py-3 px-4 text-sm font-semibold ${isLocked ? 'text-gray-400' : 'text-gray-700'}`}>{formatCurrency(calculations.monthlyCashFlowNoDebt)}</td>
+            <td className={`py-3 px-4 text-sm font-semibold ${isLocked ? 'text-gray-400' : 'text-red-600'}`}>{calculations.cashOnCashReturn.toFixed(1)}%</td>
+            <td className="py-3 px-4">
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${isLocked ? 'bg-gray-200 text-gray-500' : recColor}`}>
+                    {recommendation?.level}
+                </span>
+            </td>
             <td className="py-3 px-4">
                 <div className="flex items-center space-x-2">
-                    <button onClick={() => navigate(`/property/${property.id}`)} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
-                    </button>
-                    <button onClick={() => onDelete(property.id, property.address)} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-md">
+                    {isLocked ? (
+                        <button 
+                            onClick={() => navigate('/upgrade')} 
+                            className="p-1.5 text-gray-400 hover:text-brand-blue hover:bg-blue-50 rounded-md group relative"
+                            title="Upgrade to view"
+                        >
+                            <LockClosedIcon className="h-5 w-5" />
+                            <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-32 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
+                                Upgrade to View
+                            </span>
+                        </button>
+                    ) : (
+                        <button onClick={() => navigate(`/property/${property.id}`)} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
+                        </button>
+                    )}
+                    
+                    <button 
+                        onClick={() => onDelete(property.id, property.address)} 
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+                        title="Delete property"
+                    >
                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                 </div>
@@ -96,7 +123,7 @@ const CompareButtonWrapper: React.FC<{ children: React.ReactNode; canCompare: bo
 const Dashboard = () => {
     const navigate = useNavigate();
     const { properties, deleteProperty, loading, error } = useProperties();
-    const { featureAccess } = useAuth();
+    const { user, featureAccess } = useAuth();
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
 
     const avgCapRate = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.capRate, 0) / properties.length : 0;
@@ -113,6 +140,17 @@ const Dashboard = () => {
         }
         return acc;
     }, {} as Record<string, number>);
+
+    // Logic for gating properties based on subscription plan
+    const subscriptionLimits: Record<string, number> = {
+        'Free': 3,
+        'Starter': 15,
+        'Pro': 100,
+        'Team': 99999
+    };
+    
+    const tier = user?.subscriptionTier || 'Free';
+    const propertyLimit = subscriptionLimits[tier] || 3;
 
 
     const handleSelectProperty = useCallback((id: string) => {
@@ -159,13 +197,14 @@ const Dashboard = () => {
             return <tr><td colSpan={7} className="text-center py-12 text-red-500">{error}</td></tr>;
         }
         if (properties.length > 0) {
-            return properties.map(prop => 
+            return properties.map((prop, index) => 
                 <PropertyRow 
                     key={prop.id} 
                     property={prop} 
                     isSelected={selectedPropertyIds.includes(prop.id)}
                     onSelect={handleSelectProperty}
                     onDelete={handleDelete}
+                    isLocked={index >= propertyLimit}
                 />
             );
         }
@@ -240,6 +279,24 @@ const Dashboard = () => {
                             </tbody>
                         </table>
                     </div>
+                    
+                    {properties.length > propertyLimit && (
+                         <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800 flex items-center justify-between">
+                            <div className="flex items-center">
+                                <LockClosedIcon className="h-5 w-5 mr-2 text-blue-600" />
+                                <span>
+                                    You have <strong>{properties.length - propertyLimit}</strong> older analyses locked. 
+                                    Upgrade your plan to unlock all your historical data.
+                                </span>
+                            </div>
+                            <button 
+                                onClick={() => navigate('/upgrade')} 
+                                className="text-blue-700 font-bold hover:underline"
+                            >
+                                Upgrade Now
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <aside className="w-full lg:w-80 flex-shrink-0">
