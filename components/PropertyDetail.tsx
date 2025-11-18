@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
+import { useAuth } from '../contexts/AuthContext';
 import { Property, Financials, WholesaleInputs, SubjectToInputs, SellerFinancingInputs, Strategy } from '../types';
 import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../contexts/PropertyContext';
 import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon } from '../constants';
@@ -181,21 +182,55 @@ const PropertyDetail = () => {
 
 // Sub-components
 const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrategy: Strategy, setActiveStrategy: (s: Strategy) => void }) => {
-    const strategies: Strategy[] = ['Rental', 'Wholesale', 'Subject-To', 'Seller Financing'];
+    const { featureAccess } = useAuth();
+    const navigate = useNavigate();
+
+    const strategies: { name: Strategy, requiredFeature: keyof typeof featureAccess | null }[] = [
+        { name: 'Rental', requiredFeature: null },
+        { name: 'Wholesale', requiredFeature: 'canUseWholesale' },
+        { name: 'Subject-To', requiredFeature: 'canUseSubjectTo' },
+        { name: 'Seller Financing', requiredFeature: 'canUseSellerFinancing' },
+    ];
+
+    const FeatureLockedTooltip = ({ children, isLocked }: { children: React.ReactNode, isLocked: boolean }) => {
+        if (!isLocked) return <>{children}</>;
+        return (
+            <div className="relative group">
+                {children}
+                <div className="absolute bottom-full mb-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -translate-x-1/2 left-1/2">
+                    <h4 className="font-bold">This is a Pro Feature</h4>
+                    <p className="mt-1">Upgrade your plan to use advanced strategy calculators like Wholesale, Sub-To, and Seller Financing.</p>
+                    <button
+                      onClick={() => navigate('/pricing')}
+                      className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
+                    >
+                      View Plans
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+
     return (
         <div className="bg-white p-2 rounded-xl shadow-sm printable-card">
             <div className="flex flex-col sm:flex-row justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-800 px-4 mb-2 sm:mb-0">Strategy Option</h2>
                 <div className="flex flex-wrap border border-gray-200 rounded-lg p-0.5">
-                    {strategies.map(strategy => (
-                        <button
-                            key={strategy}
-                            onClick={() => setActiveStrategy(strategy)}
-                            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${activeStrategy === strategy ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
-                        >
-                            {strategy.replace('-', ' ')}
-                        </button>
-                    ))}
+                    {strategies.map(({ name, requiredFeature }) => {
+                        const isLocked = requiredFeature ? !featureAccess[requiredFeature] : false;
+                        return (
+                             <FeatureLockedTooltip key={name} isLocked={isLocked}>
+                                <button
+                                    onClick={() => !isLocked && setActiveStrategy(name)}
+                                    className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${activeStrategy === name ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'} ${isLocked ? 'cursor-not-allowed opacity-50' : ''}`}
+                                    disabled={isLocked}
+                                >
+                                    {name.replace('-', ' ')}
+                                </button>
+                            </FeatureLockedTooltip>
+                        );
+                    })}
                 </div>
             </div>
         </div>
@@ -281,11 +316,11 @@ const InvestmentRecommendationCard = ({ property }: { property: Property }) => {
             {isRentalStrategy && (
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
                      <div className="text-center">
-                        <p className="text-sm text-gray-500">Cap Rate (Adjusted)</p>
+                        <p className="text-sm text-gray-500">Adjusted Cap Rate</p>
                         <p className="text-lg font-bold text-green-600">{property.calculations.capRate.toFixed(1)}%</p>
                     </div>
                      <div className="text-center">
-                        <p className="text-sm text-gray-500">Monthly Cash Flow (Adjusted)</p>
+                        <p className="text-sm text-gray-500">Adjusted Monthly Cash Flow</p>
                         <p className="text-lg font-bold text-green-600">{formatCurrency(property.calculations.monthlyCashFlowWithDebt)}</p>
                     </div>
                 </div>
@@ -384,8 +419,9 @@ const GoogleMapCard = ({ address }: { address: string }) => {
 
 // --- Financial Analysis Card and Children ---
 const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, activeStrategy: Strategy, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
-    // FIX: Explicitly setting the type for useState to prevent `activeTab` from being inferred as `any`.
     const [activeTab, setActiveTab] = useState<string>('Metrics');
+    const { featureAccess } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         setActiveTab('Metrics');
@@ -393,6 +429,25 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const FeatureLockedTooltip = ({ children, isLocked, featureName }: { children: React.ReactNode, isLocked: boolean, featureName: string }) => {
+        if (!isLocked) return <>{children}</>;
+        return (
+            <div className="relative group">
+                {children}
+                <div className="absolute top-full mt-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -translate-x-1/2 left-1/2">
+                    <h4 className="font-bold">{featureName} is a Pro Feature</h4>
+                    <p className="mt-1">Upgrade your plan to export detailed PDF reports of your analyses.</p>
+                    <button
+                      onClick={() => navigate('/pricing')}
+                      className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
+                    >
+                      View Plans
+                    </button>
+                </div>
+            </div>
+        );
     };
 
     const renderTabs = () => {
@@ -448,9 +503,16 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                 <h2 className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">Financial Analysis: {activeStrategy.replace('-', ' ')}</h2>
                 <div className="flex items-center space-x-2">
                     <div className="no-print">{renderTabs()}</div>
-                    <button onClick={handlePrint} title="Print Report" className="p-2 text-gray-500 hover:bg-gray-100 rounded-md no-print">
-                        <DocumentArrowDownIcon className="h-5 w-5" />
-                    </button>
+                    <FeatureLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Print/Export">
+                        <button 
+                            onClick={handlePrint} 
+                            title="Print Report" 
+                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-md no-print disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={!featureAccess.canExportCsv}
+                        >
+                            <DocumentArrowDownIcon className="h-5 w-5" />
+                        </button>
+                    </FeatureLockedTooltip>
                 </div>
             </div>
             <div>{renderContent()}</div>
@@ -458,7 +520,6 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
     );
 };
 
-// FIX: Changed to a React.FC to correctly handle the 'key' prop when used in a map.
 const TabButton: React.FC<{ name: string, activeTab: string, setActiveTab: (name: string) => void}> = ({ name, activeTab, setActiveTab }) => (
     <button onClick={() => setActiveTab(name)} className={`px-4 py-1 text-sm font-semibold rounded-md transition-colors ${activeTab === name ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}>
         {name}
@@ -541,7 +602,6 @@ const ExpensesTab = ({ property }: { property: Property }) => {
             </div>
             <div className="p-4 bg-red-50 rounded-lg space-y-2">
                  <h4 className="font-semibold text-gray-700">Operating Expenses</h4>
-                 {/* FIX: Removed Vacancy Loss from this section to avoid confusion/double-counting appearance. */}
                  <ExpenseRow label={`Maintenance & Repairs (${maintenanceRate}%)`} value={`${formatCurrency(calcs.maintenanceCost)}/month`} valueYear={`${formatCurrency(calcs.maintenanceCost*12)}/year`} isSub />
                  <ExpenseRow label={`Property Management (${managementRate}%)`} value={`${formatCurrency(calcs.managementCost)}/month`} valueYear={`${formatCurrency(calcs.managementCost*12)}/year`} isSub />
                  <ExpenseRow label={`CapEx Reserves (${capexRate}%)`} value={`${formatCurrency(calcs.capexCost)}/month`} valueYear={`${formatCurrency(calcs.capexCost*12)}/year`} isSub />
@@ -926,7 +986,6 @@ const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasC
     const inputs = property.sellerFinancingAnalysis?.inputs;
     if (!inputs) return null;
 
-    // FIX: Split the handler into two separate functions to resolve the Babel parsing error.
     const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         const newInputs = { ...inputs, [name]: Number(value) };
