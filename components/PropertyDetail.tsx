@@ -181,9 +181,49 @@ const PropertyDetail = () => {
 };
 
 // Sub-components
+
+const StrategyLockedTooltip = ({ children, isLocked }: { children: React.ReactNode, isLocked: boolean }) => {
+    const navigate = useNavigate();
+    if (!isLocked) return <>{children}</>;
+    return (
+        <div className="relative group">
+            {children}
+            <div className="absolute bottom-full mb-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -translate-x-1/2 left-1/2">
+                <h4 className="font-bold">This is a Pro Feature</h4>
+                <p className="mt-1">Upgrade your plan to use advanced strategy calculators like Wholesale, Sub-To, and Seller Financing.</p>
+                <button
+                    onClick={() => navigate('/upgrade')}
+                    className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
+                >
+                    View Plans
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const ReportLockedTooltip = ({ children, isLocked, featureName }: { children: React.ReactNode, isLocked: boolean, featureName: string }) => {
+    const navigate = useNavigate();
+    if (!isLocked) return <>{children}</>;
+    return (
+        <div className="relative group">
+            {children}
+            <div className="absolute top-full mt-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -translate-x-1/2 left-1/2">
+                <h4 className="font-bold">{featureName} is a Pro Feature</h4>
+                <p className="mt-1">Upgrade your plan to export detailed PDF reports of your analyses.</p>
+                <button
+                    onClick={() => navigate('/upgrade')}
+                    className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
+                >
+                    View Plans
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrategy: Strategy, setActiveStrategy: (s: Strategy) => void }) => {
     const { featureAccess } = useAuth();
-    const navigate = useNavigate();
 
     const strategies: { name: Strategy, requiredFeature: keyof typeof featureAccess | null }[] = [
         { name: 'Rental', requiredFeature: null },
@@ -191,26 +231,6 @@ const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrateg
         { name: 'Subject-To', requiredFeature: 'canUseSubjectTo' },
         { name: 'Seller Financing', requiredFeature: 'canUseSellerFinancing' },
     ];
-
-    const FeatureLockedTooltip = ({ children, isLocked }: { children: React.ReactNode, isLocked: boolean }) => {
-        if (!isLocked) return <>{children}</>;
-        return (
-            <div className="relative group">
-                {children}
-                <div className="absolute bottom-full mb-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -translate-x-1/2 left-1/2">
-                    <h4 className="font-bold">This is a Pro Feature</h4>
-                    <p className="mt-1">Upgrade your plan to use advanced strategy calculators like Wholesale, Sub-To, and Seller Financing.</p>
-                    <button
-                      onClick={() => navigate('/upgrade')}
-                      className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
-                    >
-                      View Plans
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
 
     return (
         <div className="bg-white p-2 rounded-xl shadow-sm printable-card">
@@ -220,7 +240,7 @@ const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrateg
                     {strategies.map(({ name, requiredFeature }) => {
                         const isLocked = requiredFeature ? !featureAccess[requiredFeature] : false;
                         return (
-                             <FeatureLockedTooltip key={name} isLocked={isLocked}>
+                             <StrategyLockedTooltip key={name} isLocked={isLocked}>
                                 <button
                                     onClick={() => !isLocked && setActiveStrategy(name)}
                                     className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${activeStrategy === name ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'} ${isLocked ? 'cursor-not-allowed opacity-50 bg-gray-100' : ''}`}
@@ -228,7 +248,7 @@ const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrateg
                                 >
                                     {name.replace('-', ' ')}
                                 </button>
-                            </FeatureLockedTooltip>
+                            </StrategyLockedTooltip>
                         );
                     })}
                 </div>
@@ -421,33 +441,13 @@ const GoogleMapCard = ({ address }: { address: string }) => {
 const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, activeStrategy: Strategy, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
     const [activeTab, setActiveTab] = useState<string>('Metrics');
     const { featureAccess } = useAuth();
-    const navigate = useNavigate();
-
+    
     useEffect(() => {
         setActiveTab('Metrics');
     }, [activeStrategy]);
 
     const handlePrint = () => {
         window.print();
-    };
-
-    const FeatureLockedTooltip = ({ children, isLocked, featureName }: { children: React.ReactNode, isLocked: boolean, featureName: string }) => {
-        if (!isLocked) return <>{children}</>;
-        return (
-            <div className="relative group">
-                {children}
-                <div className="absolute top-full mt-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -translate-x-1/2 left-1/2">
-                    <h4 className="font-bold">{featureName} is a Pro Feature</h4>
-                    <p className="mt-1">Upgrade your plan to export detailed PDF reports of your analyses.</p>
-                    <button
-                      onClick={() => navigate('/upgrade')}
-                      className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
-                    >
-                      View Plans
-                    </button>
-                </div>
-            </div>
-        );
     };
 
     const renderTabs = () => {
@@ -503,7 +503,7 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                 <h2 className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">Financial Analysis: {activeStrategy.replace('-', ' ')}</h2>
                 <div className="flex items-center space-x-2">
                     <div className="no-print">{renderTabs()}</div>
-                    <FeatureLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Print/Export">
+                    <ReportLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Print/Export">
                         <button 
                             onClick={handlePrint} 
                             title="Print Report" 
@@ -512,7 +512,7 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                         >
                             <DocumentArrowDownIcon className="h-5 w-5" />
                         </button>
-                    </FeatureLockedTooltip>
+                    </ReportLockedTooltip>
                 </div>
             </div>
             <div>{renderContent()}</div>

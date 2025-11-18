@@ -1,6 +1,7 @@
 import React, { createContext, useState, Dispatch, ReactNode, SetStateAction, useEffect, useCallback } from 'react';
 import { Property, Financials, CalculatedMetrics, WholesaleInputs, WholesaleCalculations, SubjectToInputs, SubjectToCalculations, SellerFinancingInputs, SellerFinancingCalculations } from '../types';
 import apiClient from '../services/apiClient';
+import { localPropertyService } from '../services/localPropertyService';
 import { useAuth } from './AuthContext';
 
 
@@ -129,6 +130,12 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper to check if user should use local storage
+  const shouldUseLocalStorage = useCallback(() => {
+    if (!user || !user.subscriptionTier) return true; // Default to local if unknown
+    return ['Free', 'Starter'].includes(user.subscriptionTier);
+  }, [user]);
+
   const fetchProperties = useCallback(async () => {
     if (!user) {
         setProperties([]);
@@ -138,7 +145,16 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
     setLoading(true);
     setError(null);
     try {
-      const fetchedProperties = await apiClient.get('/properties');
+      let fetchedProperties: Property[];
+      
+      if (shouldUseLocalStorage()) {
+        // Use Local Storage Service
+        fetchedProperties = await localPropertyService.getProperties(user.id);
+      } else {
+        // Use Backend API
+        fetchedProperties = await apiClient.get('/properties');
+      }
+      
       setProperties(fetchedProperties);
     } catch (err) {
       setError('Failed to fetch properties.');
@@ -146,26 +162,68 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, shouldUseLocalStorage]);
 
   useEffect(() => {
     fetchProperties();
   }, [fetchProperties]);
 
   const addProperty = async (propertyData: Omit<Property, 'id'>): Promise<Property> => {
-    const newProperty = await apiClient.post('/properties', propertyData);
+    if (!user) throw new Error("User not authenticated");
+    
+    let newProperty: Property;
+    
+    if (shouldUseLocalStorage()) {
+       newProperty = await localPropertyService.addProperty(user.id, propertyData);
+    } else {
+       newProperty = await apiClient.post('/properties', propertyData);
+    }
+
     setProperties(prev => [newProperty, ...prev]);
     return newProperty;
   };
 
   const updateProperty = async (id: string, propertyData: Property): Promise<Property> => {
-    const updatedProperty = await apiClient.put(`/properties/${id}`, propertyData);
+    if (!user) throw new Error("User not authenticated");
+    
+    let updatedProperty: Property;
+
+    if (shouldUseLocalStorage()) {
+        updatedProperty = await localPropertyService.updateProperty(user.id, id, propertyData);
+        
+        // Local storage service doesn't auto-recalculate via AI like the backend does on update.
+        // We might want to simulate that or trigger an AI call, but for now, we'll just save the data.
+        // If AI re-eval is critical for local updates, we'd need to call '/analyze' endpoint explicitly here
+        // passing the updated data, but '/analyze' is built for raw inputs (url/address), not full JSON re-eval.
+        // Re-eval via backend is handled in the 'updateProperty' controller. 
+        
+        // IMPORTANT: The backend `updateProperty` does a full AI re-evaluation. 
+        // The local service update is just a data save. 
+        // To maintain feature parity, we should probably hit the backend for re-evaluation 
+        // even for local storage users, but save the RESULT locally.
+        
+        // However, to keep it simple and fast for Free/Starter as requested: 
+        // We will just save the data locally. They miss out on the auto-AI-re-evaluation on edit
+        // unless we specifically build a "Re-evaluate" button that calls the AI endpoint.
+        // Given the prompt asked to "store in browser", we stick to storage logic.
+        
+    } else {
+        updatedProperty = await apiClient.put(`/properties/${id}`, propertyData);
+    }
+
     setProperties(prev => prev.map(p => (p.id === id ? updatedProperty : p)));
     return updatedProperty;
   };
 
   const deleteProperty = async (id: string) => {
-    await apiClient.delete(`/properties/${id}`);
+    if (!user) throw new Error("User not authenticated");
+
+    if (shouldUseLocalStorage()) {
+        await localPropertyService.deleteProperty(user.id, id);
+    } else {
+        await apiClient.delete(`/properties/${id}`);
+    }
+    
     setProperties(prev => prev.filter(p => p.id !== id));
   };
 

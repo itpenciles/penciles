@@ -71,6 +71,27 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
     );
 });
 
+const CompareButtonWrapper = ({ children, canCompare }: { children: React.ReactNode, canCompare: boolean }) => {
+    const navigate = useNavigate();
+    if (canCompare) {
+        return <>{children}</>;
+    }
+    return (
+        <div className="relative group">
+            {children}
+            <div className="absolute bottom-full mb-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none right-0">
+                <h4 className="font-bold">Property Comparison is a Starter feature</h4>
+                <p className="mt-1">Upgrade your plan to compare properties side-by-side.</p>
+                <button
+                  onClick={() => navigate('/pricing')}
+                  className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
+                >
+                  View Plans
+                </button>
+            </div>
+        </div>
+    );
+};
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -162,27 +183,6 @@ const Dashboard = () => {
         );
     };
 
-    const CompareButtonWrapper = ({ children }: { children: React.ReactNode }) => {
-        if (featureAccess.canCompare) {
-            return <>{children}</>;
-        }
-        return (
-            <div className="relative group">
-                {children}
-                <div className="absolute bottom-full mb-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none right-0">
-                    <h4 className="font-bold">Property Comparison is a Starter feature</h4>
-                    <p className="mt-1">Upgrade your plan to compare properties side-by-side.</p>
-                    <button
-                      onClick={() => navigate('/pricing')}
-                      className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
-                    >
-                      View Plans
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="p-8 bg-gray-50/50">
             <header className="flex justify-between items-center mb-8">
@@ -210,7 +210,7 @@ const Dashboard = () => {
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-gray-800">Recent Property Analyses</h2>
                         {selectedPropertyIds.length >= 2 && (
-                             <CompareButtonWrapper>
+                             <CompareButtonWrapper canCompare={featureAccess.canCompare}>
                                 <button 
                                     onClick={handleCompare} 
                                     className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-purple-700 transition-colors flex items-center disabled:bg-purple-300 disabled:cursor-not-allowed"
