@@ -190,4 +190,5 @@ export interface User {
   name: string;
   email: string;
   profilePictureUrl?: string;
+  subscriptionTier?: 'Free' | 'Starter' | 'Pro' | 'Team' | null;
 }

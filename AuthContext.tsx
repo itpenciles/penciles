@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
 import apiClient from '../services/apiClient';
 
+type SubscriptionTier = 'Free' | 'Starter' | 'Pro' | 'Team';
+
 interface AuthContextType {
     user: User | null;
     logout: () => void;
@@ -11,6 +13,7 @@ interface AuthContextType {
     authError: any | null;
     clientIdForDebugging: string | null;
     handleGoogleLogin: (response: any) => void;
+    updateSubscription: (tier: SubscriptionTier) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -22,7 +25,7 @@ declare global {
   }
 }
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
 const isAuthEffectivelyEnabled = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'undefined' && !GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID_HERE'));
 
 
@@ -33,6 +36,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [clientIdForDebugging, setClientIdForDebugging] = useState<string | null>(null);
     const navigate = useNavigate();
 
+    const updateSubscription = useCallback(async (tier: SubscriptionTier) => {
+        if (user) {
+            try {
+                // This is now a real API call to persist the subscription change.
+                const { token, user: updatedUser } = await apiClient.put('/user/subscription', { tier });
+                localStorage.setItem('authToken', token); // Update the token
+                setUser(updatedUser); // Update the user state
+            } catch (error) {
+                console.error("Failed to update subscription:", error);
+                setAuthError(error); // Optionally show an error to the user
+            }
+        }
+    }, [user]);
+
     const handleGoogleLogin = useCallback(async (response: any) => {
         setIsLoading(true);
         setAuthError(null);
@@ -40,11 +57,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const res = await apiClient.post('/auth/google', { token: response.credential });
             // FIX: The apiClient returns the JSON body directly, not an object with a `data` property.
             // This was causing a TypeError on destructuring.
-            const { token, user } = res;
+            const { token, user: loggedInUser } = res;
             
             localStorage.setItem('authToken', token);
-            setUser(user);
-            navigate('/dashboard');
+            setUser(loggedInUser);
+
+            // NEW NAVIGATION LOGIC
+            if (loggedInUser.subscriptionTier) {
+                navigate('/dashboard');
+            } else {
+                navigate('/subscribe');
+            }
         } catch (error: any) {
             console.error("Error logging in with backend:", error);
             setAuthError(error);
@@ -84,6 +107,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             name: decodedToken.name,
                             email: decodedToken.email,
                             profilePictureUrl: decodedToken.profilePictureUrl,
+                            subscriptionTier: decodedToken.subscriptionTier || null,
                          };
                          setUser(userFromToken);
                      } else {
@@ -115,7 +139,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthEnabled: isAuthEffectivelyEnabled,
         authError,
         clientIdForDebugging,
-        handleGoogleLogin
+        handleGoogleLogin,
+        updateSubscription,
     };
 
     return (

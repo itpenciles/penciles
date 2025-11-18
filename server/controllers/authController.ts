@@ -46,12 +46,21 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             ON CONFLICT (email) DO UPDATE 
             SET name = EXCLUDED.name,
                 google_id = EXCLUDED.google_id,
-                profile_picture_url = EXCLUDED.profile_picture_url
-            RETURNING id, name, email, profile_picture_url;
+                profile_picture_url = EXCLUDED.profile_picture_url,
+                updated_at = now()
+            RETURNING id, name, email, profile_picture_url, subscription_tier;
         `;
 
         const userResult = await query(userUpsertQuery, [email, name, googleId, profilePictureUrl]);
-        const user: User = userResult.rows[0];
+        const dbUser = userResult.rows[0];
+        
+        const user: User = {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            profilePictureUrl: dbUser.profile_picture_url,
+            subscriptionTier: dbUser.subscription_tier || null
+        };
         
         const jwtToken = jwt.sign(
             { 
@@ -59,6 +68,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
                 name: user.name, 
                 email: user.email,
                 profilePictureUrl: user.profilePictureUrl,
+                subscriptionTier: user.subscriptionTier,
             }, 
             process.env.JWT_SECRET!, 
             { expiresIn: '7d' }
@@ -66,23 +76,18 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
 
         res.status(200).json({
             token: jwtToken,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                profilePictureUrl: user.profilePictureUrl,
-            }
+            user: user
         });
 
     } catch (error: any) {
         console.error('Google login error:', error);
 
         // Postgres error code for 'undefined_column'
-        if (error.code === '42703' && error.message.includes('google_id')) {
+        if (error.code === '42703' && (error.message.includes('google_id') || error.message.includes('subscription_tier'))) {
             const dbHost = pool.options.host || 'unknown host';
             const dbName = pool.options.database || 'unknown database';
 
-            const detailedMessage = `Database Schema Mismatch on '${dbName}@${dbHost}'. The 'users' table is missing the required 'google_id' column. Please connect your database tool to this exact host and run the ALTER TABLE script from the README.`;
+            const detailedMessage = `Database Schema Mismatch on '${dbName}@${dbHost}'. The 'users' table is missing a required column (e.g., 'google_id' or 'subscription_tier'). Please connect your database tool to this exact host and run the ALTER TABLE script from the README.`;
             
             return res.status(500).json({
                 message: detailedMessage,

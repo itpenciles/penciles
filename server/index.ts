@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import authRoutes from './routes/authRoutes.js';
 import propertyRoutes from './routes/propertyRoutes.js';
 import analysisRoutes from './routes/analysisRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -45,6 +46,7 @@ app.use(express.static(path.join(__dirname, '..')));
 
 // API Routes (These must come before the client-side catch-all)
 app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/analyze', analysisRoutes);
 

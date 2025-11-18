@@ -50,11 +50,20 @@ pool.on('connect', async (client) => {
             console.log(columns);
             
             const hasGoogleId = schemaResult.rows.some(row => row.column_name === 'google_id');
+            const hasSubscriptionTier = schemaResult.rows.some(row => row.column_name === 'subscription_tier');
+
             if (hasGoogleId) {
                 console.log(`✅ 'google_id' column is present.`);
             } else {
                 console.error(`❌ CRITICAL ERROR: The 'google_id' column is MISSING from the 'public.users' table.`);
                 console.error(`   This is the reason for login failures. Please run the ALTER TABLE script against this database.`);
+            }
+
+            if (hasSubscriptionTier) {
+                console.log(`✅ 'subscription_tier' column is present.`);
+            } else {
+                console.error(`❌ CRITICAL ERROR: The 'subscription_tier' column is MISSING from the 'public.users' table.`);
+                console.error(`   This will prevent user subscription status from being saved. Please run the ALTER TABLE script from the README.`);
             }
         }
         console.log(`----------------------`);

@@ -23,6 +23,11 @@ export default defineConfig(({ mode }) => {
       // Some libraries expect a `global` object to be defined.
       // This prevents 'global is not defined' errors in the browser.
       'global': {},
+      // FIX: Explicitly define process.env to work around runtime errors with `import.meta.env`.
+      // This makes environment variables available via `process.env.VITE_...`
+      'process.env': {
+        VITE_GOOGLE_CLIENT_ID: env.VITE_GOOGLE_CLIENT_ID
+      }
     }
   }
 })

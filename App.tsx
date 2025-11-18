@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import { PropertyProvider } from './contexts/PropertyContext';
 
@@ -20,10 +20,13 @@ import Dashboard from './components/Dashboard';
 import AddProperty from './components/AddProperty';
 import PropertyDetail from './components/PropertyDetail';
 import ComparisonPage from './components/ComparisonPage';
+import SubscriptionPage from './components/SubscriptionPage';
+import CheckoutPage from './components/CheckoutPage';
 
 // A component to protect routes that require authentication.
 const ProtectedRoute: React.FC = () => {
     const { user, isAuthEnabled, isLoading } = useAuth();
+    const location = useLocation();
 
     if (isLoading) {
         // You can render a loading spinner here
@@ -35,7 +38,15 @@ const ProtectedRoute: React.FC = () => {
         return <Navigate to="/login" replace />;
     }
 
-    // If auth is disabled, or if the user is logged in, show the content.
+    // If user is logged in but hasn't selected a subscription, redirect them.
+    if (user && !user.subscriptionTier) {
+        // Allow access only to the subscription and checkout pages
+        if (location.pathname !== '/subscribe' && !location.pathname.startsWith('/checkout')) {
+            return <Navigate to="/subscribe" replace />;
+        }
+    }
+
+    // If auth is disabled, or if the user is logged in with a subscription, show the content.
     return <Outlet />;
 };
 
@@ -67,6 +78,11 @@ const App: React.FC = () => {
 
             {/* Protected app routes */}
             <Route element={<ProtectedRoute />}>
+              {/* Routes WITHOUT the main sidebar layout */}
+              <Route path="/subscribe" element={<SubscriptionPage />} />
+              <Route path="/checkout/:tier" element={<CheckoutPage />} />
+              
+              {/* Routes WITH the main sidebar layout */}
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/add-property" element={<AddProperty />} />

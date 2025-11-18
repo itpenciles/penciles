@@ -47,7 +47,9 @@ CREATE TABLE "users" (
   "google_id" VARCHAR(255) UNIQUE, -- Stores unique Google user ID
   "profile_picture_url" TEXT, -- Stores URL for user's avatar
   "password_hash" VARCHAR(255), -- Can be NULL for Google OAuth users
-  "created_at" TIMESTAMPTZ DEFAULT (now())
+  "subscription_tier" VARCHAR(50), -- Stores the user's selected plan, e.g., 'Free', 'Pro'
+  "created_at" TIMESTAMPTZ DEFAULT (now()),
+  "updated_at" TIMESTAMPTZ DEFAULT (now())
 );
 
 CREATE TABLE "properties" (
@@ -153,7 +155,7 @@ This error means there is **100% a configuration mismatch** between the URL in y
 
 ### ✅ Fixing Database Errors
 
-#### Scenario 1: `column "google_id" does not exist`
+#### Scenario 1: `column "google_id" does not exist` or `column "subscription_tier" does not exist`
 
 If you see a 500 Internal Server Error after logging in, and your server logs show an error like `column "google_id" of relation "users" does not exist`, it means your database schema is out of date. You likely created the `users` table before the Google-specific columns were added.
 
@@ -168,6 +170,12 @@ ALTER TABLE "users" ADD COLUMN "google_id" VARCHAR(255) UNIQUE;
 
 -- Adds the column to store the URL for the user's profile picture
 ALTER TABLE "users" ADD COLUMN "profile_picture_url" TEXT;
+
+-- Adds the column to store the user's selected subscription plan
+ALTER TABLE "users" ADD COLUMN "subscription_tier" VARCHAR(50);
+
+-- Adds a timestamp that automatically updates when the user record is changed
+ALTER TABLE "users" ADD COLUMN "updated_at" TIMESTAMPTZ DEFAULT (now());
 ```
 
 After running these commands, the error will be resolved. You do not need to redeploy your application.
