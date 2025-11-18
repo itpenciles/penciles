@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
+import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/apiClient';
 import Loader from './Loader';
 import { ArrowLeftIcon, MapPinIcon, LinkIcon } from '../constants';
@@ -11,25 +12,9 @@ const GlobeAltIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http:
 const PaperAirplaneIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>;
 const XCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 
-
-const analyzeAndSaveProperty = async (
-    inputType: 'url' | 'address' | 'coords' | 'location',
-    value: string,
-    addPropertyHook: (propertyData: Omit<Property, 'id'>) => Promise<Property>
-): Promise<Property> => {
-    // Step 1: Call backend to get AI analysis
-    const analyzedData = await apiClient.post('/analyze', { inputType, value });
-
-    // Step 2: Call backend to save the analyzed property to the user's account
-    const newProperty = await addPropertyHook(analyzedData);
-    return newProperty;
-};
-
-
 const AddProperty = () => {
     const [view, setView] = useState<'options' | 'url' | 'address' | 'coords'>('options');
     
-    // States for inputs
     const [urls, setUrls] = useState<string[]>(['']);
     const [address, setAddress] = useState('');
     const [coords, setCoords] = useState({ lat: '', lon: '' });
@@ -38,8 +23,10 @@ const AddProperty = () => {
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const { addProperty } = useProperties();
+    const { analysisStatus } = useAuth();
+    
+    const remainingAnalyses = analysisStatus.limit === 'Unlimited' ? Infinity : analysisStatus.limit - analysisStatus.count;
 
-    // URL input handlers
     const handleUrlChange = (index: number, value: string) => {
         const newUrls = [...urls];
         newUrls[index] = value;
@@ -47,67 +34,86 @@ const AddProperty = () => {
     };
     const handleAddUrl = () => { if (urls.length < 4) { setUrls([...urls, '']); } };
     const handleRemoveUrl = (index: number) => { setUrls(urls.filter((_, i) => i !== index)); };
-
-    // Coords input handler
     const handleCoordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setCoords(prev => ({...prev, [name]: value}));
     };
 
-    // Analysis handlers
+    const analyzeAndSaveProperty = async (
+        inputType: 'url' | 'address' | 'coords' | 'location',
+        value: string
+    ): Promise<Property | null> => {
+        try {
+            const analyzedData = await apiClient.post('/analyze', { inputType, value });
+            const newProperty = await addProperty(analyzedData);
+            return newProperty;
+        } catch (e: any) {
+            setError(e.response?.data?.message || e.message || 'An unknown error occurred during analysis.');
+            return null;
+        }
+    };
+    
     const handleUrlAnalyze = async () => {
         const validUrls = urls.map(u => u.trim()).filter(u => u.length > 0);
         if (validUrls.length === 0) {
             setError('Please enter at least one valid URL.');
             return;
         }
+        if (validUrls.length > remainingAnalyses) {
+            setError(`You only have ${remainingAnalyses} analyses remaining, but you entered ${validUrls.length} URLs. Please remove some or upgrade your plan.`);
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
-        try {
-            // We analyze and save them one by one
-            for (const url of validUrls) {
-                await analyzeAndSaveProperty('url', url, addProperty);
+
+        // Analyze and save one by one
+        let success = true;
+        for (const url of validUrls) {
+            const result = await analyzeAndSaveProperty('url', url);
+            if (!result) {
+                success = false;
+                break; // Stop on first failure
             }
-            navigate('/dashboard');
-        } catch (e: any) {
-            setError(e.response?.data?.message || e.message || 'An unknown error occurred while analyzing one or more properties.');
-        } finally {
-            setIsLoading(false);
         }
+        setIsLoading(false);
+        if (success) navigate('/dashboard');
     };
 
     const handleSinglePropertyAnalysis = async (inputType: 'address' | 'coords' | 'location', value: string) => {
+        if (remainingAnalyses < 1) {
+            setError("You have reached your analysis limit. Please upgrade your plan to continue.");
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
-        try {
-            const newProperty = await analyzeAndSaveProperty(inputType, value, addProperty);
-            navigate(`/property/${newProperty.id}`);
-        } catch (e: any) {
-            setError(e.response?.data?.message || e.message || 'An unknown error occurred while analyzing.');
-        } finally {
-            setIsLoading(false);
-        }
+        
+        const newProperty = await analyzeAndSaveProperty(inputType, value);
+        setIsLoading(false);
+        if (newProperty) navigate(`/property/${newProperty.id}`);
     };
 
     const handleAddressAnalyze = async () => {
-        if (!address.trim()) {
-            setError('Please enter a valid address.');
-            return;
-        }
+        if (!address.trim()) { setError('Please enter a valid address.'); return; }
         await handleSinglePropertyAnalysis('address', address);
     };
     
     const handleCoordsAnalyze = async () => {
         const { lat, lon } = coords;
         if (!lat.trim() || !lon.trim() || isNaN(Number(lat)) || isNaN(Number(lon))) {
-            setError('Please enter valid latitude and longitude numbers.');
-            return;
+            setError('Please enter valid latitude and longitude numbers.'); return;
         }
         await handleSinglePropertyAnalysis('coords', `${lat},${lon}`);
     };
 
     const handleCurrentLocation = () => {
         setError(null);
+        if (remainingAnalyses < 1) {
+            setError("You have reached your analysis limit. Please upgrade your plan.");
+            return;
+        }
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
@@ -119,6 +125,17 @@ const AddProperty = () => {
             }
         );
     }
+    
+    const AnalysisCounter = () => (
+        <div className="text-sm text-gray-600">
+            Analyses remaining: <span className="font-bold text-brand-blue">{analysisStatus.limit === 'Unlimited' ? 'Unlimited' : `${remainingAnalyses} / ${analysisStatus.limit}`}</span>
+            {analysisStatus.limit !== 'Unlimited' && analysisStatus.limit > 0 && 
+              <span className="text-xs text-gray-500 ml-2">
+                (Resets on {analysisStatus.renewsOn || 'next billing cycle'})
+              </span>
+            }
+        </div>
+    );
 
     const renderOptions = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -131,6 +148,7 @@ const AddProperty = () => {
 
     const renderUrlInput = () => {
         const validUrlCount = urls.filter(u => u.trim().length > 0).length;
+        const isOverLimit = validUrlCount > remainingAnalyses;
         return (
             <div className="w-full max-w-2xl mx-auto">
                  {error && <p className="text-red-500 bg-red-100 p-3 rounded-md mb-4">{error}</p>}
@@ -169,9 +187,12 @@ const AddProperty = () => {
                         <button onClick={() => setView('options')} className="px-6 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
                             Back
                         </button>
-                        <button onClick={handleUrlAnalyze} disabled={isLoading || validUrlCount === 0} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
-                            {isLoading ? <Loader /> : `Analyze ${validUrlCount > 0 ? validUrlCount : ''} ${validUrlCount === 1 ? 'Property' : 'Properties'}`.trim()}
-                        </button>
+                        <div className="flex items-center space-x-4">
+                            <AnalysisCounter />
+                             <button onClick={handleUrlAnalyze} disabled={isLoading || validUrlCount === 0 || isOverLimit} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
+                                {isLoading ? <Loader /> : isOverLimit ? 'Limit Exceeded' : `Analyze ${validUrlCount > 0 ? validUrlCount : ''} ${validUrlCount === 1 ? 'Property' : 'Properties'}`.trim()}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -203,9 +224,12 @@ const AddProperty = () => {
                     <button onClick={() => setView('options')} className="px-6 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
                         Back
                     </button>
-                    <button onClick={handleAddressAnalyze} disabled={isLoading || !address.trim()} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
-                        {isLoading ? <Loader /> : 'Analyze Property'}
-                    </button>
+                    <div className="flex items-center space-x-4">
+                        <AnalysisCounter />
+                        <button onClick={handleAddressAnalyze} disabled={isLoading || !address.trim() || analysisStatus.isOverLimit} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
+                            {isLoading ? <Loader /> : analysisStatus.isOverLimit ? 'Limit Reached' : 'Analyze Property'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -253,9 +277,12 @@ const AddProperty = () => {
                     <button onClick={() => setView('options')} className="px-6 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
                         Back
                     </button>
-                    <button onClick={handleCoordsAnalyze} disabled={isLoading || !coords.lat.trim() || !coords.lon.trim()} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
-                        {isLoading ? <Loader /> : 'Analyze Coordinates'}
-                    </button>
+                    <div className="flex items-center space-x-4">
+                        <AnalysisCounter />
+                        <button onClick={handleCoordsAnalyze} disabled={isLoading || !coords.lat.trim() || !coords.lon.trim() || analysisStatus.isOverLimit} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
+                            {isLoading ? <Loader /> : analysisStatus.isOverLimit ? 'Limit Reached' : 'Analyze Coordinates'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

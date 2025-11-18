@@ -1,9 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User } from '../types';
+import { User, SubscriptionTier } from '../types';
 import apiClient from '../services/apiClient';
 
-type SubscriptionTier = 'Free' | 'Starter' | 'Pro' | 'Team';
+interface FeatureAccess {
+    canCompare: boolean;
+    canUseWholesale: boolean;
+    canUseSubjectTo: boolean;
+    canUseSellerFinancing: boolean;
+    canExportCsv: boolean;
+}
+
+interface AnalysisStatus {
+    count: number;
+    limit: number | 'Unlimited';
+    isOverLimit: boolean;
+    renewsOn?: string | null;
+}
 
 interface AuthContextType {
     user: User | null;
@@ -14,6 +27,8 @@ interface AuthContextType {
     clientIdForDebugging: string | null;
     handleGoogleLogin: (response: any) => void;
     updateSubscription: (tier: SubscriptionTier) => Promise<void>;
+    featureAccess: FeatureAccess;
+    analysisStatus: AnalysisStatus;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -28,13 +43,61 @@ declare global {
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
 const isAuthEffectivelyEnabled = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'undefined' && !GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID_HERE'));
 
+const initialFeatureAccess: FeatureAccess = {
+    canCompare: false,
+    canUseWholesale: false,
+    canUseSubjectTo: false,
+    canUseSellerFinancing: false,
+    canExportCsv: false,
+};
+
+const initialAnalysisStatus: AnalysisStatus = {
+    count: 0,
+    limit: 0,
+    isOverLimit: true,
+};
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [authError, setAuthError] = useState<any | null>(null);
     const [clientIdForDebugging, setClientIdForDebugging] = useState<string | null>(null);
+    const [featureAccess, setFeatureAccess] = useState<FeatureAccess>(initialFeatureAccess);
+    const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>(initialAnalysisStatus);
     const navigate = useNavigate();
+
+    // Effect to calculate feature flags and analysis status when user changes
+    useEffect(() => {
+        if (user && user.subscriptionTier) {
+            const tier = user.subscriptionTier;
+
+            // Calculate feature access booleans
+            const canCompare = ['Starter', 'Pro', 'Team'].includes(tier);
+            const canUseAdvancedStrategies = ['Pro', 'Team'].includes(tier);
+            const canExportCsv = ['Pro', 'Team'].includes(tier);
+
+            setFeatureAccess({
+                canCompare,
+                canUseWholesale: canUseAdvancedStrategies,
+                canUseSubjectTo: canUseAdvancedStrategies,
+                canUseSellerFinancing: canUseAdvancedStrategies,
+                canExportCsv,
+            });
+
+            // Calculate analysis status
+            const limits: { [key in SubscriptionTier]?: number } = { 'Free': 3, 'Starter': 15, 'Pro': 100 };
+            const limit = tier === 'Team' ? 'Unlimited' : (limits[tier] || 0);
+            const count = user.analysisCount || 0;
+            const isOverLimit = limit !== 'Unlimited' && count >= limit;
+            const renewsOn = user.analysisLimitResetAt ? new Date(user.analysisLimitResetAt).toLocaleDateString() : null;
+
+            setAnalysisStatus({ count, limit, isOverLimit, renewsOn });
+
+        } else {
+            setFeatureAccess(initialFeatureAccess);
+            setAnalysisStatus(initialAnalysisStatus);
+        }
+    }, [user]);
 
     const updateSubscription = useCallback(async (tier: SubscriptionTier) => {
         if (user) {
@@ -55,14 +118,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setAuthError(null);
         try {
             const res = await apiClient.post('/auth/google', { token: response.credential });
-            // FIX: The apiClient returns the JSON body directly, not an object with a `data` property.
-            // This was causing a TypeError on destructuring.
             const { token, user: loggedInUser } = res;
             
             localStorage.setItem('authToken', token);
             setUser(loggedInUser);
 
-            // NEW NAVIGATION LOGIC
             if (loggedInUser.subscriptionTier) {
                 navigate('/dashboard');
             } else {
@@ -90,8 +150,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const storedToken = localStorage.getItem('authToken');
             if (storedToken) {
                  try {
-                     // The best practice is to have a /me endpoint to verify the token
-                     // For now, we decode it to check expiration and get user info
                      const base64Url = storedToken.split('.')[1];
                      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
                      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
@@ -100,14 +158,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                      const decodedToken = JSON.parse(jsonPayload);
 
                      if (decodedToken.exp * 1000 > Date.now()) {
-                        // In a real app, you'd fetch the user data from a /me endpoint
-                        // For this implementation, we assume the token is the source of truth for display purposes
                          const userFromToken: User = {
                             id: decodedToken.id,
                             name: decodedToken.name,
                             email: decodedToken.email,
                             profilePictureUrl: decodedToken.profilePictureUrl,
                             subscriptionTier: decodedToken.subscriptionTier || null,
+                            analysisCount: decodedToken.analysisCount || 0,
+                            analysisLimitResetAt: decodedToken.analysisLimitResetAt || null,
                          };
                          setUser(userFromToken);
                      } else {
@@ -141,6 +199,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         clientIdForDebugging,
         handleGoogleLogin,
         updateSubscription,
+        featureAccess,
+        analysisStatus,
     };
 
     return (

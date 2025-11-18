@@ -1,11 +1,7 @@
-
-
-
-
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
+import { useAuth } from '../contexts/AuthContext';
 import { PlusIcon, ChartBarIcon, ArrowTrendingUpIcon, BanknotesIcon, ExclamationTriangleIcon, DocumentArrowDownIcon, XMarkIcon, CheckIcon } from '../constants';
 import { Property } from '../types';
 
@@ -79,17 +75,16 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
 const Dashboard = () => {
     const navigate = useNavigate();
     const { properties, deleteProperty, loading, error } = useProperties();
+    const { featureAccess } = useAuth();
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
 
     const avgCapRate = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.capRate, 0) / properties.length : 0;
     const avgMonthlyCashFlow = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0) / properties.length : 0;
     const highRiskProperties = properties.filter(p => p.recommendation?.level === 'High Risk' || p.recommendation?.level === 'Avoid').length;
 
-    // Calculations for investment summary
     const totalProperties = properties.length;
     const positiveCashFlowCount = properties.filter(p => p.calculations.monthlyCashFlowWithDebt > 0).length;
 
-    // By providing a type for the initial value, we ensure the result of `reduce` is correctly typed as `Record<string, number>`.
     const recommendationCounts = properties.reduce((acc, p) => {
         const level = p.recommendation?.level;
         if (level) {
@@ -131,11 +126,10 @@ const Dashboard = () => {
 
 
     const handleCompare = () => {
-        if (selectedPropertyIds.length < 2) return;
+        if (selectedPropertyIds.length < 2 || !featureAccess.canCompare) return;
         navigate(`/compare?ids=${selectedPropertyIds.join(',')}`);
     };
 
-    // Helper function to render table content based on state to fix parsing error
     const renderTableContent = () => {
         if (loading) {
             return <tr><td colSpan={7} className="text-center py-12 text-gray-500">Loading properties...</td></tr>;
@@ -168,6 +162,27 @@ const Dashboard = () => {
         );
     };
 
+    const CompareButtonWrapper = ({ children }: { children: React.ReactNode }) => {
+        if (featureAccess.canCompare) {
+            return <>{children}</>;
+        }
+        return (
+            <div className="relative group">
+                {children}
+                <div className="absolute bottom-full mb-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none right-0">
+                    <h4 className="font-bold">Property Comparison is a Starter feature</h4>
+                    <p className="mt-1">Upgrade your plan to compare properties side-by-side.</p>
+                    <button
+                      onClick={() => navigate('/pricing')}
+                      className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
+                    >
+                      View Plans
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="p-8 bg-gray-50/50">
             <header className="flex justify-between items-center mb-8">
@@ -195,10 +210,16 @@ const Dashboard = () => {
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-gray-800">Recent Property Analyses</h2>
                         {selectedPropertyIds.length >= 2 && (
-                            <button onClick={handleCompare} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-purple-700 transition-colors flex items-center">
-                                <ChartBarIcon className="h-5 w-5 mr-2" />
-                                Compare ({selectedPropertyIds.length})
-                            </button>
+                             <CompareButtonWrapper>
+                                <button 
+                                    onClick={handleCompare} 
+                                    className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-purple-700 transition-colors flex items-center disabled:bg-purple-300 disabled:cursor-not-allowed"
+                                    disabled={!featureAccess.canCompare}
+                                >
+                                    <ChartBarIcon className="h-5 w-5 mr-2" />
+                                    Compare ({selectedPropertyIds.length})
+                                </button>
+                            </CompareButtonWrapper>
                         )}
                     </div>
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -253,7 +274,6 @@ const Dashboard = () => {
                              <div className="space-y-2 text-sm">
                                 {totalProperties > 0 ? (
                                     Object.entries(recommendationCounts).map(([level, count]) => {
-                                        // FIX: Explicitly cast `count` to a Number to prevent potential type errors during arithmetic operations.
                                         const percentage = totalProperties > 0 ? ((Number(count) / totalProperties) * 100).toFixed(0) : 0;
                                         return (
                                             <div className="flex justify-between" key={level}>

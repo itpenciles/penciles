@@ -49,7 +49,9 @@ CREATE TABLE "users" (
   "password_hash" VARCHAR(255), -- Can be NULL for Google OAuth users
   "subscription_tier" VARCHAR(50), -- Stores the user's selected plan, e.g., 'Free', 'Pro'
   "created_at" TIMESTAMPTZ DEFAULT (now()),
-  "updated_at" TIMESTAMPTZ DEFAULT (now())
+  "updated_at" TIMESTAMPTZ DEFAULT (now()),
+  "analysis_count" INTEGER DEFAULT 0, -- Tracks AI analysis usage
+  "analysis_limit_reset_at" TIMESTAMPTZ -- Tracks when monthly limits reset
 );
 
 CREATE TABLE "properties" (
@@ -176,6 +178,12 @@ ALTER TABLE "users" ADD COLUMN "subscription_tier" VARCHAR(50);
 
 -- Adds a timestamp that automatically updates when the user record is changed
 ALTER TABLE "users" ADD COLUMN "updated_at" TIMESTAMPTZ DEFAULT (now());
+
+-- Adds a counter for AI property analyses
+ALTER TABLE "users" ADD COLUMN "analysis_count" INTEGER DEFAULT 0;
+
+-- Adds a timestamp to track when the monthly analysis limit should reset
+ALTER TABLE "users" ADD COLUMN "analysis_limit_reset_at" TIMESTAMPTZ;
 ```
 
 After running these commands, the error will be resolved. You do not need to redeploy your application.

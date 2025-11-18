@@ -48,7 +48,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
                 google_id = EXCLUDED.google_id,
                 profile_picture_url = EXCLUDED.profile_picture_url,
                 updated_at = now()
-            RETURNING id, name, email, profile_picture_url, subscription_tier;
+            RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at;
         `;
 
         const userResult = await query(userUpsertQuery, [email, name, googleId, profilePictureUrl]);
@@ -59,7 +59,9 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             name: dbUser.name,
             email: dbUser.email,
             profilePictureUrl: dbUser.profile_picture_url,
-            subscriptionTier: dbUser.subscription_tier || null
+            subscriptionTier: dbUser.subscription_tier || null,
+            analysisCount: dbUser.analysis_count,
+            analysisLimitResetAt: dbUser.analysis_limit_reset_at
         };
         
         const jwtToken = jwt.sign(
@@ -69,6 +71,8 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
                 email: user.email,
                 profilePictureUrl: user.profilePictureUrl,
                 subscriptionTier: user.subscriptionTier,
+                analysisCount: user.analysisCount,
+                analysisLimitResetAt: user.analysisLimitResetAt,
             }, 
             process.env.JWT_SECRET!, 
             { expiresIn: '7d' }
@@ -88,7 +92,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             const missingColumn = match ? match[1] : 'a required column';
 
             // Check if the missing column is one we expect during setup
-            if (['google_id', 'subscription_tier', 'updated_at'].includes(missingColumn)) {
+            if (['google_id', 'subscription_tier', 'updated_at', 'analysis_count', 'analysis_limit_reset_at'].includes(missingColumn)) {
                 const dbHost = pool.options.host || 'unknown host';
                 const dbName = pool.options.database || 'unknown database';
                 const detailedMessage = `Database Schema Mismatch on '${dbName}@${dbHost}'. The 'users' table is missing the '${missingColumn}' column. Please run the ALTER TABLE script from the README.`;

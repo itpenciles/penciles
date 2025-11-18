@@ -185,10 +185,14 @@ export type PropertyAction =
   | { type: 'UPDATE_PROPERTY'; payload: Property }
   | { type: 'DELETE_PROPERTY'; payload: string }; // id
 
+export type SubscriptionTier = 'Free' | 'Starter' | 'Pro' | 'Team';
+
 export interface User {
   id: string;
   name: string;
   email: string;
   profilePictureUrl?: string;
-  subscriptionTier?: 'Free' | 'Starter' | 'Pro' | 'Team' | null;
+  subscriptionTier?: SubscriptionTier | null;
+  analysisCount: number;
+  analysisLimitResetAt?: string | null;
 }
