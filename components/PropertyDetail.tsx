@@ -182,7 +182,7 @@ const PropertyDetail = () => {
 
 // Sub-components
 
-const StrategyLockedTooltip = ({ children, isLocked }: { children: React.ReactNode, isLocked: boolean }) => {
+const StrategyLockedTooltip: React.FC<{ children: React.ReactNode; isLocked: boolean }> = ({ children, isLocked }) => {
     const navigate = useNavigate();
     if (!isLocked) return <>{children}</>;
     return (
@@ -202,7 +202,7 @@ const StrategyLockedTooltip = ({ children, isLocked }: { children: React.ReactNo
     );
 };
 
-const ReportLockedTooltip = ({ children, isLocked, featureName }: { children: React.ReactNode, isLocked: boolean, featureName: string }) => {
+const ReportLockedTooltip: React.FC<{ children: React.ReactNode; isLocked: boolean; featureName: string }> = ({ children, isLocked, featureName }) => {
     const navigate = useNavigate();
     if (!isLocked) return <>{children}</>;
     return (

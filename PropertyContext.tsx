@@ -133,7 +133,64 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
   // Helper to check if user should use local storage
   const shouldUseLocalStorage = useCallback(() => {
     if (!user || !user.subscriptionTier) return true; // Default to local if unknown
+    // Free and Starter plans use local storage
     return ['Free', 'Starter'].includes(user.subscriptionTier);
+  }, [user]);
+
+  // UPGRADE: Check for orphan local properties and move them to the DB
+  const syncLocalProperties = useCallback(async () => {
+      if (!user) return;
+      try {
+          const localProps = await localPropertyService.getProperties(user.id);
+          if (localProps.length > 0) {
+              console.log("Found local properties after upgrade. Migrating to database...");
+              // Process serially to avoid overwhelming the server
+              for (const prop of localProps) {
+                  const { id, ...dataToSync } = prop;
+                  // Add to DB
+                  await apiClient.post('/properties', dataToSync);
+                  // Remove from Local Storage
+                  await localPropertyService.deleteProperty(user.id, id);
+              }
+              console.log("Local to DB Migration complete.");
+          }
+      } catch (err) {
+          console.error("Error migrating local properties:", err);
+      }
+  }, [user]);
+
+  // DOWNGRADE: Check for orphan DB properties and move them to Local Storage
+  const syncRemoteProperties = useCallback(async () => {
+    if (!user) return;
+    try {
+        // Check if there are properties on the server
+        const remoteProps = await apiClient.get('/properties');
+        
+        if (remoteProps && remoteProps.length > 0) {
+            console.log("Found remote properties after downgrade. Migrating top 20 to local storage...");
+            
+            // Limit to 20 to avoid localStorage quota limits
+            const propsToMigrate = remoteProps.slice(0, 20);
+            
+            for (const prop of propsToMigrate) {
+                // We create a new local property based on the remote data
+                // We strip the DB ID so a new local ID is generated
+                const { id, ...dataToSync } = prop;
+                await localPropertyService.addProperty(user.id, dataToSync);
+                
+                // Delete from server to prevent duplicates if they upgrade again
+                await apiClient.delete(`/properties/${id}`);
+            }
+            
+            // If there were more than 20, we might want to delete the rest too 
+            // to strictly enforce the move, or leave them as 'archived'. 
+            // For now, we only delete what we successfully moved.
+            
+            console.log("DB to Local Migration complete.");
+        }
+    } catch (err) {
+        console.error("Error migrating remote properties:", err);
+    }
   }, [user]);
 
   const fetchProperties = useCallback(async () => {
@@ -148,9 +205,15 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
       let fetchedProperties: Property[];
       
       if (shouldUseLocalStorage()) {
+        // DOWNGRADE SCENARIO: Check if we need to pull data down from the server
+        await syncRemoteProperties();
+        
         // Use Local Storage Service
         fetchedProperties = await localPropertyService.getProperties(user.id);
       } else {
+        // UPGRADE SCENARIO: Check if we need to push data up to the server
+        await syncLocalProperties();
+        
         // Use Backend API
         fetchedProperties = await apiClient.get('/properties');
       }
@@ -162,7 +225,7 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
     } finally {
       setLoading(false);
     }
-  }, [user, shouldUseLocalStorage]);
+  }, [user, shouldUseLocalStorage, syncLocalProperties, syncRemoteProperties]);
 
   useEffect(() => {
     fetchProperties();
@@ -190,23 +253,6 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     if (shouldUseLocalStorage()) {
         updatedProperty = await localPropertyService.updateProperty(user.id, id, propertyData);
-        
-        // Local storage service doesn't auto-recalculate via AI like the backend does on update.
-        // We might want to simulate that or trigger an AI call, but for now, we'll just save the data.
-        // If AI re-eval is critical for local updates, we'd need to call '/analyze' endpoint explicitly here
-        // passing the updated data, but '/analyze' is built for raw inputs (url/address), not full JSON re-eval.
-        // Re-eval via backend is handled in the 'updateProperty' controller. 
-        
-        // IMPORTANT: The backend `updateProperty` does a full AI re-evaluation. 
-        // The local service update is just a data save. 
-        // To maintain feature parity, we should probably hit the backend for re-evaluation 
-        // even for local storage users, but save the RESULT locally.
-        
-        // However, to keep it simple and fast for Free/Starter as requested: 
-        // We will just save the data locally. They miss out on the auto-AI-re-evaluation on edit
-        // unless we specifically build a "Re-evaluate" button that calls the AI endpoint.
-        // Given the prompt asked to "store in browser", we stick to storage logic.
-        
     } else {
         updatedProperty = await apiClient.put(`/properties/${id}`, propertyData);
     }

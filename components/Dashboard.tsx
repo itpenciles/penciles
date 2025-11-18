@@ -71,7 +71,7 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
     );
 });
 
-const CompareButtonWrapper = ({ children, canCompare }: { children: React.ReactNode, canCompare: boolean }) => {
+const CompareButtonWrapper: React.FC<{ children: React.ReactNode; canCompare: boolean }> = ({ children, canCompare }) => {
     const navigate = useNavigate();
     if (canCompare) {
         return <>{children}</>;
