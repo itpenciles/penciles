@@ -22,24 +22,30 @@ const Sidebar = () => {
     const { count, limit } = analysisStatus;
     
     if (limit === 'Unlimited') {
-        return <p className="text-sm font-semibold text-green-600">Unlimited Analyses</p>;
+        return <p className="text-xs font-semibold text-green-600 mt-1">Unlimited Analyses</p>;
     }
     
     const percentage = limit > 0 ? (count / limit) * 100 : 0;
+    const remaining = typeof limit === 'number' ? Math.max(0, limit - count) : 0;
 
     return (
-        <div>
+        <div className="mt-2">
             <div className="flex justify-between items-center text-xs mb-1">
-                <span className="font-medium text-gray-600">Analyses Used</span>
-                <span className="font-semibold text-gray-800">{count} / {limit}</span>
+                <span className="font-medium text-gray-600">Analyses Left</span>
+                <span className={`font-bold ${remaining === 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                    {remaining} <span className="text-gray-400 font-normal">/ {limit}</span>
+                </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div 
-                    className="bg-brand-blue h-1.5 rounded-full" 
+                    className={`h-1.5 rounded-full ${remaining === 0 ? 'bg-red-500' : 'bg-brand-blue'}`}
                     style={{ width: `${percentage}%` }}
                 ></div>
             </div>
-            {user.subscriptionTier === 'Free' && <p className="text-xs text-gray-500 mt-1 text-center">Lifetime Limit</p>}
+            {user.subscriptionTier === 'Free' && <p className="text-[10px] text-gray-500 mt-1 text-center">Lifetime Limit</p>}
+            {user.subscriptionTier !== 'Free' && analysisStatus.renewsOn && (
+                <p className="text-[10px] text-gray-400 mt-1 text-right">Resets {analysisStatus.renewsOn}</p>
+            )}
         </div>
     );
   };
@@ -52,13 +58,16 @@ const Sidebar = () => {
       </div>
 
       {user?.subscriptionTier && (
-        <div className="px-4 py-4 border-b border-gray-200">
-            <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-semibold text-gray-800">{user.subscriptionTier} Plan</h3>
+        <div className="px-4 py-4 border-b border-gray-200 bg-gray-50/50">
+            <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                     <span className="text-xs text-gray-500 uppercase tracking-wide font-bold">Current Plan</span>
+                     <h3 className="text-sm font-bold text-gray-900">{user.subscriptionTier}</h3>
+                </div>
                 {user.subscriptionTier !== 'Team' && (
                     <button 
-                        onClick={() => navigate('/pricing')}
-                        className="text-xs font-bold text-brand-blue hover:underline"
+                        onClick={() => navigate('/upgrade')}
+                        className="text-xs bg-white border border-brand-blue text-brand-blue px-2 py-1 rounded hover:bg-brand-blue hover:text-white transition-colors"
                     >
                         Upgrade
                     </button>
@@ -90,13 +99,13 @@ const Sidebar = () => {
       <div className="px-4 py-4 border-t border-gray-200">
         <h3 className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quick Metrics</h3>
         <div className="mt-2 space-y-2 text-sm text-gray-600">
-            <div className="flex justify-between">
+            <div className="flex justify-between px-2">
                 <span>Properties Analyzed</span>
-                <span>{propertiesAnalyzed}</span>
+                <span className="font-semibold">{propertiesAnalyzed}</span>
             </div>
-             <div className="flex justify-between">
+             <div className="flex justify-between px-2">
                 <span>Avg. Cap Rate</span>
-                <span>{propertiesAnalyzed > 0 ? `${avgCapRate.toFixed(1)}%` : '--%'}</span>
+                <span className="font-semibold">{propertiesAnalyzed > 0 ? `${avgCapRate.toFixed(1)}%` : '--%'}</span>
             </div>
         </div>
       </div>
@@ -109,8 +118,8 @@ const Sidebar = () => {
                 alt="User avatar"
                 referrerPolicy="no-referrer"
               />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-800">{user.name}</p>
+              <div className="ml-3 overflow-hidden">
+                <p className="text-sm font-medium text-gray-800 truncate">{user.name}</p>
               </div>
             </div>
             <button

@@ -201,7 +201,7 @@ const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrateg
                     <h4 className="font-bold">This is a Pro Feature</h4>
                     <p className="mt-1">Upgrade your plan to use advanced strategy calculators like Wholesale, Sub-To, and Seller Financing.</p>
                     <button
-                      onClick={() => navigate('/pricing')}
+                      onClick={() => navigate('/upgrade')}
                       className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
                     >
                       View Plans
@@ -223,7 +223,7 @@ const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrateg
                              <FeatureLockedTooltip key={name} isLocked={isLocked}>
                                 <button
                                     onClick={() => !isLocked && setActiveStrategy(name)}
-                                    className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${activeStrategy === name ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'} ${isLocked ? 'cursor-not-allowed opacity-50' : ''}`}
+                                    className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${activeStrategy === name ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'} ${isLocked ? 'cursor-not-allowed opacity-50 bg-gray-100' : ''}`}
                                     disabled={isLocked}
                                 >
                                     {name.replace('-', ' ')}
@@ -440,7 +440,7 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                     <h4 className="font-bold">{featureName} is a Pro Feature</h4>
                     <p className="mt-1">Upgrade your plan to export detailed PDF reports of your analyses.</p>
                     <button
-                      onClick={() => navigate('/pricing')}
+                      onClick={() => navigate('/upgrade')}
                       className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
                     >
                       View Plans
