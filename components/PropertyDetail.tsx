@@ -103,10 +103,10 @@ const PropertyDetail = () => {
     return (
         <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 print-container">
             {/* Print-only header for a clean report title */}
-            <div className="print-only text-center mb-8">
-                <h1 className="text-3xl font-bold">{editedProperty.address}</h1>
-                <p className="text-lg text-gray-700">Investment Analysis Report</p>
-                <p className="text-sm text-gray-500">Date Generated: {new Date().toLocaleDateString()}</p>
+            <div className="print-only text-center mb-4">
+                <h1 className="text-2xl font-bold">{editedProperty.address}</h1>
+                <p className="text-base text-gray-700">Investment Analysis Report</p>
+                <p className="text-xs text-gray-500">Date Generated: {new Date().toLocaleDateString()}</p>
             </div>
 
             {/* Screen header is now hidden during printing */}
@@ -124,7 +124,8 @@ const PropertyDetail = () => {
                 </div>
             </header>
 
-            <div className="flex flex-col lg:flex-row gap-8 property-detail-layout">
+            {/* SCREEN LAYOUT */}
+            <div className="flex flex-col lg:flex-row gap-8 property-detail-layout screen-only">
                 <div className="flex-grow space-y-8">
                     <PropertyDetailsCard property={editedProperty} />
                     <div className="no-print">
@@ -147,6 +148,30 @@ const PropertyDetail = () => {
                     <MarketAnalysisCard property={editedProperty} />
                     <div className="no-print">
                         <GoogleMapCard address={editedProperty.address} />
+                    </div>
+                </div>
+            </div>
+            
+            {/* PRINT LAYOUT */}
+            <div className="print-only print-grid-layout">
+                <div className="print-q1">
+                    <PropertyDetailsCard property={editedProperty} />
+                </div>
+                <div className="print-q2">
+                    <InvestmentRecommendationCard property={editedProperty} />
+                </div>
+                <div className="print-q3 printable-card">
+                    <h2 className="print-quadrant-title">Financial Analysis: {activeStrategy.replace('-', ' ')}</h2>
+                    <MetricsTab property={editedProperty} />
+                </div>
+                <div className="print-q4">
+                    <MarketAnalysisCard property={editedProperty} />
+                </div>
+                <div className="print-q5 printable-card">
+                    <h2 className="print-quadrant-title">Expense &amp; Investment Summary</h2>
+                    <ExpensesTab property={editedProperty} />
+                    <div className="mt-4">
+                        <InvestmentSummaryBreakdown property={editedProperty} />
                     </div>
                 </div>
             </div>
@@ -189,7 +214,7 @@ const RecommendationBadge = ({ level }: { level: Property['recommendation']['lev
 
 const PropertyDetailsCard = ({ property }: { property: Property }) => (
     <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Property Details</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-4 print-hide-title">Property Details</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center mb-4">
             <DetailItem label="Bedrooms" value={property.details.bedrooms.toString()} />
             <DetailItem label="Bathrooms" value={property.details.bathrooms.toString()} />
@@ -428,26 +453,7 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                     </button>
                 </div>
             </div>
-            {/* Content for screen view */}
-            <div className="screen-only">{renderContent()}</div>
-            {/* Content for print view */}
-            <div className="print-only">
-                {activeStrategy === 'Rental' && (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-lg font-semibold mb-2">Key Metrics</h3>
-                            <MetricsTab property={property} />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold mb-2">Expense Breakdown</h3>
-                            <ExpensesTab property={property} />
-                        </div>
-                    </div>
-                )}
-                {activeStrategy === 'Wholesale' && <WholesaleMetricsTab property={property} />}
-                {activeStrategy === 'Subject-To' && <SubjectToMetricsTab property={property} />}
-                {activeStrategy === 'Seller Financing' && <SellerFinancingMetricsTab property={property} />}
-            </div>
+            <div>{renderContent()}</div>
         </div>
     );
 };
@@ -1031,7 +1037,7 @@ const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Investment Summary (Rental Strategy)</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4 print-hide-title">Investment Summary (Rental Strategy)</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 {/* Upfront Costs Section */}
                 <div>

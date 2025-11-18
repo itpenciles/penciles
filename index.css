@@ -11,42 +11,38 @@ html {
     background-color: white !important;
     height: auto !important;
     overflow: visible !important;
-    font-size: 10pt; /* Adjust font size for better print readability */
+    font-size: 8pt; /* REDUCE FONT SIZE */
+    line-height: 1.3;
   }
 
   main {
     overflow: visible !important;
   }
   
-  /* Helper class to hide elements from printing */
   .no-print {
     display: none !important;
   }
   
-  /* Helper class to only show on screen */
   .screen-only {
     display: none !important;
   }
 
-  /* Helper class to only show for printing */
   .print-only {
     display: block !important;
   }
 
-  /* Style cards for a cleaner report look */
   .printable-card {
     box-shadow: none !important;
     border: 1px solid #e5e7eb !important;
-    padding: 1rem !important;
-    break-inside: avoid; /* Prevents cards from splitting across pages */
+    padding: 0.5rem !important;
+    break-inside: avoid;
+    height: 100%;
   }
   
-  /* Reset layout for printing */
   .print-container {
-    padding: 0 !important; /* Use full page width */
+    padding: 0 !important;
   }
 
-  /* Ensure text is readable */
   * {
     color: black !important;
     background-color: transparent !important;
@@ -56,23 +52,65 @@ html {
     text-decoration: none;
   }
 
-  /* Create a two-column layout for printing */
-  .property-detail-layout {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    width: 100% !important;
-    gap: 1rem !important;
+  /* 5-QUADRANT GRID LAYOUT */
+  .print-grid-layout {
+    display: grid;
+    grid-template-columns: 58% 42%;
+    grid-template-rows: auto 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+    height: 95vh; /* Attempt to fit on one page */
   }
 
-  /* Define column widths for the report */
-  .property-detail-layout > div:first-child {
-    width: 65% !important;
+  .print-q1 { grid-area: 1 / 1 / 2 / 3; } /* Row 1, span 2 cols */
+  .print-q3 { grid-area: 2 / 1 / 3 / 2; } /* Row 2, col 1 */
+  .print-q2 { grid-area: 2 / 2 / 3 / 3; } /* Row 2, col 2 */
+  .print-q5 { grid-area: 3 / 1 / 4 / 2; } /* Row 3, col 1 */
+  .print-q4 { grid-area: 3 / 2 / 4 / 3; } /* Row 3, col 2 */
+
+  .print-quadrant-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid #e5e7eb;
   }
 
-  .property-detail-layout > div:last-child {
-    width: 35% !important;
+  /* Compact Component Overrides */
+  .print-hide-title {
+    display: none;
   }
+
+  .print-q1 .grid { gap: 0.5rem !important; margin-bottom: 0.5rem !important; }
+  .print-q1 .p-3, .print-q1 .p-6 { padding: 0.25rem !important; }
+  .print-q1 .text-2xl { font-size: 1.5em !important; }
+  .print-q1 .text-sm { font-size: 0.9em !important; }
+  .print-q1 .p-4 { padding: 0.5rem !important; }
+  .print-q1 .text-lg { font-size: 1.2em !important; }
+
+  .print-q3 .grid { gap: 0.5rem !important; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .print-q3 .p-4 { padding: 0.25rem !important; }
+  .print-q3 .text-2xl { font-size: 1.5em !important; }
+  .print-q3 .text-xs { font-size: 0.8em !important; }
+  
+  .print-q2 .text-xl { font-size: 1.1em !important; margin-bottom: 0.25rem !important; }
+  .print-q2 .text-sm { font-size: 1em !important; }
+  .print-q2 ul { margin-left: 0.5rem !important; }
+  .print-q2 li { margin-bottom: 0.1rem !important; }
+  .print-q2 .p-6 { padding: 0.5rem !important; }
+
+  .print-q4 .text-xl { font-size: 1.1em !important; margin-bottom: 0.5rem !important; }
+  .print-q4 .space-y-4 > div { margin-top: 0.5rem !important; }
+  .print-q4 .p-3 { padding: 0.25rem !important; }
+  .print-q4 .p-6 { padding: 0.5rem !important; }
+
+  .print-q5 .space-y-4 { margin-top: 0 !important; }
+  .print-q5 .space-y-2 > div { margin-top: 0.1rem !important; }
+  .print-q5 .p-4 { padding: 0.25rem !important; }
+  .print-q5 .text-lg { font-size: 1.1em !important; }
+  .print-q5 h3, .print-q5 h4 { font-size: 1em !important; margin-bottom: 0.25rem !important; margin-top: 0.5rem; }
+  .print-q5 .pt-2 { padding-top: 0.25rem !important; }
+  .print-q5 .mt-2 { margin-top: 0.25rem !important; }
 }
 
 @media screen {
