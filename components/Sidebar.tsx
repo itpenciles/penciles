@@ -36,10 +36,10 @@ const Sidebar = () => {
                     {remaining} <span className="text-gray-400 font-normal">/ {limit}</span>
                 </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-1.5">
+            <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                 <div 
                     className={`h-1.5 rounded-full ${remaining === 0 ? 'bg-red-500' : 'bg-brand-blue'}`}
-                    style={{ width: `${percentage}%` }}
+                    style={{ width: `${Math.min(100, percentage)}%` }}
                 ></div>
             </div>
             {user.subscriptionTier === 'Free' && <p className="text-[10px] text-gray-500 mt-1 text-center">Lifetime Limit</p>}
