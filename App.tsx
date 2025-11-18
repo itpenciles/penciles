@@ -23,6 +23,7 @@ import ComparisonPage from './components/ComparisonPage';
 import SubscriptionPage from './components/SubscriptionPage';
 import CheckoutPage from './components/CheckoutPage';
 import UpgradePage from './components/UpgradePage';
+import FAQPage from './components/FAQPage';
 
 // A component to protect routes that require authentication.
 const ProtectedRoute: React.FC = () => {
@@ -90,6 +91,7 @@ const App: React.FC = () => {
                 <Route path="/property/:id" element={<PropertyDetail />} />
                 <Route path="/compare" element={<ComparisonPage />} />
                 <Route path="/upgrade" element={<UpgradePage />} />
+                <Route path="/faq" element={<FAQPage />} />
               </Route>
             </Route>
             
