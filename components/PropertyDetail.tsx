@@ -4,7 +4,7 @@ import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
 import { Property, Financials, WholesaleInputs, SubjectToInputs, SellerFinancingInputs, Strategy } from '../types';
 import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../contexts/PropertyContext';
-import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon } from '../constants';
+import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
 
 // --- Icons ---
 const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -210,7 +210,7 @@ const ReportLockedTooltip: React.FC<{ children: React.ReactNode; isLocked: boole
             {children}
             <div className="absolute top-full mt-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -translate-x-1/2 left-1/2">
                 <h4 className="font-bold">{featureName} is a Pro Feature</h4>
-                <p className="mt-1">Upgrade your plan to export detailed PDF reports of your analyses.</p>
+                <p className="mt-1">Upgrade your plan to export detailed CSV and PDF reports of your analyses.</p>
                 <button
                     onClick={() => navigate('/upgrade')}
                     className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
@@ -450,6 +450,88 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
         window.print();
     };
 
+    const handleExportCSV = () => {
+        const { details, financials, calculations, recommendation } = property;
+        const rows = [
+            ['Property Analysis Report'],
+            ['Property Address', `"${property.address}"`],
+            ['Date Analyzed', `"${property.dateAnalyzed}"`],
+            ['Strategy Analyzed', `"${activeStrategy}"`],
+            ['Recommendation', `"${recommendation.level}"`],
+            [],
+            ['--- Property Details ---'],
+            ['Property Type', `"${property.propertyType}"`],
+            ['Bedrooms', details.bedrooms],
+            ['Bathrooms', details.bathrooms],
+            ['SqFt', details.sqft],
+            ['Year Built', details.yearBuilt],
+            ['Units', details.numberOfUnits],
+            [],
+            ['--- Financial Inputs ---'],
+            ['Purchase Price', financials.purchasePrice],
+            ['Rehab Cost', financials.rehabCost],
+            ['Down Payment %', `${financials.downPaymentPercent}%`],
+            ['Loan Interest Rate %', `${financials.loanInterestRate}%`],
+            ['Monthly Taxes', financials.monthlyTaxes],
+            ['Monthly Insurance', financials.monthlyInsurance],
+            [],
+            ['--- Rental Metrics ---'],
+            ['Cap Rate', `${calculations.capRate.toFixed(2)}%`],
+            ['Cash on Cash Return', `${calculations.cashOnCashReturn.toFixed(2)}%`],
+            ['Monthly Cash Flow', calculations.monthlyCashFlowWithDebt.toFixed(2)],
+            ['NOI (Annual)', calculations.netOperatingIncome.toFixed(2)],
+            ['Total Cash to Close', calculations.totalCashToClose.toFixed(2)],
+            ['DSCR', calculations.dscr.toFixed(2)],
+        ];
+
+        // Add specific strategy metrics if active
+        if (activeStrategy === 'Wholesale' && property.wholesaleAnalysis) {
+             const ws = property.wholesaleAnalysis;
+             rows.push(
+                 [],
+                 ['--- Wholesale Metrics ---'],
+                 ['ARV', ws.inputs.arv],
+                 ['MAO', ws.calculations.mao.toFixed(2)],
+                 ['Estimated Rehab', ws.inputs.estimatedRehab],
+                 ['Potential Fee', ws.calculations.potentialFees.toFixed(2)],
+                 ['Eligible?', ws.calculations.isEligible ? 'Yes' : 'No']
+             );
+        }
+        
+        if (activeStrategy === 'Subject-To' && property.subjectToAnalysis) {
+             const sub = property.subjectToAnalysis;
+             rows.push(
+                 [],
+                 ['--- Subject-To Metrics ---'],
+                 ['Monthly Spread', sub.calculations.monthlySpread.toFixed(2)],
+                 ['Cash Needed', sub.calculations.cashNeeded.toFixed(2)],
+                 ['Cash on Cash Return', `${sub.calculations.cashOnCashReturn.toFixed(2)}%`],
+             );
+        }
+
+        if (activeStrategy === 'Seller Financing' && property.sellerFinancingAnalysis) {
+             const sf = property.sellerFinancingAnalysis;
+             rows.push(
+                 [],
+                 ['--- Seller Financing Metrics ---'],
+                 ['Monthly Payment', sf.calculations.monthlyPayment.toFixed(2)],
+                 ['Spread vs Market Rent', sf.calculations.spreadVsMarketRent.toFixed(2)],
+                 ['Return on Down Payment', `${sf.calculations.returnOnDp.toFixed(2)}%`],
+             );
+        }
+
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + rows.map(e => e.join(",")).join("\n");
+            
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Analysis_${property.address.substring(0, 20).replace(/[^a-z0-9]/gi, '_')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const renderTabs = () => {
         const tabs = activeStrategy === 'Rental'
             ? ['Metrics', 'Expenses', 'Adjust']
@@ -503,6 +585,7 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                 <h2 className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">Financial Analysis: {activeStrategy.replace('-', ' ')}</h2>
                 <div className="flex items-center space-x-2">
                     <div className="no-print">{renderTabs()}</div>
+                    
                     <ReportLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Print/Export">
                         <button 
                             onClick={handlePrint} 
@@ -511,6 +594,17 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                             disabled={!featureAccess.canExportCsv}
                         >
                             <DocumentArrowDownIcon className="h-5 w-5" />
+                        </button>
+                    </ReportLockedTooltip>
+
+                    <ReportLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Export CSV">
+                         <button 
+                            onClick={handleExportCSV} 
+                            title="Export CSV" 
+                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-md no-print disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={!featureAccess.canExportCsv}
+                        >
+                            <TableCellsIcon className="h-5 w-5" />
                         </button>
                     </ReportLockedTooltip>
                 </div>
