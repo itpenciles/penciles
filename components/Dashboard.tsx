@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+
+import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
@@ -120,11 +121,18 @@ const CompareButtonWrapper: React.FC<{ children: React.ReactNode; canCompare: bo
     );
 };
 
+type SortKey = 'capRate' | 'cashFlow' | 'cashOnCash' | 'recommendation';
+type SortDirection = 'asc' | 'desc';
+
 const Dashboard = () => {
     const navigate = useNavigate();
     const { properties, deleteProperty, loading, error } = useProperties();
     const { user, featureAccess } = useAuth();
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
+    
+    // Sorting and Filtering State
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: null, direction: 'desc' });
+    const [filterRecommendation, setFilterRecommendation] = useState<string>('All');
 
     const avgCapRate = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.capRate, 0) / properties.length : 0;
     const avgMonthlyCashFlow = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0) / properties.length : 0;
@@ -189,6 +197,88 @@ const Dashboard = () => {
         navigate(`/compare?ids=${selectedPropertyIds.join(',')}`);
     };
 
+    // --- Sorting and Filtering Logic ---
+
+    const handleSort = (key: SortKey) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+        }));
+    };
+
+    const processedProperties = useMemo(() => {
+        let processed = [...properties];
+
+        // 1. Filter
+        if (filterRecommendation !== 'All') {
+            processed = processed.filter(p => p.recommendation.level === filterRecommendation);
+        }
+
+        // 2. Sort
+        if (sortConfig.key) {
+            const recommendationRank: Record<string, number> = {
+                'Worth Pursuing': 4,
+                'Moderate Risk': 3,
+                'High Risk': 2,
+                'Avoid': 1
+            };
+
+            processed.sort((a, b) => {
+                let valA: number | string = 0;
+                let valB: number | string = 0;
+
+                switch (sortConfig.key) {
+                    case 'capRate':
+                        valA = a.calculations.capRate;
+                        valB = b.calculations.capRate;
+                        break;
+                    case 'cashFlow':
+                        valA = a.calculations.monthlyCashFlowNoDebt;
+                        valB = b.calculations.monthlyCashFlowNoDebt;
+                        break;
+                    case 'cashOnCash':
+                        valA = a.calculations.cashOnCashReturn;
+                        valB = b.calculations.cashOnCashReturn;
+                        break;
+                    case 'recommendation':
+                        valA = recommendationRank[a.recommendation.level] || 0;
+                        valB = recommendationRank[b.recommendation.level] || 0;
+                        break;
+                }
+
+                if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return processed;
+    }, [properties, sortConfig, filterRecommendation]);
+
+
+    const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
+        if (sortConfig.key !== columnKey) {
+             return <span className="ml-1 text-gray-300 text-[10px]">⇅</span>; // Inactive
+        }
+        return (
+            <span className="ml-1 text-brand-blue text-xs">
+                {sortConfig.direction === 'asc' ? '▲' : '▼'}
+            </span>
+        );
+    };
+
+    const SortableHeader = ({ label, columnKey }: { label: string, columnKey: SortKey }) => (
+        <th 
+            className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100 hover:text-brand-blue transition-colors select-none"
+            onClick={() => handleSort(columnKey)}
+        >
+            <div className="flex items-center">
+                {label} <SortIcon columnKey={columnKey} />
+            </div>
+        </th>
+    );
+
+
     const renderTableContent = () => {
         if (loading) {
             return <tr><td colSpan={7} className="text-center py-12 text-gray-500">Loading properties...</td></tr>;
@@ -196,15 +286,23 @@ const Dashboard = () => {
         if (error) {
             return <tr><td colSpan={7} className="text-center py-12 text-red-500">{error}</td></tr>;
         }
-        if (properties.length > 0) {
-            return properties.map((prop, index) => 
+        if (processedProperties.length > 0) {
+            return processedProperties.map((prop, index) => 
                 <PropertyRow 
                     key={prop.id} 
                     property={prop} 
                     isSelected={selectedPropertyIds.includes(prop.id)}
                     onSelect={handleSelectProperty}
                     onDelete={handleDelete}
-                    isLocked={index >= propertyLimit}
+                    // Note: isLocked logic might need to track original index if we strictly want to lock by insertion order, 
+                    // but usually filtering implies you want to see data. 
+                    // For simplicity, we check if the *displayed* item falls outside the user's total allowed count relative to global list,
+                    // OR simpler: just check if index in *this* list exceeds limit? 
+                    // Typically limits are on "Total properties saved", not "Properties currently viewable".
+                    // Let's check against the *global* index in the original 'properties' array to be robust, or just render.
+                    // Since `processedProperties` is a filtered subset, locking based on `index` here might unlock items that should be locked.
+                    // Correct way: Find the index of this property in the MAIN `properties` list.
+                    isLocked={properties.findIndex(p => p.id === prop.id) >= propertyLimit}
                 />
             );
         }
@@ -212,10 +310,17 @@ const Dashboard = () => {
             <tr>
                 <td colSpan={7}>
                     <div className="text-center py-12 text-gray-500">
-                        <p>No properties analyzed yet.</p>
-                        <button onClick={() => navigate('/add-property')} className="mt-2 text-brand-blue font-semibold">
-                            Analyze your first property
-                        </button>
+                        <p>No properties match your criteria.</p>
+                        {filterRecommendation !== 'All' && (
+                             <button onClick={() => setFilterRecommendation('All')} className="mt-2 text-brand-blue font-semibold">
+                                Clear Filter
+                            </button>
+                        )}
+                        {properties.length === 0 && (
+                             <button onClick={() => navigate('/add-property')} className="mt-2 text-brand-blue font-semibold">
+                                Analyze your first property
+                            </button>
+                        )}
                     </div>
                 </td>
             </tr>
@@ -246,20 +351,39 @@ const Dashboard = () => {
 
             <div className="flex flex-col lg:flex-row gap-8">
                 <div className="flex-grow">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h2 className="text-xl font-bold text-gray-800">Recent Property Analyses</h2>
-                        {selectedPropertyIds.length >= 2 && (
-                             <CompareButtonWrapper canCompare={featureAccess.canCompare}>
-                                <button 
-                                    onClick={handleCompare} 
-                                    className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-purple-700 transition-colors flex items-center disabled:bg-purple-300 disabled:cursor-not-allowed"
-                                    disabled={!featureAccess.canCompare}
+                        
+                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                             {/* Filter Dropdown */}
+                            <div className="flex items-center">
+                                <span className="text-sm text-gray-600 mr-2">Filter:</span>
+                                <select 
+                                    value={filterRecommendation} 
+                                    onChange={(e) => setFilterRecommendation(e.target.value)}
+                                    className="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:ring-brand-blue focus:border-brand-blue bg-white"
                                 >
-                                    <ChartBarIcon className="h-5 w-5 mr-2" />
-                                    Compare ({selectedPropertyIds.length})
-                                </button>
-                            </CompareButtonWrapper>
-                        )}
+                                    <option value="All">All Recommendations</option>
+                                    <option value="Worth Pursuing">Worth Pursuing</option>
+                                    <option value="Moderate Risk">Moderate Risk</option>
+                                    <option value="High Risk">High Risk</option>
+                                    <option value="Avoid">Avoid</option>
+                                </select>
+                            </div>
+
+                            {selectedPropertyIds.length >= 2 && (
+                                <CompareButtonWrapper canCompare={featureAccess.canCompare}>
+                                    <button 
+                                        onClick={handleCompare} 
+                                        className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-purple-700 transition-colors flex items-center disabled:bg-purple-300 disabled:cursor-not-allowed ml-auto sm:ml-0"
+                                        disabled={!featureAccess.canCompare}
+                                    >
+                                        <ChartBarIcon className="h-5 w-5 mr-2" />
+                                        Compare ({selectedPropertyIds.length})
+                                    </button>
+                                </CompareButtonWrapper>
+                            )}
+                        </div>
                     </div>
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                         <table className="w-full text-left">
@@ -267,10 +391,10 @@ const Dashboard = () => {
                                 <tr>
                                     <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Property</th>
                                     <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Date Analyzed</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cap Rate</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cash Flow (No-Debt)</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cash-on-Cash</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Recommendation</th>
+                                    <SortableHeader label="Cap Rate" columnKey="capRate" />
+                                    <SortableHeader label="Cash Flow (No-Debt)" columnKey="cashFlow" />
+                                    <SortableHeader label="Cash-on-Cash" columnKey="cashOnCash" />
+                                    <SortableHeader label="Recommendation" columnKey="recommendation" />
                                     <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
                                 </tr>
                             </thead>
