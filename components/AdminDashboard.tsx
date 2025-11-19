@@ -90,7 +90,7 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                     <div className="h-64 flex items-end space-x-2 pb-2 border-b border-gray-100">
-                        {stats.subscriberGraph.map((point, i) => (
+                        {stats.subscriberGraph.length > 0 ? stats.subscriberGraph.map((point, i) => (
                             <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
                                 <div 
                                     className="w-full bg-brand-blue/80 rounded-t hover:bg-brand-blue transition-all min-h-[4px]"
@@ -101,7 +101,9 @@ const AdminDashboard = () => {
                                     {point.count} users
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <div className="w-full text-center text-gray-400 py-10">No data available for this period</div>
+                        )}
                     </div>
                 </div>
             )}
@@ -126,11 +128,11 @@ const AdminDashboard = () => {
                         {users.map(user => (
                             <tr key={user.id} onClick={() => handleUserClick(user)} className="hover:bg-gray-50 cursor-pointer transition-colors">
                                 <td className="px-6 py-4 font-medium text-gray-900">{user.email}</td>
-                                <td className="px-6 py-4"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">{user.subscriptionTier}</span></td>
-                                <td className="px-6 py-4">${(user as any).monthlyVal}</td>
-                                <td className="px-6 py-4">${(user as any).annualVal}</td>
-                                <td className="px-6 py-4">{user.createdAt}</td>
-                                <td className="px-6 py-4 font-bold">{(user as any).propertyCount}</td>
+                                <td className="px-6 py-4"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">{user.subscriptionTier || 'Free'}</span></td>
+                                <td className="px-6 py-4">${(user as any).monthlyVal || 0}</td>
+                                <td className="px-6 py-4">${(user as any).annualVal || 0}</td>
+                                <td className="px-6 py-4">{user.createdAt || 'N/A'}</td>
+                                <td className="px-6 py-4 font-bold">{(user as any).propertyCount || 0}</td>
                             </tr>
                         ))}
                     </tbody>

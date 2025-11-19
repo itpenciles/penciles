@@ -97,9 +97,9 @@ export const getUsers = async (_req: Request, res: Response) => {
             email: u.email,
             name: u.name,
             role: u.role,
-            subscriptionTier: u.subscription_tier, // Map subscription_tier to subscriptionTier
-            createdAt: new Date(u.created_at).toLocaleDateString(), // Map created_at to createdAt
-            propertyCount: parseInt(u.property_count), // Map property_count to propertyCount
+            subscriptionTier: u.subscription_tier, // Explicit map
+            createdAt: new Date(u.created_at).toLocaleDateString(), // Explicit map
+            propertyCount: parseInt(u.property_count || 0), // Explicit map
             monthlyVal: getPrice(u.subscription_tier, 'monthly'),
             annualVal: getPrice(u.subscription_tier, 'annual')
         }));
