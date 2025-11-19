@@ -5,16 +5,6 @@ import { query } from '../db.js';
 export const getAdminStats = async (req: Request, res: Response) => {
     try {
         const { range } = req.query; // 7, 14, 30, 60, YTD
-        let days = 7;
-        if (range === '14') days = 14;
-        if (range === '30') days = 30;
-        if (range === '60') days = 60;
-        if (range === 'YTD') {
-            const now = new Date();
-            const start = new Date(now.getFullYear(), 0, 1);
-            days = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-            days = Math.max(1, days); // Ensure at least 1 day
-        }
 
         // 1. Today's Results
         const todayStatsQuery = `
@@ -45,18 +35,49 @@ export const getAdminStats = async (req: Request, res: Response) => {
         });
 
         // 3. Subscriber Graph Data
-        const graphQuery = `
+        let graphQuery = '';
+        let startDateExpression = '';
+        let interval = '1 day';
+        let truncType = 'day';
+        let dateFormat = 'Mon DD';
+
+        // Determine aggregation based on range
+        if (range === 'YTD') {
+            // Monthly aggregation for YTD
+            interval = '1 month';
+            truncType = 'month';
+            dateFormat = 'Mon YY';
+            startDateExpression = "date_trunc('year', current_date)";
+        } else if (range === '30' || range === '60') {
+            // Monthly aggregation for 30/60 days (shows current month and previous 1-2 months)
+            const months = range === '60' ? 2 : 1;
+            interval = '1 month';
+            truncType = 'month';
+            dateFormat = 'Mon YY';
+            startDateExpression = `date_trunc('month', current_date - interval '${months} months')`;
+        } else {
+            // Daily aggregation for 7/14 days (default)
+            const days = range === '14' ? 13 : 6;
+            startDateExpression = `current_date - interval '${days} days'`;
+        }
+
+        graphQuery = `
             WITH date_series AS (
-                SELECT generate_series(current_date - interval '${days} days', current_date, '1 day')::date AS date
+                SELECT generate_series(
+                    ${startDateExpression}, 
+                    date_trunc('${truncType}', current_date), 
+                    '${interval}'
+                )::date AS date
             )
             SELECT 
-                to_char(ds.date, 'Mon DD') as date,
+                to_char(ds.date, '${dateFormat}') as date,
                 COALESCE(COUNT(u.id), 0) as count
             FROM date_series ds
-            LEFT JOIN users u ON u.created_at::date = ds.date
+            LEFT JOIN users u ON date_trunc('${truncType}', u.created_at)::date = ds.date
             GROUP BY ds.date
             ORDER BY ds.date;
         `;
+        
         const graphResult = await query(graphQuery);
         
         // Force integer parsing for counts
@@ -97,7 +118,7 @@ export const getUsers = async (_req: Request, res: Response) => {
             email: u.email,
             name: u.name,
             role: u.role,
-            subscriptionTier: u.subscription_tier, // Explicit map
+            subscriptionTier: u.subscription_tier || 'Free', // Explicit map with fallback
             createdAt: new Date(u.created_at).toLocaleDateString(), // Explicit map
             propertyCount: parseInt(u.property_count || 0), // Explicit map
             monthlyVal: getPrice(u.subscription_tier, 'monthly'),
