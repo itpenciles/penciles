@@ -133,6 +133,7 @@ const AdminDashboard = () => {
                 <table className="w-full text-left">
                     <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                         <tr>
+                            <th className="px-6 py-3">Name</th>
                             <th className="px-6 py-3">Email</th>
                             <th className="px-6 py-3">Tier</th>
                             <th className="px-6 py-3">Monthly $</th>
@@ -144,7 +145,8 @@ const AdminDashboard = () => {
                     <tbody className="divide-y divide-gray-200 text-sm">
                         {users.map(user => (
                             <tr key={user.id} onClick={() => handleUserClick(user)} className="hover:bg-gray-50 cursor-pointer transition-colors">
-                                <td className="px-6 py-4 font-medium text-gray-900">{user.email}</td>
+                                <td className="px-6 py-4 font-medium text-gray-900">{user.name}</td>
+                                <td className="px-6 py-4 text-gray-500">{user.email}</td>
                                 <td className="px-6 py-4"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">{user.subscriptionTier || 'Free'}</span></td>
                                 <td className="px-6 py-4">${(user as any).monthlyVal || 0}</td>
                                 <td className="px-6 py-4">${(user as any).annualVal || 0}</td>
