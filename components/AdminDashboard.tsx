@@ -54,7 +54,7 @@ const AdminDashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <StatCard title="Today's New Subscribers" value={stats.today.newSubscribers} icon={UsersIcon} color="blue" />
                     <StatCard title="Today's Revenue Impact" value={`$${stats.today.revenue}`} icon={BanknotesIcon} color="green" subtext={`Upgrades: ${stats.today.upgrades} | Downs: ${stats.today.downgrades} | Cancel: ${stats.today.cancellations}`} />
-                    <StatCard title="Total Subscribers" value={Object.values(stats.subscribersByTier).reduce((a: number, b: number) => a + b, 0)} icon={UsersIcon} color="purple" />
+                    <StatCard title="Total Subscribers" value={(Object.values(stats.subscribersByTier) as number[]).reduce((a, b) => a + b, 0)} icon={UsersIcon} color="purple" />
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                          <h3 className="text-sm text-gray-500 font-medium mb-2">Subscribers by Tier</h3>
                          <div className="space-y-1 text-sm">

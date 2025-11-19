@@ -70,7 +70,7 @@ export const getAdminStats = async (req: Request, res: Response) => {
     }
 };
 
-export const getUsers = async (req: Request, res: Response) => {
+export const getUsers = async (_req: Request, res: Response) => {
     try {
         const usersQuery = `
             SELECT 
