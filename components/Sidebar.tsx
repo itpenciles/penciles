@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { BuildingOfficeIcon, ArrowRightOnRectangleIcon, ChartBarIcon } from '../constants';
+import { BuildingOfficeIcon, ArrowRightOnRectangleIcon, ChartBarIcon, LockClosedIcon } from '../constants';
 import { SIDEBAR_LINKS } from '../constants';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
@@ -112,6 +112,19 @@ const Sidebar = () => {
                 >
                     <ChartBarIcon className="h-5 w-5 mr-3" />
                     Admin Dashboard
+                </NavLink>
+                <NavLink
+                    to="/admin/setup"
+                    className={({ isActive }) =>
+                    `flex items-center px-4 py-2 mt-2 text-sm font-medium rounded-md transition-colors duration-150 ${
+                        isActive
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`
+                    }
+                >
+                    <LockClosedIcon className="h-5 w-5 mr-3" />
+                    Setup
                 </NavLink>
            </div>
         )}

@@ -9,18 +9,11 @@ type AuthRequest = Request & {
     user?: { id: string; role?: string };
 };
 
-const TIER_PRICES = {
-    'Free': 0,
-    'Starter': 9,
-    'Pro': 29,
-    'Team': 79
-};
-
 export const updateUserSubscription = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     const { tier } = req.body as { tier: SubscriptionTier };
 
-    if (!tier || !['Free', 'Starter', 'Pro', 'Team'].includes(tier)) {
+    if (!tier) {
         return res.status(400).json({ message: 'Invalid subscription tier provided.' });
     }
 
@@ -33,12 +26,28 @@ export const updateUserSubscription = async (req: AuthRequest, res: Response) =>
         
         const oldTier = currentUserResult.rows[0].subscription_tier || 'Free';
         let result;
-        const isMonthlyPlan = ['Starter', 'Pro', 'Team'].includes(tier);
-
-        // Calculate change type and amount
-        const oldPrice = TIER_PRICES[oldTier as keyof typeof TIER_PRICES] || 0;
-        const newPrice = TIER_PRICES[tier as keyof typeof TIER_PRICES] || 0;
         
+        // Fetch Pricing logic from DB
+        let oldPrice = 0;
+        let newPrice = 0;
+
+        const plansRes = await query('SELECT key, monthly_price FROM plans WHERE key IN ($1, $2)', [oldTier, tier]);
+        const planMap = new Map(plansRes.rows.map((r: any) => [r.key, r.monthly_price]));
+        
+        if (planMap.has(oldTier)) oldPrice = Number(planMap.get(oldTier));
+        if (planMap.has(tier)) newPrice = Number(planMap.get(tier));
+        
+        // Fallback if DB fetch fails (legacy hardcoded)
+        if (plansRes.rows.length === 0) {
+             const TIER_PRICES = { 'Free': 0, 'Starter': 9, 'Pro': 29, 'Team': 79 };
+             // @ts-ignore
+             oldPrice = TIER_PRICES[oldTier] || 0;
+             // @ts-ignore
+             newPrice = TIER_PRICES[tier] || 0;
+        }
+
+        const isMonthlyPlan = tier !== 'Free'; // Basic assumption
+
         let changeType = 'new';
         if (oldTier === 'Free' && tier !== 'Free') changeType = 'new';
         else if (newPrice > oldPrice) changeType = 'upgrade';
@@ -88,7 +97,7 @@ export const updateUserSubscription = async (req: AuthRequest, res: Response) =>
             { 
                 id: updatedUser.id, 
                 name: updatedUser.name, 
-                email: updatedUser.email,
+                email: updatedUser.email, 
                 profilePictureUrl: updatedUser.profilePictureUrl,
                 subscriptionTier: updatedUser.subscriptionTier,
                 analysisCount: updatedUser.analysisCount,

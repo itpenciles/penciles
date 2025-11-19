@@ -186,7 +186,7 @@ export type PropertyAction =
   | { type: 'UPDATE_PROPERTY'; payload: Property }
   | { type: 'DELETE_PROPERTY'; payload: string }; // id
 
-export type SubscriptionTier = 'Free' | 'Starter' | 'Pro' | 'Team';
+export type SubscriptionTier = 'Free' | 'Starter' | 'Pro' | 'Team' | string;
 
 export interface User {
   id: string;
@@ -256,4 +256,15 @@ export interface UserDetailStats {
     };
     billingSummary?: BillingSummary;
     billingHistory?: BillingHistoryItem[];
+}
+
+export interface Plan {
+    key: string; // e.g., 'Free', 'Starter'
+    name: string;
+    description: string;
+    monthlyPrice: number;
+    annualPrice: number;
+    analysisLimit: number; // -1 for unlimited
+    features: string[];
+    isPopular: boolean;
 }

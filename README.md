@@ -1,3 +1,4 @@
+
 # It Pencils - Real Estate Deal Analyzer
 
 This is a powerful real estate analysis tool designed to help investors make data-driven decisions. It uses the Google Gemini API to analyze property data from various sources and provides comprehensive financial metrics and investment recommendations.
@@ -61,6 +62,37 @@ CREATE TABLE "properties" (
   "created_at" TIMESTAMPTZ DEFAULT (now()),
   "updated_at" TIMESTAMPTZ DEFAULT (now())
 );
+
+CREATE TABLE "subscription_history" (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER REFERENCES "users" ("id"),
+    "old_tier" VARCHAR(50),
+    "new_tier" VARCHAR(50),
+    "change_type" VARCHAR(20), -- 'new', 'upgrade', 'downgrade', 'cancel'
+    "amount" NUMERIC,
+    "created_at" TIMESTAMPTZ DEFAULT (now())
+);
+
+-- [NEW] Table for Dynamic Plan Configuration
+CREATE TABLE plans (
+    key VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    monthly_price INTEGER DEFAULT 0,
+    annual_price INTEGER DEFAULT 0,
+    analysis_limit INTEGER DEFAULT 0, -- -1 for unlimited
+    features JSONB,
+    is_popular BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Optional: Insert Default Plans
+INSERT INTO plans (key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular) VALUES
+('Free', 'Free', 'For investors just getting started.', 0, 0, 3, '["3 AI Property Analyses (Lifetime)", "Standard Rental Analysis", "Save Properties to Browser"]'::jsonb, false),
+('Starter', 'Starter', 'For active investors analyzing a few deals a month.', 9, 90, 15, '["15 AI Property Analyses per Month", "Standard Rental Analysis", "Comparison Tool", "Email Support"]'::jsonb, false),
+('Pro', 'Pro', 'For serious investors needing advanced tools.', 29, 290, 100, '["100 AI Property Analyses per Month", "Creative Finance Calculators", "Comparison Tool", "Export Data", "Priority Support"]'::jsonb, true),
+('Team', 'Team', 'For professional teams.', 79, 790, -1, '["Unlimited Analyses", "All Pro Features", "Dedicated Support"]'::jsonb, false)
+ON CONFLICT DO NOTHING;
 ```
 
 ### Step 3: Install Dependencies & Run
@@ -102,125 +134,3 @@ When you deploy your application to a hosting provider like Render, Heroku, or V
     -   `JWT_SECRET`
     -   `VITE_GOOGLE_CLIENT_ID`
 4.  After adding the variables, Render will automatically trigger a new deployment to apply the settings.
-
----
-
-## Troubleshooting
-
-### ✅ Fixing Google Login Errors: "Blocked a frame...", "origin is not allowed", or a 403 error
-
-This error means there is **100% a configuration mismatch** between the URL in your browser, your environment variables, and your settings in your Google Cloud Console. The application code is working correctly, but Google is denying the login request. Follow this checklist **exactly** to fix it.
-
-#### Step 1: Check Your Browser URL & Environment Variables
-
-1.  **Look at your browser's address bar.** It will most likely say `http://localhost:5173`. Note the exact origin (the `http://...:port` part).
-2.  **Go to the login page.** It will now show a **"Configuration Error"** box with the exact Client ID the app is currently using.
-3.  **Compare this Client ID** character-for-character with the Client ID you have in your `.env` file (for local development) or in your Render Environment Variables (for production).
-4.  If they don't match, copy the correct ID from Google Console, paste it into your `.env` file (with the `VITE_` prefix) or Render settings, and **immediately proceed to the next step.**
-
-<br>
-
-> **❗️ MOST COMMON MISTAKE: You MUST restart the server!**
-> The server only reads environment variables when it first starts. After you save any changes to `.env` (local) or your Render settings (production), you **must stop your local server** (`Ctrl + C`) and **restart it** with `npm run dev` and `npm run start:server`. For Render, saving the variables will trigger a new deployment automatically.
-
-<br>
-
-#### Step 2: Verify Google Cloud Console Settings
-
-1.  Go to the **Google Cloud Console Credentials page**: [https://console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials).
-2.  Select the correct project, then click on your "OAuth 2.0 Client ID" to edit it.
-
-3.  **Check "Authorized JavaScript origins":**
-    -   This section tells Google which websites are allowed to use this Client ID.
-    -   Click **"+ ADD URI"**.
-    -   Add entries that **exactly match** your browser's origin. For local development, add both:
-        - `http://localhost:5173`
-        - `http://127.0.0.1:5173`
-    -   For your live deployed site (e.g., on Render), add your production URL:
-        - `https://your-app-name.onrender.com`
-    -   **Critical:** Check for typos. It must be `http`, not `https`. There must be **NO trailing slash (`/`)**. The port number must match what's in your browser.
-
-4.  **Check "Authorized redirect URIs":**
-    -   **This section MUST BE EMPTY.**
-    -   The Google Sign-In library used in this app does not use redirects. Having a redirect URI configured **will cause an error**.
-    -   If there are any entries here, click the trash can icon next to each one to remove them.
-
-#### Step 3: Save and Hard Reload
-
-1.  Click the blue **"Save"** button at the bottom of the Google Cloud Console page.
-2.  **Wait for 1-2 minutes.** It can take a moment for Google's settings to update across their servers.
-3.  Go back to your application tab (e.g., `http://localhost:5173/#/login`).
-4.  Perform a **hard reload** to clear your browser's cache:
-    -   **Windows/Linux:** `Ctrl + Shift + R`
-    -   **Mac:** `Cmd + Shift + R`
-5.  Try clicking "Sign in with Google" again. The issue should now be resolved.
-
-### ✅ Fixing Database Errors
-
-#### Scenario 1: `column "google_id" does not exist` or `column "subscription_tier" does not exist`
-
-If you see a 500 Internal Server Error after logging in, and your server logs show an error like `column "google_id" of relation "users" does not exist`, it means your database schema is out of date. You likely created the `users` table before the Google-specific columns were added.
-
-**Do not drop your tables.** You can fix this without losing any data.
-
-1.  Connect to your PostgreSQL database with your database client (DBeaver, pgAdmin, etc.).
-2.  Run the following SQL commands to add the missing columns:
-
-```sql
--- Adds the column to store the unique Google user ID
-ALTER TABLE "users" ADD COLUMN "google_id" VARCHAR(255) UNIQUE;
-
--- Adds the column to store the URL for the user's profile picture
-ALTER TABLE "users" ADD COLUMN "profile_picture_url" TEXT;
-
--- Adds the column to store the user's selected subscription plan
-ALTER TABLE "users" ADD COLUMN "subscription_tier" VARCHAR(50);
-
--- Adds a timestamp that automatically updates when the user record is changed
-ALTER TABLE "users" ADD COLUMN "updated_at" TIMESTAMPTZ DEFAULT (now());
-
--- Adds a counter for AI property analyses
-ALTER TABLE "users" ADD COLUMN "analysis_count" INTEGER DEFAULT 0;
-
--- Adds a timestamp to track when the monthly analysis limit should reset
-ALTER TABLE "users" ADD COLUMN "analysis_limit_reset_at" TIMESTAMPTZ;
-```
-
-After running these commands, the error will be resolved. You do not need to redeploy your application.
-
-#### Scenario 2: What if I'm connected to the right database, but still get the error?
-
-This can happen if you have multiple databases within one PostgreSQL instance (e.g., `itPenciles`, `terrace_db`, `postgres`). Your `DATABASE_URL` might be pointing to a database where you forgot to run the setup scripts.
-
-1.  **Check your server logs** for the line `✅ Successfully connected to database: 'your_db_name'`. This tells you exactly which database the application is using.
-2.  **Confirm this is the database you intended.** If not, correct the `DATABASE_URL` in your Render Environment settings.
-3.  If the name is correct, it means the schema inside `'your_db_name'` is wrong.
-4.  **Connect your database client directly to `'your_db_name'`** and run the `ALTER TABLE` commands from Scenario 1. This ensures you are updating the correct database that your application is actively connected to.
-
-#### Scenario 3: Starting Over with a Fresh Database (The Ultimate Fix)
-
-If you are still facing persistent database issues, the fastest and most reliable solution is to create a new, clean database and point your application to it. This eliminates any possibility of hidden misconfigurations.
-
-**Step 1: Create the New Database in Render**
-1.  Go to your **[Render Dashboard](https://dashboard.render.com/)**.
-2.  Click the **"New +"** button, then select **"PostgreSQL"**.
-3.  Give it a unique name (e.g., `it-pencils-db`), select a region, and click **"Create Database"**.
-4.  Wait for the new database status to become **"Available"**.
-
-**Step 2: Connect and Set Up the Schema**
-1.  Click on your new database's name in Render to view its details.
-2.  Scroll to the **"Connections"** section and copy the **"External Database URL"**.
-3.  Use this URL in your database client (DBeaver, TablePlus, etc.) to connect to the new, empty database.
-4.  Run the `CREATE TABLE` scripts from the "Set Up the Database" section of this README to create the `users` and `properties` tables.
-
-**Step 3: Update Your Application's `DATABASE_URL`**
-1.  Go back to your new database's page on the Render dashboard.
-2.  From the "Connections" section, copy the **"Internal Database URL"**.
-    *   **Crucial:** Use the **Internal URL** for your app service. It's faster and more secure.
-3.  Navigate to your main web service (the "It Pencils" application) in Render.
-4.  Go to the **"Environment"** tab.
-5.  Find the `DATABASE_URL` environment variable and edit it.
-6.  Paste the new **Internal Database URL** you just copied.
-7.  Click **"Save Changes"**.
-
-Render will automatically trigger a new deployment. Once it's live, your application will be connected to the fresh, correctly configured database, and all schema-related login issues will be resolved.

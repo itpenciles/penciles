@@ -26,6 +26,7 @@ import CheckoutPage from './components/CheckoutPage';
 import UpgradePage from './components/UpgradePage';
 import FAQPage from './components/FAQPage';
 import AdminDashboard from './components/AdminDashboard';
+import AdminSetup from './components/AdminSetup';
 
 // A component to protect routes that require authentication.
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
@@ -102,6 +103,7 @@ const App: React.FC = () => {
              <Route element={<ProtectedRoute adminOnly={true} />}>
                 <Route element={<MainLayout />}>
                     <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/setup" element={<AdminSetup />} />
                 </Route>
              </Route>
             

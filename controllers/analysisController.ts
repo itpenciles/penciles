@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 import { analyzePropertyWithGemini } from '../services/geminiService.js';
 import { query } from '../db.js';
@@ -33,9 +34,20 @@ export const analyzeProperty = async (req: AuthRequest, res: Response) => {
 
         let { subscription_tier: tier, analysis_count: count, analysis_limit_reset_at: resetAt } = userResult.rows[0];
         
-        const limits: { [key in SubscriptionTier]?: number } = { 'Free': 3, 'Starter': 15, 'Pro': 100 };
-        const limit = tier === 'Team' ? Infinity : (limits[tier as SubscriptionTier] || 0);
-        const isMonthlyPlan = ['Starter', 'Pro'].includes(tier);
+        // Fetch dynamic limit from DB
+        let limit = 0;
+        const planResult = await query('SELECT analysis_limit FROM plans WHERE key = $1', [tier]);
+        
+        if (planResult.rows.length > 0) {
+            const dbLimit = planResult.rows[0].analysis_limit;
+            limit = dbLimit === -1 ? Infinity : dbLimit;
+        } else {
+            // Fallback to hardcoded defaults if plan not in DB
+            const limits: { [key: string]: number } = { 'Free': 3, 'Starter': 15, 'Pro': 100, 'Team': Infinity };
+            limit = limits[tier] !== undefined ? limits[tier] : 0;
+        }
+
+        const isMonthlyPlan = tier !== 'Free'; // Assuming non-free plans are monthly based
 
         // Check and reset monthly counter if needed
         if (isMonthlyPlan && resetAt && new Date(resetAt) < new Date()) {
