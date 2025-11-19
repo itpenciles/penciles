@@ -13,6 +13,7 @@ const AdminDashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
     const [range, setRange] = useState('7');
+    const [filterStatus, setFilterStatus] = useState<'All' | 'Active' | 'Cancelled'>('All');
 
     useEffect(() => {
         fetchData();
@@ -60,6 +61,11 @@ const AdminDashboard = () => {
             }
         }
     };
+
+    const filteredUsers = users.filter(user => {
+        if (filterStatus === 'All') return true;
+        return user.status === filterStatus;
+    });
 
     if (isLoading && !stats) return <div className="p-8 text-center"><Loader text="Loading Admin Dashboard..." /></div>;
 
@@ -127,14 +133,27 @@ const AdminDashboard = () => {
 
             {/* User Table */}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 mt-8">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-bold text-gray-800">Subscribers List</h2>
+                <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-center">
+                    <h2 className="text-lg font-bold text-gray-800 mb-2 sm:mb-0">Subscribers List</h2>
+                    <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-500">Status:</span>
+                        <select 
+                            value={filterStatus} 
+                            onChange={(e) => setFilterStatus(e.target.value as any)}
+                            className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-brand-blue focus:border-brand-blue"
+                        >
+                            <option value="All">All</option>
+                            <option value="Active">Active</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
                 </div>
                 <table className="w-full text-left">
                     <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                         <tr>
                             <th className="px-6 py-3">Name</th>
                             <th className="px-6 py-3">Email</th>
+                            <th className="px-6 py-3">Status</th>
                             <th className="px-6 py-3">Tier</th>
                             <th className="px-6 py-3">Monthly $</th>
                             <th className="px-6 py-3">Annual $</th>
@@ -143,10 +162,15 @@ const AdminDashboard = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-sm">
-                        {users.map(user => (
+                        {filteredUsers.map(user => (
                             <tr key={user.id} onClick={() => handleUserClick(user)} className="hover:bg-gray-50 cursor-pointer transition-colors">
                                 <td className="px-6 py-4 font-medium text-gray-900">{user.name}</td>
                                 <td className="px-6 py-4 text-gray-500">{user.email}</td>
+                                <td className="px-6 py-4">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                                        {user.status}
+                                    </span>
+                                </td>
                                 <td className="px-6 py-4"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">{user.subscriptionTier || 'Free'}</span></td>
                                 <td className="px-6 py-4">${(user as any).monthlyVal || 0}</td>
                                 <td className="px-6 py-4">${(user as any).annualVal || 0}</td>
@@ -154,6 +178,11 @@ const AdminDashboard = () => {
                                 <td className="px-6 py-4 font-bold">{(user as any).propertyCount || 0}</td>
                             </tr>
                         ))}
+                        {filteredUsers.length === 0 && (
+                            <tr>
+                                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">No users found matching filter.</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

@@ -100,29 +100,44 @@ export const getAdminStats = async (req: Request, res: Response) => {
 
 export const getUsers = async (_req: Request, res: Response) => {
     try {
+        // Include subscription history count to determine status
         const usersQuery = `
             SELECT 
                 u.id, u.email, u.name, u.role, 
                 COALESCE(u.subscription_tier, 'Free') as subscription_tier,
                 u.created_at,
-                (SELECT COUNT(*) FROM properties p WHERE p.user_id = u.id) as property_count
+                (SELECT COUNT(*) FROM properties p WHERE p.user_id = u.id) as property_count,
+                (SELECT COUNT(*) FROM subscription_history sh WHERE sh.user_id = u.id) as history_count
             FROM users u
             ORDER BY u.created_at DESC
             LIMIT 100
         `;
         const result = await query(usersQuery);
         
-        const users = result.rows.map((u: any) => ({
-            id: u.id,
-            email: u.email,
-            name: u.name,
-            role: u.role,
-            subscriptionTier: u.subscription_tier || 'Free', 
-            createdAt: new Date(u.created_at).toLocaleDateString(),
-            propertyCount: parseInt(u.property_count || 0),
-            monthlyVal: getPrice(u.subscription_tier, 'monthly'),
-            annualVal: getPrice(u.subscription_tier, 'annual')
-        }));
+        const users = result.rows.map((u: any) => {
+            const tier = u.subscription_tier || 'Free';
+            const historyCount = parseInt(u.history_count || 0);
+            
+            // Logic: If on Free tier AND has history, they are 'Cancelled'. Otherwise 'Active'.
+            // Paid users are always Active. Free users with no history are Active (Freemium).
+            let status = 'Active';
+            if (tier === 'Free' && historyCount > 0) {
+                status = 'Cancelled';
+            }
+
+            return {
+                id: u.id,
+                email: u.email,
+                name: u.name,
+                role: u.role,
+                subscriptionTier: tier, 
+                createdAt: new Date(u.created_at).toLocaleDateString(),
+                propertyCount: parseInt(u.property_count || 0),
+                monthlyVal: getPrice(tier, 'monthly'),
+                annualVal: getPrice(tier, 'annual'),
+                status: status
+            };
+        });
 
         res.json(users);
     } catch (error) {

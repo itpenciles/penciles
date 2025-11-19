@@ -203,6 +203,7 @@ export interface User {
   reportDownloadCount?: number;
   createdAt?: string;
   propertyCount?: number; // Computed field for lists
+  status?: 'Active' | 'Cancelled'; // Computed field for lists
 }
 
 export interface AdminStats {
