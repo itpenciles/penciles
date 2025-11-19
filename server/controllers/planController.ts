@@ -67,7 +67,7 @@ const DEFAULT_PLANS: Plan[] = [
     }
 ];
 
-export const getAllPlans = async (req: Request, res: Response) => {
+export const getAllPlans = async (_req: Request, res: Response) => {
     try {
         // Try to fetch from DB
         const result = await query('SELECT key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular FROM plans ORDER BY monthly_price ASC');

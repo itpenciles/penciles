@@ -2,7 +2,6 @@
 import { Request, Response } from 'express';
 import { analyzePropertyWithGemini } from '../services/geminiService.js';
 import { query } from '../db.js';
-import { SubscriptionTier } from '../../types.js';
 
 type AuthRequest = Request & {
     user?: { id: string };
