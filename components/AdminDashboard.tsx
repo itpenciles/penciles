@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { AdminStats, User, UserDetailStats } from '../types';
+import { AdminStats, User, UserDetailStats, BillingHistoryItem } from '../types';
 import apiClient from '../services/apiClient';
-import { XMarkIcon, UsersIcon, BanknotesIcon, ArrowTrendingUpIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
+import { XMarkIcon, UsersIcon, BanknotesIcon, ArrowTrendingUpIcon, DocumentArrowDownIcon, TableCellsIcon, ExclamationTriangleIcon } from '../constants';
 import Loader from './Loader';
 
 const AdminDashboard = () => {
@@ -11,6 +11,7 @@ const AdminDashboard = () => {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [userDetailStats, setUserDetailStats] = useState<UserDetailStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isDetailLoading, setIsDetailLoading] = useState(false);
     const [range, setRange] = useState('7');
 
     useEffect(() => {
@@ -35,17 +36,33 @@ const AdminDashboard = () => {
 
     const handleUserClick = async (user: User) => {
         setSelectedUser(user);
+        setIsDetailLoading(true);
         try {
             const detail = await apiClient.get(`/admin/users/${user.id}`);
             setUserDetailStats(detail);
         } catch (e) {
             console.error("Failed to load user details", e);
+        } finally {
+            setIsDetailLoading(false);
+        }
+    };
+
+    const handleCancelSubscription = async (userId: string) => {
+        if (window.confirm("Are you sure you want to cancel this user's subscription? This action cannot be undone.")) {
+            try {
+                await apiClient.post(`/admin/users/${userId}/cancel`, {});
+                alert("Subscription cancelled successfully.");
+                // Refresh data
+                handleUserClick(selectedUser!);
+                fetchData();
+            } catch (e: any) {
+                alert("Failed to cancel subscription: " + e.message);
+            }
         }
     };
 
     if (isLoading && !stats) return <div className="p-8 text-center"><Loader text="Loading Admin Dashboard..." /></div>;
 
-    // Calculate max subscribers for graph scaling, ensure it's at least 1 to avoid division by zero
     const maxSubscribers = stats ? Math.max(1, ...stats.subscriberGraph.map(p => p.count)) : 1;
 
     return (
@@ -142,7 +159,7 @@ const AdminDashboard = () => {
             {/* User Detail Modal */}
             {selectedUser && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900">{selectedUser.name}</h2>
@@ -154,8 +171,11 @@ const AdminDashboard = () => {
                         </div>
                         
                         <div className="p-6">
-                            {userDetailStats ? (
+                            {isDetailLoading || !userDetailStats ? (
+                                <div className="py-12 text-center"><Loader text="Loading details..." /></div>
+                            ) : (
                                 <>
+                                    {/* --- Activity Overview --- */}
                                     <h3 className="font-bold text-gray-700 mb-4">Activity Overview</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                                         <DetailStat label="Logins" value={userDetailStats.activity.logins} />
@@ -164,8 +184,9 @@ const AdminDashboard = () => {
                                         <DetailStat label="CSV Exports" value={userDetailStats.activity.exports} icon={TableCellsIcon} />
                                     </div>
 
+                                    {/* --- Strategy Usage --- */}
                                     <h3 className="font-bold text-gray-700 mb-4">Strategy Usage</h3>
-                                    <div className="space-y-4">
+                                    <div className="space-y-4 mb-8">
                                         {userDetailStats.strategyUsage.map(s => (
                                             <div key={s.name}>
                                                 <div className="flex justify-between text-sm mb-1">
@@ -181,9 +202,114 @@ const AdminDashboard = () => {
                                             </div>
                                         ))}
                                     </div>
+
+                                    {/* --- Billing Summary --- */}
+                                    {userDetailStats.billingSummary && (
+                                        <div className="mb-8">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h3 className="font-bold text-gray-700">Billing Summary</h3>
+                                                {userDetailStats.billingSummary.status === 'Active' && userDetailStats.billingSummary.plan !== 'Free' && (
+                                                    <button 
+                                                        onClick={() => handleCancelSubscription(selectedUser.id)}
+                                                        className="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1 rounded hover:bg-red-100"
+                                                    >
+                                                        Cancel Subscription
+                                                    </button>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                                    <div>
+                                                        <span className="text-xs text-gray-500 block uppercase">Current Plan</span>
+                                                        <span className="font-bold text-gray-800">{userDetailStats.billingSummary.plan}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-xs text-gray-500 block uppercase">Status</span>
+                                                        <span className={`font-bold ${userDetailStats.billingSummary.status === 'Active' ? 'text-green-600' : 'text-red-600'}`}>
+                                                            {userDetailStats.billingSummary.status}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-xs text-gray-500 block uppercase">Billing Cycle</span>
+                                                        <span className="font-semibold text-gray-800">{userDetailStats.billingSummary.billingType}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-xs text-gray-500 block uppercase">Start Date</span>
+                                                        <span className="font-semibold text-gray-800">{userDetailStats.billingSummary.startDate}</span>
+                                                    </div>
+                                                    
+                                                    {userDetailStats.billingSummary.status === 'Active' && userDetailStats.billingSummary.plan !== 'Free' && (
+                                                        <div>
+                                                            <span className="text-xs text-gray-500 block uppercase">Next Billing Date</span>
+                                                            <span className="font-semibold text-gray-800">{userDetailStats.billingSummary.nextBillingDate}</span>
+                                                        </div>
+                                                    )}
+
+                                                    {userDetailStats.billingSummary.status === 'Cancelled' && (
+                                                        <>
+                                                            <div>
+                                                                <span className="text-xs text-gray-500 block uppercase">Cancellation Date</span>
+                                                                <span className="font-semibold text-red-600">{userDetailStats.billingSummary.cancellationDate}</span>
+                                                            </div>
+                                                            <div className="col-span-2 md:col-span-3 mt-2 pt-2 border-t border-gray-200">
+                                                                <span className="text-xs text-gray-500 block uppercase">Cancellation Reason</span>
+                                                                <span className="text-gray-700 italic">{userDetailStats.billingSummary.cancellationReason || 'Not specified'}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* --- Billing History --- */}
+                                    {userDetailStats.billingHistory && (
+                                        <div>
+                                            <h3 className="font-bold text-gray-700 mb-4">Billing History</h3>
+                                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                                <table className="w-full text-left text-sm">
+                                                    <thead className="bg-gray-50 text-gray-500 font-medium text-xs uppercase">
+                                                        <tr>
+                                                            <th className="px-4 py-3">Date</th>
+                                                            <th className="px-4 py-3">Description</th>
+                                                            <th className="px-4 py-3">Amount</th>
+                                                            <th className="px-4 py-3">Payment Method</th>
+                                                            <th className="px-4 py-3">Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-200">
+                                                        {userDetailStats.billingHistory.length > 0 ? (
+                                                            userDetailStats.billingHistory.map((item) => (
+                                                                <tr key={item.id}>
+                                                                    <td className="px-4 py-3 text-gray-900">{item.date}</td>
+                                                                    <td className="px-4 py-3 text-gray-600">{item.billingType} Subscription</td>
+                                                                    <td className="px-4 py-3 font-medium text-gray-900">${item.amount.toFixed(2)}</td>
+                                                                    <td className="px-4 py-3 text-gray-600">
+                                                                        <span className="inline-flex items-center">
+                                                                            {item.cardType} •••• {item.last4}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <span className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-medium">
+                                                                            {item.status}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            ))
+                                                        ) : (
+                                                            <tr>
+                                                                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
+                                                                    No billing history available.
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
                                 </>
-                            ) : (
-                                <div className="py-12 text-center"><Loader text="Loading details..." /></div>
                             )}
                         </div>
                     </div>

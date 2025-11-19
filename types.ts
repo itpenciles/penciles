@@ -225,6 +225,26 @@ export interface AdminStats {
   }[];
 }
 
+export interface BillingHistoryItem {
+    id: string;
+    date: string;
+    amount: number;
+    billingType: 'Monthly' | 'Annually';
+    cardType: string;
+    last4: string;
+    status: 'Paid' | 'Refunded' | 'Failed';
+}
+
+export interface BillingSummary {
+    status: 'Active' | 'Cancelled' | 'Past Due';
+    plan: string;
+    billingType: 'Monthly' | 'Annually';
+    startDate: string;
+    nextBillingDate?: string;
+    cancellationDate?: string;
+    cancellationReason?: string;
+}
+
 export interface UserDetailStats {
     strategyUsage: { name: string; count: number }[];
     activity: {
@@ -233,4 +253,6 @@ export interface UserDetailStats {
         exports: number;
         downloads: number;
     };
+    billingSummary?: BillingSummary;
+    billingHistory?: BillingHistoryItem[];
 }

@@ -112,15 +112,14 @@ export const getUsers = async (_req: Request, res: Response) => {
         `;
         const result = await query(usersQuery);
         
-        // FIX: Map snake_case DB fields to camelCase properties for frontend
         const users = result.rows.map((u: any) => ({
             id: u.id,
             email: u.email,
             name: u.name,
             role: u.role,
-            subscriptionTier: u.subscription_tier || 'Free', // Explicit map with fallback
-            createdAt: new Date(u.created_at).toLocaleDateString(), // Explicit map
-            propertyCount: parseInt(u.property_count || 0), // Explicit map
+            subscriptionTier: u.subscription_tier || 'Free', 
+            createdAt: new Date(u.created_at).toLocaleDateString(),
+            propertyCount: parseInt(u.property_count || 0),
             monthlyVal: getPrice(u.subscription_tier, 'monthly'),
             annualVal: getPrice(u.subscription_tier, 'annual')
         }));
@@ -135,14 +134,14 @@ export const getUsers = async (_req: Request, res: Response) => {
 export const getUserDetail = async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
-        // Basic activity
-        const userQuery = `SELECT login_count, last_login_at, csv_export_count, report_download_count FROM users WHERE id = $1`;
+        // 1. Basic user info
+        const userQuery = `SELECT id, login_count, last_login_at, csv_export_count, report_download_count, subscription_tier, created_at, updated_at FROM users WHERE id = $1`;
         const userRes = await query(userQuery, [id]);
         
         if (userRes.rows.length === 0) return res.status(404).json({ message: 'User not found' });
         const u = userRes.rows[0];
 
-        // Strategy usage
+        // 2. Strategy usage
         const strategyQuery = `
             SELECT 
                 property_data->'recommendation'->>'strategyAnalyzed' as strategy,
@@ -153,7 +152,6 @@ export const getUserDetail = async (req: Request, res: Response) => {
         `;
         const strategyRes = await query(strategyQuery, [id]);
         
-        // Format for chart
         const strategies = [
             { name: 'Rental', count: 0 },
             { name: 'Wholesale', count: 0 },
@@ -166,6 +164,57 @@ export const getUserDetail = async (req: Request, res: Response) => {
             if (s) s.count = parseInt(row.count);
         });
 
+        // 3. Billing History & Summary Construction
+        const historyQuery = `SELECT * FROM subscription_history WHERE user_id = $1 ORDER BY created_at DESC`;
+        const historyRes = await query(historyQuery, [id]);
+        
+        // Mock Data Helpers (Since DB doesn't store card info yet)
+        const MOCK_CARDS = ['Visa', 'MasterCard', 'Amex'];
+        const getRandomCard = () => MOCK_CARDS[Math.floor(Math.random() * MOCK_CARDS.length)];
+        const getRandomLast4 = () => Math.floor(1000 + Math.random() * 9000).toString();
+
+        const billingHistory = historyRes.rows.map((row: any) => ({
+            id: row.id,
+            date: new Date(row.created_at).toLocaleDateString(),
+            amount: Number(row.amount),
+            billingType: 'Monthly', // Defaulting as current logic is mostly monthly
+            cardType: getRandomCard(), // Mock
+            last4: getRandomLast4(), // Mock
+            status: 'Paid'
+        }));
+
+        // Construct Billing Summary
+        const isFree = !u.subscription_tier || u.subscription_tier === 'Free';
+        const lastChange = historyRes.rows[0];
+        
+        // Determine Start Date (First upgrade)
+        const startRow = historyRes.rows.slice().reverse().find((r: any) => r.change_type === 'new' || r.change_type === 'upgrade');
+        const startDate = startRow ? new Date(startRow.created_at).toLocaleDateString() : new Date(u.created_at).toLocaleDateString();
+
+        // Determine Next Billing or Cancellation
+        let nextBillingDate = undefined;
+        let cancellationDate = undefined;
+        let cancellationReason = undefined;
+
+        if (!isFree) {
+            const updated = new Date(u.updated_at || new Date());
+            updated.setMonth(updated.getMonth() + 1);
+            nextBillingDate = updated.toLocaleDateString();
+        } else if (lastChange && (lastChange.change_type === 'cancel' || lastChange.change_type === 'downgrade')) {
+            cancellationDate = new Date(lastChange.created_at).toLocaleDateString();
+            cancellationReason = "User requested cancellation"; // Generic reason
+        }
+
+        const billingSummary = {
+            status: isFree ? (historyRes.rows.length > 0 ? 'Cancelled' : 'Active') : 'Active',
+            plan: u.subscription_tier || 'Free',
+            billingType: 'Monthly',
+            startDate: startDate,
+            nextBillingDate: nextBillingDate,
+            cancellationDate: cancellationDate,
+            cancellationReason: cancellationReason
+        };
+
         res.json({
             activity: {
                 logins: u.login_count || 0,
@@ -173,12 +222,43 @@ export const getUserDetail = async (req: Request, res: Response) => {
                 exports: u.csv_export_count || 0,
                 downloads: u.report_download_count || 0
             },
-            strategyUsage: strategies
+            strategyUsage: strategies,
+            billingSummary: billingSummary,
+            billingHistory: billingHistory
         });
 
     } catch (error) {
          console.error('Error fetching user detail:', error);
         res.status(500).json({ message: 'Server error fetching user detail' });
+    }
+};
+
+export const cancelUserSubscription = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    try {
+        const userRes = await query('SELECT subscription_tier FROM users WHERE id = $1', [id]);
+        if (userRes.rows.length === 0) return res.status(404).json({ message: 'User not found' });
+        
+        const oldTier = userRes.rows[0].subscription_tier || 'Free';
+        
+        if (oldTier === 'Free') {
+            return res.status(400).json({ message: 'User is already on Free plan' });
+        }
+
+        await query(
+            'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_limit_reset_at = NULL WHERE id = $2',
+            ['Free', id]
+        );
+
+        await query(
+            `INSERT INTO subscription_history (user_id, old_tier, new_tier, change_type, amount) VALUES ($1, $2, $3, $4, $5)`,
+            [id, oldTier, 'Free', 'cancel', 0]
+        );
+
+        res.json({ message: 'Subscription cancelled successfully' });
+    } catch (error) {
+        console.error('Error cancelling subscription:', error);
+        res.status(500).json({ message: 'Server error cancelling subscription' });
     }
 };
 
