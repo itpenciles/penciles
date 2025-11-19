@@ -1,3 +1,4 @@
+
 export type Strategy = 'Rental' | 'Wholesale' | 'Subject-To' | 'Seller Financing';
 
 export interface Unit {
@@ -195,4 +196,41 @@ export interface User {
   subscriptionTier?: SubscriptionTier | null;
   analysisCount: number;
   analysisLimitResetAt?: string | null;
+  role?: 'user' | 'admin';
+  lastLoginAt?: string;
+  loginCount?: number;
+  csvExportCount?: number;
+  reportDownloadCount?: number;
+  createdAt?: string;
+  propertyCount?: number; // Computed field for lists
+}
+
+export interface AdminStats {
+  today: {
+    newSubscribers: number;
+    revenue: number;
+    upgrades: number;
+    downgrades: number;
+    cancellations: number;
+  };
+  subscribersByTier: {
+    Free: number;
+    Starter: number;
+    Pro: number;
+    Team: number;
+  };
+  subscriberGraph: {
+    date: string;
+    count: number;
+  }[];
+}
+
+export interface UserDetailStats {
+    strategyUsage: { name: string; count: number }[];
+    activity: {
+        logins: number;
+        lastLogin: string;
+        exports: number;
+        downloads: number;
+    };
 }

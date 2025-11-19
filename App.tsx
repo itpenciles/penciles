@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
@@ -24,31 +25,33 @@ import SubscriptionPage from './components/SubscriptionPage';
 import CheckoutPage from './components/CheckoutPage';
 import UpgradePage from './components/UpgradePage';
 import FAQPage from './components/FAQPage';
+import AdminDashboard from './components/AdminDashboard';
 
 // A component to protect routes that require authentication.
-const ProtectedRoute: React.FC = () => {
+const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
     const { user, isAuthEnabled, isLoading } = useAuth();
     const location = useLocation();
 
     if (isLoading) {
-        // You can render a loading spinner here
         return <div>Loading...</div>;
     }
 
     if (isAuthEnabled && !user) {
-        // If auth is on and there's no user, redirect to the login page.
         return <Navigate to="/login" replace />;
+    }
+    
+    if (adminOnly && user?.role !== 'admin') {
+        return <Navigate to="/dashboard" replace />;
     }
 
     // If user is logged in but hasn't selected a subscription, redirect them.
-    if (user && !user.subscriptionTier) {
+    if (user && !user.subscriptionTier && !adminOnly) {
         // Allow access only to the subscription and checkout pages
         if (location.pathname !== '/subscribe' && !location.pathname.startsWith('/checkout')) {
             return <Navigate to="/subscribe" replace />;
         }
     }
 
-    // If auth is disabled, or if the user is logged in with a subscription, show the content.
     return <Outlet />;
 };
 
@@ -94,6 +97,13 @@ const App: React.FC = () => {
                 <Route path="/faq" element={<FAQPage />} />
               </Route>
             </Route>
+            
+            {/* Admin Route */}
+             <Route element={<ProtectedRoute adminOnly={true} />}>
+                <Route element={<MainLayout />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                </Route>
+             </Route>
             
             {/* Fallback for any unknown routes */}
             <Route path="*" element={<Navigate to="/" replace />} />

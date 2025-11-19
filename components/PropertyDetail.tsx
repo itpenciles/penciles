@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
@@ -5,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Property, Financials, WholesaleInputs, SubjectToInputs, SellerFinancingInputs, Strategy } from '../types';
 import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../contexts/PropertyContext';
 import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
+import apiClient from '../services/apiClient';
 
 // --- Icons ---
 const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -12,6 +14,7 @@ const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="ht
 const formatCurrency = (amount: number, precision = 0) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: precision, maximumFractionDigits: precision }).format(amount);
 
 // --- EXIT STRATEGY DATA ---
+// ... (Keep existing Exit Strategy Data constants WHOLESALE_EXIT_STRATEGIES, SUBJECT_TO_EXIT_STRATEGIES, SELLER_FINANCING_EXIT_STRATEGIES exactly as is)
 interface ExitPoint {
   title: string;
   description: string;
@@ -182,6 +185,7 @@ const PropertyDetail = () => {
 
 // Sub-components
 
+// ... (StrategyLockedTooltip, ReportLockedTooltip, StrategySelector, RecommendationBadge, PropertyDetailsCard, DetailItem, InvestmentRecommendationCard, MarketAnalysisCard, GoogleMapCard - KEEP AS IS)
 const StrategyLockedTooltip: React.FC<{ children: React.ReactNode; isLocked: boolean }> = ({ children, isLocked }) => {
     const navigate = useNavigate();
     if (!isLocked) return <>{children}</>;
@@ -446,13 +450,21 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
         setActiveTab('Metrics');
     }, [activeStrategy]);
 
-    const handlePrint = () => {
+    const handlePrint = async () => {
+        try {
+            await apiClient.post('/user/track', { action: 'print_report' });
+        } catch (e) { console.error(e); }
         window.print();
     };
 
-    const handleExportCSV = () => {
+    const handleExportCSV = async () => {
+        try {
+            await apiClient.post('/user/track', { action: 'export_csv' });
+        } catch (e) { console.error(e); }
+
         const { details, financials, calculations, recommendation } = property;
         const rows = [
+            // ... (rest of CSV generation logic remains the same)
             ['Property Analysis Report'],
             ['Property Address', `"${property.address}"`],
             ['Date Analyzed', `"${property.dateAnalyzed}"`],
@@ -614,6 +626,7 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
     );
 };
 
+// ... (Rest of the components - TabButton, MetricBox, MetricsTab, ExpensesTab, ExpenseRow, AdjustTab, InputField, SelectField, ToggleField, SliderField, InvestmentSummaryBreakdown, SummaryRow - KEEP AS IS)
 const TabButton: React.FC<{ name: string, activeTab: string, setActiveTab: (name: string) => void}> = ({ name, activeTab, setActiveTab }) => (
     <button onClick={() => setActiveTab(name)} className={`px-4 py-1 text-sm font-semibold rounded-md transition-colors ${activeTab === name ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}>
         {name}
@@ -875,9 +888,8 @@ const ExitStrategyGuide = ({ title, strategies }: { title: string, strategies: E
     </div>
 );
 
-
-// --- WHOLESALE STRATEGY COMPONENTS ---
-
+// ... (WholesaleMetricsTab, WholesaleParamsTab, SubjectToMetricsTab, SubjectToParamsTab, SellerFinancingMetricsTab, SellerFinancingParamsTab, SaveChangesFooter, InputField, SelectField, ToggleField, SliderField, InvestmentSummaryBreakdown, SummaryRow - KEEP ALL AS IS)
+// [OMITTED FOR BREVITY - NO CHANGES]
 const CalculationRow = ({ label, value, isSubTotal=false, isTotal=false, isNegative=false, color='default' } : {label:string, value:string, isSubTotal?:boolean, isTotal?:boolean, isNegative?:boolean, color?: 'green' | 'red' | 'default' }) => {
     const colorClasses = {
         green: 'text-green-600',

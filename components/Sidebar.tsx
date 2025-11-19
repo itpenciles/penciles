@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { BuildingOfficeIcon, ArrowRightOnRectangleIcon } from '../constants';
+import { BuildingOfficeIcon, ArrowRightOnRectangleIcon, ChartBarIcon } from '../constants';
 import { SIDEBAR_LINKS } from '../constants';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
@@ -95,6 +96,26 @@ const Sidebar = () => {
             {link.name}
           </NavLink>
         ))}
+        
+        {user?.role === 'admin' && (
+           <div className="pt-4 border-t border-gray-200 mt-4">
+                <span className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Administration</span>
+                <NavLink
+                    to="/admin"
+                    className={({ isActive }) =>
+                    `flex items-center px-4 py-2 mt-2 text-sm font-medium rounded-md transition-colors duration-150 ${
+                        isActive
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`
+                    }
+                >
+                    <ChartBarIcon className="h-5 w-5 mr-3" />
+                    Admin Dashboard
+                </NavLink>
+           </div>
+        )}
+
       </nav>
       <div className="px-4 py-4 border-t border-gray-200">
         <h3 className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quick Metrics</h3>

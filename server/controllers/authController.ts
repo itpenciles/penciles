@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
@@ -40,15 +41,18 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
 
         const { sub: googleId, email, name, picture: profilePictureUrl } = payload;
         
+        // Upsert user and update login stats
         const userUpsertQuery = `
-            INSERT INTO users (email, name, google_id, profile_picture_url)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO users (email, name, google_id, profile_picture_url, login_count, last_login_at)
+            VALUES ($1, $2, $3, $4, 1, now())
             ON CONFLICT (email) DO UPDATE 
             SET name = EXCLUDED.name,
                 google_id = EXCLUDED.google_id,
                 profile_picture_url = EXCLUDED.profile_picture_url,
-                updated_at = now()
-            RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at;
+                updated_at = now(),
+                login_count = users.login_count + 1,
+                last_login_at = now()
+            RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role;
         `;
 
         const userResult = await query(userUpsertQuery, [email, name, googleId, profilePictureUrl]);
@@ -61,7 +65,8 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             profilePictureUrl: dbUser.profile_picture_url,
             subscriptionTier: dbUser.subscription_tier || null,
             analysisCount: dbUser.analysis_count,
-            analysisLimitResetAt: dbUser.analysis_limit_reset_at
+            analysisLimitResetAt: dbUser.analysis_limit_reset_at,
+            role: dbUser.role || 'user'
         };
         
         const jwtToken = jwt.sign(
@@ -73,6 +78,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
                 subscriptionTier: user.subscriptionTier,
                 analysisCount: user.analysisCount,
                 analysisLimitResetAt: user.analysisLimitResetAt,
+                role: user.role
             }, 
             process.env.JWT_SECRET!, 
             { expiresIn: '7d' }
@@ -92,7 +98,7 @@ export const handleGoogleLogin = async (req: Request, res: Response) => {
             const missingColumn = match ? match[1] : 'a required column';
 
             // Check if the missing column is one we expect during setup
-            if (['google_id', 'subscription_tier', 'updated_at', 'analysis_count', 'analysis_limit_reset_at'].includes(missingColumn)) {
+            if (['google_id', 'subscription_tier', 'updated_at', 'analysis_count', 'analysis_limit_reset_at', 'role', 'login_count'].includes(missingColumn)) {
                 const dbHost = pool.options.host || 'unknown host';
                 const dbName = pool.options.database || 'unknown database';
                 const detailedMessage = `Database Schema Mismatch on '${dbName}@${dbHost}'. The 'users' table is missing the '${missingColumn}' column. Please run the ALTER TABLE script from the README.`;
