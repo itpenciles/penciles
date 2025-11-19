@@ -45,6 +45,9 @@ const AdminDashboard = () => {
 
     if (isLoading && !stats) return <div className="p-8 text-center"><Loader text="Loading Admin Dashboard..." /></div>;
 
+    // Calculate max subscribers for graph scaling, ensure it's at least 1 to avoid division by zero
+    const maxSubscribers = stats ? Math.max(1, ...stats.subscriberGraph.map(p => p.count)) : 1;
+
     return (
         <div className="p-8 bg-gray-50 min-h-screen">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
@@ -86,15 +89,15 @@ const AdminDashboard = () => {
                             ))}
                         </div>
                     </div>
-                    <div className="h-64 flex items-end space-x-2">
+                    <div className="h-64 flex items-end space-x-2 pb-2 border-b border-gray-100">
                         {stats.subscriberGraph.map((point, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center group relative">
+                            <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
                                 <div 
-                                    className="w-full bg-brand-blue/80 rounded-t hover:bg-brand-blue transition-all" 
-                                    style={{ height: `${Math.max(5, (point.count / Math.max(...stats.subscriberGraph.map(p => p.count))) * 100)}%` }}
+                                    className="w-full bg-brand-blue/80 rounded-t hover:bg-brand-blue transition-all min-h-[4px]"
+                                    style={{ height: `${(point.count / maxSubscribers) * 100}%` }}
                                 ></div>
-                                <span className="text-[10px] text-gray-500 mt-1 truncate w-full text-center">{point.date}</span>
-                                <div className="absolute bottom-full mb-1 hidden group-hover:block bg-gray-800 text-white text-xs p-1 rounded z-10">
+                                <span className="text-[10px] text-gray-500 mt-2 truncate w-full text-center absolute -bottom-6">{point.date}</span>
+                                <div className="absolute bottom-full mb-1 hidden group-hover:block bg-gray-800 text-white text-xs p-1 rounded z-10 pointer-events-none">
                                     {point.count} users
                                 </div>
                             </div>
@@ -104,7 +107,7 @@ const AdminDashboard = () => {
             )}
 
             {/* User Table */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 mt-8">
                 <div className="px-6 py-4 border-b border-gray-200">
                     <h2 className="text-lg font-bold text-gray-800">Subscribers List</h2>
                 </div>

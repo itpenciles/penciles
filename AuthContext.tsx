@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, SubscriptionTier } from '../types';
@@ -166,6 +167,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             subscriptionTier: decodedToken.subscriptionTier || null,
                             analysisCount: decodedToken.analysisCount || 0,
                             analysisLimitResetAt: decodedToken.analysisLimitResetAt || null,
+                            role: decodedToken.role || 'user', // FIX: Restore role from token
                          };
                          setUser(userFromToken);
                      } else {

@@ -13,6 +13,7 @@ export const getAdminStats = async (req: Request, res: Response) => {
             const now = new Date();
             const start = new Date(now.getFullYear(), 0, 1);
             days = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+            days = Math.max(1, days); // Ensure at least 1 day
         }
 
         // 1. Today's Results
@@ -50,18 +51,24 @@ export const getAdminStats = async (req: Request, res: Response) => {
             )
             SELECT 
                 to_char(ds.date, 'Mon DD') as date,
-                COUNT(u.id) as count
+                COALESCE(COUNT(u.id), 0) as count
             FROM date_series ds
             LEFT JOIN users u ON u.created_at::date = ds.date
             GROUP BY ds.date
             ORDER BY ds.date;
         `;
         const graphResult = await query(graphQuery);
+        
+        // Force integer parsing for counts
+        const graphData = graphResult.rows.map(row => ({
+            date: row.date,
+            count: parseInt(row.count)
+        }));
 
         res.json({
             today: todayResult.rows[0],
             subscribersByTier: tiers,
-            subscriberGraph: graphResult.rows
+            subscriberGraph: graphData
         });
 
     } catch (error) {
@@ -84,9 +91,15 @@ export const getUsers = async (_req: Request, res: Response) => {
         `;
         const result = await query(usersQuery);
         
+        // FIX: Map snake_case DB fields to camelCase properties for frontend
         const users = result.rows.map((u: any) => ({
-            ...u,
-            created_at: new Date(u.created_at).toLocaleDateString(),
+            id: u.id,
+            email: u.email,
+            name: u.name,
+            role: u.role,
+            subscriptionTier: u.subscription_tier, // Map subscription_tier to subscriptionTier
+            createdAt: new Date(u.created_at).toLocaleDateString(), // Map created_at to createdAt
+            propertyCount: parseInt(u.property_count), // Map property_count to propertyCount
             monthlyVal: getPrice(u.subscription_tier, 'monthly'),
             annualVal: getPrice(u.subscription_tier, 'annual')
         }));
