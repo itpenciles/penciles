@@ -6,9 +6,9 @@ import { AuthRequest } from '../middleware/authMiddleware.js';
 
 const PAYG_COST_PER_ANALYSIS = 7.00;
 
-export const analyzeProperty = async (req: Request, res: Response) => {
+export const analyzeProperty = async (req: any, res: any) => {
     const { inputType, value } = req.body;
-    const userId = (req as AuthRequest).user?.id;
+    const userId = req.user?.id;
 
     if (!userId) {
         return res.status(401).json({ message: 'User not authenticated.' });
@@ -23,7 +23,7 @@ export const analyzeProperty = async (req: Request, res: Response) => {
     }
 
     try {
-        // --- Subscription Limit Check ---
+        // --- Subscription Limit & Credit Check ---
         const userResult = await query('SELECT subscription_tier, analysis_count, analysis_limit_reset_at, credits FROM users WHERE id = $1', [userId]);
         
         if (userResult.rows.length === 0) {
@@ -37,10 +37,10 @@ export const analyzeProperty = async (req: Request, res: Response) => {
 
         if (tier === 'PayAsYouGo') {
             if (credits < PAYG_COST_PER_ANALYSIS) {
-                return res.status(403).json({ message: `Insufficient credits. You need $${PAYG_COST_PER_ANALYSIS} to run an analysis, but you have $${credits.toFixed(2)}. Please top up your balance.` });
+                return res.status(403).json({ 
+                    message: `Insufficient credits. You need $${PAYG_COST_PER_ANALYSIS.toFixed(2)} to run an analysis, but you have $${credits.toFixed(2)}. Please top up your balance.` 
+                });
             }
-            // Proceed... deduction happens after success or here? 
-            // To avoid analyzing and then failing DB update, we could reserve, but for simplicity we verify balance now and deduct after.
         } else {
             // Standard Plan Logic
             let limit = 0;
@@ -76,7 +76,7 @@ export const analyzeProperty = async (req: Request, res: Response) => {
 
         // --- Post-Analysis Updates ---
         if (tier === 'PayAsYouGo') {
-            // Deduct credits
+            // Deduct credits and increment count for stats
             await query('UPDATE users SET credits = credits - $1, analysis_count = analysis_count + 1 WHERE id = $2', [PAYG_COST_PER_ANALYSIS, userId]);
         } else {
             // Increment User's Analysis Count

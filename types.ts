@@ -1,4 +1,5 @@
 
+
 export type Strategy = 'Rental' | 'Wholesale' | 'Subject-To' | 'Seller Financing';
 
 export interface Unit {

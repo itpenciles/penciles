@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import apiClient from '../services/apiClient';
 import Loader from './Loader';
@@ -54,7 +55,8 @@ const AdminSetup = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         let val: any = value;
-        if (type === 'number') val = Number(value);
+        // Don't convert numbers here immediately to avoid weird UX with clearing inputs, 
+        // but ensure we send numbers in handleSave. 
         if (type === 'checkbox') val = (e.target as HTMLInputElement).checked;
 
         setFormData(prev => ({ ...prev, [name]: val }));
@@ -82,12 +84,17 @@ const AdminSetup = () => {
             return;
         }
 
-        // Ensure numbers are numbers and not strings, fixing the API error
+        // Clean data before sending to API
+        // Ensure numbers are strictly numbers to avoid database errors
         const payload = {
-            ...formData,
+            key: formData.key,
+            name: formData.name,
+            description: formData.description,
             monthlyPrice: Number(formData.monthlyPrice || 0),
             annualPrice: Number(formData.annualPrice || 0),
             analysisLimit: Number(formData.analysisLimit || 0),
+            features: (formData.features || []).filter(f => f.trim() !== ''), // Remove empty features
+            isPopular: !!formData.isPopular
         };
 
         try {
@@ -100,7 +107,8 @@ const AdminSetup = () => {
             fetchPlans();
         } catch (e: any) {
             console.error("Save failed", e);
-            alert(`Failed to save plan: ${e.message}`);
+            const errorMsg = e.response?.data?.message || e.message || "Unknown Error";
+            alert(`Failed to save plan: ${errorMsg}`);
         }
     };
 

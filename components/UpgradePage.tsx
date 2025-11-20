@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,7 +31,7 @@ const UpgradePage = () => {
     };
     
     const handlePurchaseCredits = async (amount: number) => {
-        if(window.confirm(`Purchase $${amount} in credits? (Simulated)`)) {
+        if(window.confirm(`Purchase $${amount} in credits? This will be charged to your method on file.`)) {
             setIsLoading(true);
             try {
                 await apiClient.post('/user/credits', { amount });
@@ -38,7 +39,7 @@ const UpgradePage = () => {
                 // Force reload to update context (or context should ideally update itself via response, but simple reload works for now to sync sidebar)
                 window.location.reload(); 
             } catch (e) {
-                alert('Purchase failed.');
+                alert('Purchase failed. Please try again.');
             } finally {
                 setIsLoading(false);
             }
@@ -111,17 +112,16 @@ const UpgradePage = () => {
          {
             name: 'PayAsYouGo',
             price: 0, // Special case
-            description: 'No monthly fees. Pay for what you use.',
+            description: 'No monthly fees. Just pay for what you use.',
             features: [
                 '$7 per Analysis',
+                'No Monthly Subscription',
                 'Purchase Credits as Needed',
-                'Full Pro Features Access',
-                'Credits Never Expire',
+                'Full Pro Features Access'
             ],
             action: () => {
-                if (window.confirm("Switching to Pay As You Go requires a $35 initial credit purchase. Proceed?")) {
-                    // In real app, redirect to checkout. Here we simulate direct switch + charge
-                    navigate('/checkout/payasyougo'); // We'll handle this in checkout or just direct switch API
+                if (window.confirm("Switching to Pay As You Go requires a $35 initial retainer deposit. This will be added to your credit balance. Proceed?")) {
+                    navigate('/checkout/payasyougo');
                 }
             },
             special: true

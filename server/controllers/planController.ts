@@ -98,7 +98,7 @@ const DEFAULT_PLANS: Plan[] = [
     }
 ];
 
-export const getAllPlans = async (_req: Request, res: Response) => {
+export const getAllPlans = async (_req: any, res: any) => {
     try {
         // 1. Fetch existing plan keys
         const existingResult = await query('SELECT key FROM plans');
@@ -148,7 +148,7 @@ export const getAllPlans = async (_req: Request, res: Response) => {
     }
 };
 
-export const updatePlan = async (req: Request, res: Response) => {
+export const updatePlan = async (req: any, res: any) => {
     const { key } = req.params;
     const planData: Plan = req.body;
 
@@ -171,11 +171,11 @@ export const updatePlan = async (req: Request, res: Response) => {
             key,
             planData.name,
             planData.description,
-            planData.monthlyPrice,
-            planData.annualPrice,
-            planData.analysisLimit,
-            JSON.stringify(planData.features),
-            planData.isPopular
+            Number(planData.monthlyPrice || 0), // Ensure number
+            Number(planData.annualPrice || 0), // Ensure number
+            Number(planData.analysisLimit || 0), // Ensure number
+            JSON.stringify(planData.features || []), // Ensure JSON array
+            !!planData.isPopular
         ];
 
         const result = await query(queryStr, values);
@@ -187,11 +187,11 @@ export const updatePlan = async (req: Request, res: Response) => {
     }
 };
 
-export const createPlan = async (req: Request, res: Response) => {
+export const createPlan = async (req: any, res: any) => {
     return updatePlan(req, res);
 };
 
-export const deletePlan = async (req: Request, res: Response) => {
+export const deletePlan = async (req: any, res: any) => {
     const { key } = req.params;
     try {
         await query('DELETE FROM plans WHERE key = $1', [key]);

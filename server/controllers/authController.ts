@@ -15,7 +15,7 @@ const getClientIdSnippet = (clientId: string | undefined): string => {
     return `${clientId.substring(0, 4)}...${clientId.substring(clientId.length - 4)}`;
 }
 
-export const handleGoogleLogin = async (req: Request, res: Response) => {
+export const handleGoogleLogin = async (req: any, res: any) => {
     console.log(`[AUTH] handleGoogleLogin triggered. Server is using Google Client ID ending in: ...${getClientIdSnippet(GOOGLE_CLIENT_ID)}`);
 
     if (!GOOGLE_CLIENT_ID) {

@@ -7,8 +7,8 @@ import { AuthRequest } from '../middleware/authMiddleware.js';
 
 const PAYG_RETAINER = 35;
 
-export const updateUserSubscription = async (req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id;
+export const updateUserSubscription = async (req: any, res: any) => {
+    const userId = req.user?.id;
     const { tier } = req.body as { tier: SubscriptionTier };
 
     if (!tier) {
@@ -54,12 +54,12 @@ export const updateUserSubscription = async (req: Request, res: Response) => {
 
         let revenueImpact = newPrice;
 
-        if (tier === 'PayAsYouGo' && oldTier !== 'PayAsYouGo') {
-             // Initial Retainer logic: User switching to PAYG pays $35 immediately.
+        if (tier === 'PayAsYouGo') {
+             // Initial Retainer logic: User switching to PAYG pays $35 immediately and gets credits.
              revenueImpact = PAYG_RETAINER;
-             changeType = 'new'; // Or a custom type
+             changeType = 'new'; 
              
-             // Add the credits immediately
+             // Add the credits immediately and set tier
              result = await query(
                 'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = 0, analysis_limit_reset_at = NULL, credits = credits + $2 WHERE id = $3 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
                 [tier, PAYG_RETAINER, userId]
@@ -127,8 +127,8 @@ export const updateUserSubscription = async (req: Request, res: Response) => {
 };
 
 // New function to purchase credits
-export const purchaseCredits = async (req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id;
+export const purchaseCredits = async (req: any, res: any) => {
+    const userId = req.user?.id;
     const { amount } = req.body;
 
     // Validate increment
@@ -159,8 +159,8 @@ export const purchaseCredits = async (req: Request, res: Response) => {
 };
 
 
-export const getUserProfile = async (req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id;
+export const getUserProfile = async (req: any, res: any) => {
+    const userId = req.user?.id;
     try {
         const result = await query('SELECT id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, credits, role FROM users WHERE id = $1', [userId]);
         if (result.rows.length === 0) {
@@ -186,8 +186,8 @@ export const getUserProfile = async (req: Request, res: Response) => {
     }
 };
 
-export const trackUserAction = async (req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id;
+export const trackUserAction = async (req: any, res: any) => {
+    const userId = req.user?.id;
     const { action } = req.body;
 
     if (!userId || !action) {

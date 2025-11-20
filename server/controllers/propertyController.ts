@@ -6,8 +6,8 @@ import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
 import { AuthRequest } from '../middleware/authMiddleware.js';
 
 // Get all properties for the logged-in user
-export const getProperties = async (req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id;
+export const getProperties = async (req: any, res: any) => {
+    const userId = req.user?.id;
     try {
         const result = await query(
             'SELECT id, property_data FROM properties WHERE user_id = $1 ORDER BY created_at DESC', 
@@ -26,8 +26,8 @@ export const getProperties = async (req: Request, res: Response) => {
 };
 
 // Add a new property
-export const addProperty = async (req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id;
+export const addProperty = async (req: any, res: any) => {
+    const userId = req.user?.id;
     // The property data from the body does not have an ID yet.
     const propertyData: Omit<Property, 'id'> = req.body;
 
@@ -50,8 +50,8 @@ export const addProperty = async (req: Request, res: Response) => {
 };
 
 // Update an existing property
-export const updateProperty = async (req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id;
+export const updateProperty = async (req: any, res: any) => {
+    const userId = req.user?.id;
     const { id } = req.params;
     const propertyData: Property = req.body;
 
@@ -94,8 +94,8 @@ export const updateProperty = async (req: Request, res: Response) => {
 };
 
 // Delete a property
-export const deleteProperty = async (req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id;
+export const deleteProperty = async (req: any, res: any) => {
+    const userId = req.user?.id;
     const { id } = req.params;
 
     try {

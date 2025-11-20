@@ -34,8 +34,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors() as RequestHandler); // Enable Cross-Origin Resource Sharing
-app.use(express.json() as RequestHandler); // To parse JSON bodies
+app.use(cors() as any); // Enable Cross-Origin Resource Sharing
+app.use(express.json() as any); // To parse JSON bodies
 
 // --- Production Static File Serving ---
 // Get directory name in ES module scope
@@ -44,7 +44,7 @@ const __dirname = path.dirname(__filename);
 
 // The production build of the frontend is in the 'dist' folder at the root
 // We go up one level from `dist/server` to `dist`
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '..')) as any);
 
 
 // API Routes (These must come before the client-side catch-all)
