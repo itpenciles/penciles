@@ -1,4 +1,3 @@
-
 import { query } from '../db.js';
 import { Property } from '../../types';
 import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
@@ -57,10 +56,13 @@ export const updateProperty = async (req: any, res: any) => {
     const { id: propertyId, ...dataToStore } = propertyData;
 
     try {
+        // Guard clause: Ensure recommendation object exists before accessing strategy
+        const strategyToAnalyze = propertyData.recommendation?.strategyAnalyzed || 'Rental';
+
         // Step 1: Get a fresh AI recommendation based on the user's changes.
         const newRecommendation = await reevaluatePropertyWithGemini(
             propertyData, 
-            propertyData.recommendation.strategyAnalyzed || 'Rental'
+            strategyToAnalyze
         );
 
         // Step 2: Merge the new recommendation into the property data.
@@ -85,9 +87,10 @@ export const updateProperty = async (req: any, res: any) => {
             id: result.rows[0].id.toString() // Ensure ID is a string
         };
         res.status(200).json(updatedProperty);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating property:', error);
-        res.status(500).json({ message: 'Failed to update property.' });
+        // Return specific error message if available from geminiService
+        res.status(500).json({ message: error.message || 'Failed to update property.' });
     }
 };
 

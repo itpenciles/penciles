@@ -161,7 +161,7 @@ ${schemaString}
 };
 
 export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | 'coords' | 'location', value: string): Promise<Omit<Property, 'id'>> => {
-    const modelsToTry = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-3-pro-preview'];
     let lastError: any = null;
     let rawResponseForDebugging = '';
 
@@ -389,7 +389,7 @@ ${JSON.stringify(recommendationOnlySchema, null, 2)}
 
 export const reevaluatePropertyWithGemini = async (property: Property, strategy: Strategy): Promise<Recommendation> => {
     console.log(`Re-evaluating property with Gemini for strategy: ${strategy}`, property);
-    const modelsToTry = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-3-pro-preview'];
     let lastError: any = null;
     let rawResponseForDebugging = '';
 

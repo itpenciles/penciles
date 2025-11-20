@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckIcon, BanknotesIcon } from '../constants';
+import { CheckIcon, BuildingOfficeIcon, BanknotesIcon } from '../constants';
 import Loader from './Loader';
 import apiClient from '../services/apiClient';
 import { Plan } from '../types';
@@ -104,7 +103,7 @@ const UpgradePage = () => {
                 )}
                 {plan.isPopular && !isCurrent && (
                     <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -mt-3">
-                        <span className="bg-brand-blue text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Most Popular</span>
+                        <span className="bg-brand-blue text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide whitespace-nowrap">Most Popular</span>
                     </div>
                 )}
 
