@@ -1,3 +1,4 @@
+
 import { query } from '../db.js';
 import { Property } from '../../types';
 import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
@@ -6,6 +7,7 @@ import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
 export const getProperties = async (req: any, res: any) => {
     const userId = req.user?.id;
     try {
+        // Fetch ALL properties. The frontend will handle filtering Active vs Deleted.
         const result = await query(
             'SELECT id, property_data FROM properties WHERE user_id = $1 ORDER BY created_at DESC', 
             [userId]
@@ -94,20 +96,36 @@ export const updateProperty = async (req: any, res: any) => {
     }
 };
 
-// Delete a property
+// Soft Delete a property
 export const deleteProperty = async (req: any, res: any) => {
     const userId = req.user?.id;
     const { id } = req.params;
 
     try {
-        const result = await query(
-            'DELETE FROM properties WHERE id = $1 AND user_id = $2 RETURNING id',
+        // 1. Fetch existing property data first
+        const selectResult = await query(
+            'SELECT property_data FROM properties WHERE id = $1 AND user_id = $2',
             [id, userId]
         );
 
-        if (result.rows.length === 0) {
+        if (selectResult.rows.length === 0) {
             return res.status(404).json({ message: 'Property not found or user not authorized.' });
         }
+
+        const existingData = selectResult.rows[0].property_data;
+
+        // 2. Add a 'deletedAt' timestamp to the data
+        const softDeletedData = {
+            ...existingData,
+            deletedAt: new Date().toISOString()
+        };
+
+        // 3. Update the record instead of hard deleting
+        await query(
+            'UPDATE properties SET property_data = $1, updated_at = now() WHERE id = $2 AND user_id = $3',
+            [softDeletedData, id, userId]
+        );
+
         res.status(204).send(); // No content
     } catch (error) {
         console.error('Error deleting property:', error);

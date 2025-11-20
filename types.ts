@@ -1,6 +1,4 @@
 
-
-
 export type Strategy = 'Rental' | 'Wholesale' | 'Subject-To' | 'Seller Financing';
 
 export interface Unit {
@@ -14,6 +12,7 @@ export interface Property {
   propertyType: string;
   imageUrl: string;
   dateAnalyzed: string;
+  deletedAt?: string; // New field for Soft Delete audit trail
   
   details: {
     bedrooms: number;
@@ -207,6 +206,7 @@ export interface User {
   createdAt?: string;
   propertyCount?: number; // Computed field for lists
   status?: 'Active' | 'Cancelled'; // Computed field for lists
+  tierLimit?: number; // Dynamic limit from plan
 }
 
 export interface AdminStats {

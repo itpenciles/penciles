@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/apiClient';
 import Loader from './Loader';
-import { ArrowLeftIcon, MapPinIcon, LinkIcon } from '../constants';
+import { ArrowLeftIcon, MapPinIcon, LinkIcon, LockClosedIcon } from '../constants';
 import { Property } from '../types';
 
 // --- Icons ---
@@ -25,7 +26,8 @@ const AddProperty = () => {
     const { addProperty } = useProperties();
     const { analysisStatus } = useAuth();
     
-    const remainingAnalyses = analysisStatus.limit === 'Unlimited' ? Infinity : analysisStatus.limit - analysisStatus.count;
+    const remainingAnalyses = analysisStatus.limit === 'Unlimited' ? Infinity : Math.max(0, analysisStatus.limit - analysisStatus.count);
+    const isOverLimit = analysisStatus.isOverLimit;
 
     const handleUrlChange = (index: number, value: string) => {
         const newUrls = [...urls];
@@ -54,12 +56,17 @@ const AddProperty = () => {
     };
     
     const handleUrlAnalyze = async () => {
+        if (isOverLimit) {
+            setError("You have reached your analysis limit. Please upgrade your plan.");
+            return;
+        }
+
         const validUrls = urls.map(u => u.trim()).filter(u => u.length > 0);
         if (validUrls.length === 0) {
             setError('Please enter at least one valid URL.');
             return;
         }
-        if (validUrls.length > remainingAnalyses) {
+        if (remainingAnalyses !== Infinity && validUrls.length > remainingAnalyses) {
             setError(`You only have ${remainingAnalyses} analyses remaining, but you entered ${validUrls.length} URLs. Please remove some or upgrade your plan.`);
             return;
         }
@@ -81,7 +88,7 @@ const AddProperty = () => {
     };
 
     const handleSinglePropertyAnalysis = async (inputType: 'address' | 'coords' | 'location', value: string) => {
-        if (remainingAnalyses < 1) {
+        if (isOverLimit) {
             setError("You have reached your analysis limit. Please upgrade your plan to continue.");
             return;
         }
@@ -109,7 +116,7 @@ const AddProperty = () => {
 
     const handleCurrentLocation = () => {
         setError(null);
-        if (remainingAnalyses < 1) {
+        if (isOverLimit) {
             setError("You have reached your analysis limit. Please upgrade your plan.");
             return;
         }
@@ -128,7 +135,7 @@ const AddProperty = () => {
     
     const AnalysisCounter = () => (
         <div className="text-sm text-gray-600">
-            Analyses remaining: <span className="font-bold text-brand-blue">{analysisStatus.limit === 'Unlimited' ? 'Unlimited' : `${remainingAnalyses} / ${analysisStatus.limit}`}</span>
+            Analyses remaining: <span className={`font-bold ${isOverLimit ? 'text-red-600' : 'text-brand-blue'}`}>{analysisStatus.limit === 'Unlimited' ? 'Unlimited' : `${remainingAnalyses} / ${analysisStatus.limit}`}</span>
             {analysisStatus.limit !== 'Unlimited' && analysisStatus.limit > 0 && 
               <span className="text-xs text-gray-500 ml-2">
                 (Resets on {analysisStatus.renewsOn || 'next billing cycle'})
@@ -139,16 +146,16 @@ const AddProperty = () => {
 
     const renderOptions = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <OptionCard icon={MapPinIcon} title="Manual Entry" description="Type in the property address" bgColor="bg-blue-100" iconColor="text-blue-600" onClick={() => setView('address')} />
-            <OptionCard icon={LinkIcon} title="Listing URL" description="Paste a Zillow, Redfin, or MLS link" bgColor="bg-purple-100" iconColor="text-purple-600" onClick={() => setView('url')} />
-            <OptionCard icon={GlobeAltIcon} title="GPS Coordinates" description="Enter latitude and longitude" bgColor="bg-green-100" iconColor="text-green-600" onClick={() => setView('coords')} />
-            <OptionCard icon={PaperAirplaneIcon} title="Current Location" description="Use your device's GPS" bgColor="bg-orange-100" iconColor="text-orange-600" onClick={handleCurrentLocation} />
+            <OptionCard icon={MapPinIcon} title="Manual Entry" description="Type in the property address" bgColor="bg-blue-100" iconColor="text-blue-600" onClick={() => setView('address')} disabled={isOverLimit} />
+            <OptionCard icon={LinkIcon} title="Listing URL" description="Paste a Zillow, Redfin, or MLS link" bgColor="bg-purple-100" iconColor="text-purple-600" onClick={() => setView('url')} disabled={isOverLimit} />
+            <OptionCard icon={GlobeAltIcon} title="GPS Coordinates" description="Enter latitude and longitude" bgColor="bg-green-100" iconColor="text-green-600" onClick={() => setView('coords')} disabled={isOverLimit} />
+            <OptionCard icon={PaperAirplaneIcon} title="Current Location" description="Use your device's GPS" bgColor="bg-orange-100" iconColor="text-orange-600" onClick={handleCurrentLocation} disabled={isOverLimit} />
         </div>
     );
 
     const renderUrlInput = () => {
         const validUrlCount = urls.filter(u => u.trim().length > 0).length;
-        const isOverLimit = validUrlCount > remainingAnalyses;
+        const willExceed = validUrlCount > remainingAnalyses && remainingAnalyses !== Infinity;
         return (
             <div className="w-full max-w-2xl mx-auto">
                  {error && <p className="text-red-500 bg-red-100 p-3 rounded-md mb-4">{error}</p>}
@@ -189,8 +196,8 @@ const AddProperty = () => {
                         </button>
                         <div className="flex items-center space-x-4">
                             <AnalysisCounter />
-                             <button onClick={handleUrlAnalyze} disabled={isLoading || validUrlCount === 0 || isOverLimit} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
-                                {isLoading ? <Loader /> : isOverLimit ? 'Limit Exceeded' : `Analyze ${validUrlCount > 0 ? validUrlCount : ''} ${validUrlCount === 1 ? 'Property' : 'Properties'}`.trim()}
+                             <button onClick={handleUrlAnalyze} disabled={isLoading || validUrlCount === 0 || willExceed || isOverLimit} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
+                                {isLoading ? <Loader /> : (willExceed || isOverLimit) ? 'Limit Exceeded' : `Analyze ${validUrlCount > 0 ? validUrlCount : ''} ${validUrlCount === 1 ? 'Property' : 'Properties'}`.trim()}
                             </button>
                         </div>
                     </div>
@@ -226,8 +233,8 @@ const AddProperty = () => {
                     </button>
                     <div className="flex items-center space-x-4">
                         <AnalysisCounter />
-                        <button onClick={handleAddressAnalyze} disabled={isLoading || !address.trim() || analysisStatus.isOverLimit} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
-                            {isLoading ? <Loader /> : analysisStatus.isOverLimit ? 'Limit Reached' : 'Analyze Property'}
+                        <button onClick={handleAddressAnalyze} disabled={isLoading || !address.trim() || isOverLimit} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
+                            {isLoading ? <Loader /> : isOverLimit ? 'Limit Reached' : 'Analyze Property'}
                         </button>
                     </div>
                 </div>
@@ -279,8 +286,8 @@ const AddProperty = () => {
                     </button>
                     <div className="flex items-center space-x-4">
                         <AnalysisCounter />
-                        <button onClick={handleCoordsAnalyze} disabled={isLoading || !coords.lat.trim() || !coords.lon.trim() || analysisStatus.isOverLimit} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
-                            {isLoading ? <Loader /> : analysisStatus.isOverLimit ? 'Limit Reached' : 'Analyze Coordinates'}
+                        <button onClick={handleCoordsAnalyze} disabled={isLoading || !coords.lat.trim() || !coords.lon.trim() || isOverLimit} className="px-6 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center">
+                            {isLoading ? <Loader /> : isOverLimit ? 'Limit Reached' : 'Analyze Coordinates'}
                         </button>
                     </div>
                 </div>
@@ -311,6 +318,19 @@ const AddProperty = () => {
                     </div>
                 </div>
 
+                {isOverLimit && (
+                    <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
+                        <div className="flex items-center text-red-800">
+                            <LockClosedIcon className="h-6 w-6 mr-3" />
+                            <div>
+                                <span className="font-bold block">Analysis Limit Reached</span>
+                                <span className="text-sm">You have used all available analyses for your current plan.</span>
+                            </div>
+                        </div>
+                        <button onClick={() => navigate('/upgrade')} className="bg-red-600 text-white text-sm font-bold px-4 py-2 rounded hover:bg-red-700">Upgrade Plan</button>
+                    </div>
+                )}
+
                 <div className="relative">
                     {isLoading && view === 'options' && <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-xl z-10"><Loader text="Analyzing location..." /></div>}
                     {renderContent()}
@@ -328,10 +348,15 @@ interface OptionCardProps {
     bgColor: string;
     iconColor: string;
     onClick: () => void;
+    disabled?: boolean;
 }
 
-const OptionCard: React.FC<OptionCardProps> = ({ icon: Icon, title, description, bgColor, iconColor, onClick }) => (
-    <button onClick={onClick} className="bg-white p-8 rounded-xl shadow-sm text-left hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+const OptionCard: React.FC<OptionCardProps> = ({ icon: Icon, title, description, bgColor, iconColor, onClick, disabled }) => (
+    <button 
+        onClick={onClick} 
+        disabled={disabled}
+        className={`bg-white p-8 rounded-xl shadow-sm text-left transition-all duration-300 ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg hover:-translate-y-1'}`}
+    >
         <div className={`w-16 h-16 ${bgColor} rounded-xl flex items-center justify-center mb-4`}>
             <Icon className={`h-8 w-8 ${iconColor}`} />
         </div>

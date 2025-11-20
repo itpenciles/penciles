@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
 import { PlusIcon, ChartBarIcon, ArrowTrendingUpIcon, BanknotesIcon, ExclamationTriangleIcon, LockClosedIcon } from '../constants';
-import { Property } from '../types';
+import { Property, SubscriptionTier } from '../types';
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
@@ -31,69 +31,82 @@ interface PropertyRowProps {
     onSelect: (id: string) => void;
     onDelete: (id: string, address: string) => void;
     isLocked: boolean;
+    userTier: SubscriptionTier | undefined;
+    isArchived?: boolean;
 }
 
-const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelected, onSelect, onDelete, isLocked }) => {
+const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelected, onSelect, onDelete, isLocked, userTier, isArchived }) => {
     const navigate = useNavigate();
     const { calculations, recommendation } = property;
     const recColor = recommendation?.level === 'Worth Pursuing' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
 
-    const rowOpacity = isLocked ? 'opacity-60 bg-gray-50' : 'hover:bg-gray-50';
-    const textColor = isLocked ? 'text-gray-500' : 'text-gray-800';
+    const rowOpacity = isLocked || isArchived ? 'opacity-60 bg-gray-50' : 'hover:bg-gray-50';
+    const textColor = isLocked || isArchived ? 'text-gray-500' : 'text-gray-800';
+    
+    const isFreeTier = !userTier || userTier === 'Free';
 
     return (
         <tr className={`border-b border-gray-200 ${rowOpacity}`}>
             <td className="py-3 px-4">
                 <div className="flex items-center">
-                    <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        checked={isSelected}
-                        onChange={() => onSelect(property.id)}
-                        disabled={isLocked}
-                    />
-                    <div className="ml-4">
+                    {!isArchived && (
+                        <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            checked={isSelected}
+                            onChange={() => onSelect(property.id)}
+                            disabled={isLocked}
+                        />
+                    )}
+                    <div className={isArchived ? 'ml-0' : 'ml-4'}>
                         <p className={`font-semibold ${textColor}`}>{property.address}</p>
                         <p className="text-sm text-gray-500">{property.propertyType}</p>
                     </div>
                 </div>
             </td>
             <td className="py-3 px-4 text-sm text-gray-600">{property.dateAnalyzed}</td>
-            <td className={`py-3 px-4 text-sm font-semibold ${isLocked ? 'text-gray-400' : 'text-green-600'}`}>{calculations.capRate.toFixed(1)}%</td>
-            <td className={`py-3 px-4 text-sm font-semibold ${isLocked ? 'text-gray-400' : 'text-gray-700'}`}>{formatCurrency(calculations.monthlyCashFlowNoDebt)}</td>
-            <td className={`py-3 px-4 text-sm font-semibold ${isLocked ? 'text-gray-400' : 'text-red-600'}`}>{calculations.cashOnCashReturn.toFixed(1)}%</td>
+            <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-green-600'}`}>{calculations.capRate.toFixed(1)}%</td>
+            <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-gray-700'}`}>{formatCurrency(calculations.monthlyCashFlowNoDebt)}</td>
+            <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-red-600'}`}>{calculations.cashOnCashReturn.toFixed(1)}%</td>
             <td className="py-3 px-4">
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${isLocked ? 'bg-gray-200 text-gray-500' : recColor}`}>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${isLocked || isArchived ? 'bg-gray-200 text-gray-500' : recColor}`}>
                     {recommendation?.level}
                 </span>
             </td>
             <td className="py-3 px-4">
-                <div className="flex items-center space-x-2">
-                    {isLocked ? (
+                {isArchived ? (
+                    <span className="text-xs text-red-600 font-medium bg-red-50 px-2 py-1 rounded">
+                        Deleted on {property.deletedAt ? new Date(property.deletedAt).toLocaleDateString() : 'Unknown'}
+                    </span>
+                ) : (
+                    <div className="flex items-center space-x-2">
+                        {isLocked ? (
+                            <button 
+                                onClick={() => navigate('/upgrade')} 
+                                className="p-1.5 text-gray-400 hover:text-brand-blue hover:bg-blue-50 rounded-md group relative"
+                                title="Upgrade to view"
+                            >
+                                <LockClosedIcon className="h-5 w-5" />
+                                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-32 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
+                                    Upgrade to View
+                                </span>
+                            </button>
+                        ) : (
+                            <button onClick={() => navigate(`/property/${property.id}`)} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
+                            </button>
+                        )}
+                        
                         <button 
-                            onClick={() => navigate('/upgrade')} 
-                            className="p-1.5 text-gray-400 hover:text-brand-blue hover:bg-blue-50 rounded-md group relative"
-                            title="Upgrade to view"
+                            onClick={() => onDelete(property.id, property.address)} 
+                            disabled={isFreeTier}
+                            className={`p-1.5 rounded-md ${isFreeTier ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
+                            title={isFreeTier ? "Free tier analyses are permanent records. Upgrade to manage portfolio." : "Delete property"}
                         >
-                            <LockClosedIcon className="h-5 w-5" />
-                            <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-32 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
-                                Upgrade to View
-                            </span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
-                    ) : (
-                        <button onClick={() => navigate(`/property/${property.id}`)} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-md">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
-                        </button>
-                    )}
-                    
-                    <button 
-                        onClick={() => onDelete(property.id, property.address)} 
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md"
-                        title="Delete property"
-                    >
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                </div>
+                    </div>
+                )}
             </td>
         </tr>
     );
@@ -134,14 +147,18 @@ const Dashboard = () => {
     const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: null, direction: 'desc' });
     const [filterRecommendation, setFilterRecommendation] = useState<string>('All');
 
-    const avgCapRate = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.capRate, 0) / properties.length : 0;
-    const avgMonthlyCashFlow = properties.length > 0 ? properties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0) / properties.length : 0;
-    const highRiskProperties = properties.filter(p => p.recommendation?.level === 'High Risk' || p.recommendation?.level === 'Avoid').length;
+    // Separate Active vs Archived properties
+    const activeProperties = useMemo(() => properties.filter(p => !p.deletedAt), [properties]);
+    const archivedProperties = useMemo(() => properties.filter(p => p.deletedAt), [properties]);
 
-    const totalProperties = properties.length;
-    const positiveCashFlowCount = properties.filter(p => p.calculations.monthlyCashFlowWithDebt > 0).length;
+    const avgCapRate = activeProperties.length > 0 ? activeProperties.reduce((acc, p) => acc + p.calculations.capRate, 0) / activeProperties.length : 0;
+    const avgMonthlyCashFlow = activeProperties.length > 0 ? activeProperties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0) / activeProperties.length : 0;
+    const highRiskProperties = activeProperties.filter(p => p.recommendation?.level === 'High Risk' || p.recommendation?.level === 'Avoid').length;
 
-    const recommendationCounts = properties.reduce((acc, p) => {
+    const totalProperties = activeProperties.length;
+    const positiveCashFlowCount = activeProperties.filter(p => p.calculations.monthlyCashFlowWithDebt > 0).length;
+
+    const recommendationCounts = activeProperties.reduce((acc, p) => {
         const level = p.recommendation?.level;
         if (level) {
             acc[level] = (acc[level] || 0) + 1;
@@ -150,16 +167,10 @@ const Dashboard = () => {
     }, {} as Record<string, number>);
 
     // Logic for gating properties based on subscription plan
-    const subscriptionLimits: Record<string, number> = {
-        'Free': 3,
-        'Starter': 15,
-        'Pro': 100,
-        'Team': 99999
-    };
-    
-    const tier = user?.subscriptionTier || 'Free';
-    const propertyLimit = subscriptionLimits[tier] || 3;
+    // Admin gets unlimited access
+    const propertyLimit = user?.role === 'admin' ? 999999 : (user?.tierLimit || 3); 
 
+    const tier = user?.subscriptionTier || 'Free';
 
     const handleSelectProperty = useCallback((id: string) => {
         setSelectedPropertyIds(prevSelected => {
@@ -177,11 +188,12 @@ const Dashboard = () => {
     }, []);
     
     const handleDelete = useCallback(async (idToDelete: string, address: string) => {
-        if (!idToDelete) {
-            console.error('[DEBUG] handleDelete called with an invalid ID.');
-            return;
-        }
-        if (window.confirm(`Are you sure you want to delete the property at ${address}?`)) {
+        if (!idToDelete) return;
+
+        // Explicit warning about credits not being restored
+        const warningMessage = `Are you sure you want to delete the property at ${address}?\n\nIMPORTANT: Deleting this property removes it from your active dashboard, but it will remain in your archive as proof of usage. Usage credits ARE NOT REFUNDED.`;
+
+        if (window.confirm(warningMessage)) {
             try {
                 await deleteProperty(idToDelete);
                 setSelectedPropertyIds(prev => prev.filter(id => id !== idToDelete));
@@ -207,7 +219,7 @@ const Dashboard = () => {
     };
 
     const processedProperties = useMemo(() => {
-        let processed = [...properties];
+        let processed = [...activeProperties]; // Only sort/filter active ones for main table
 
         // 1. Filter
         if (filterRecommendation !== 'All') {
@@ -253,7 +265,7 @@ const Dashboard = () => {
         }
 
         return processed;
-    }, [properties, sortConfig, filterRecommendation]);
+    }, [activeProperties, sortConfig, filterRecommendation]);
 
 
     const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
@@ -294,15 +306,8 @@ const Dashboard = () => {
                     isSelected={selectedPropertyIds.includes(prop.id)}
                     onSelect={handleSelectProperty}
                     onDelete={handleDelete}
-                    // Note: isLocked logic might need to track original index if we strictly want to lock by insertion order, 
-                    // but usually filtering implies you want to see data. 
-                    // For simplicity, we check if the *displayed* item falls outside the user's total allowed count relative to global list,
-                    // OR simpler: just check if index in *this* list exceeds limit? 
-                    // Typically limits are on "Total properties saved", not "Properties currently viewable".
-                    // Let's check against the *global* index in the original 'properties' array to be robust, or just render.
-                    // Since `processedProperties` is a filtered subset, locking based on `index` here might unlock items that should be locked.
-                    // Correct way: Find the index of this property in the MAIN `properties` list.
-                    isLocked={properties.findIndex(p => p.id === prop.id) >= propertyLimit}
+                    isLocked={activeProperties.findIndex(p => p.id === prop.id) >= propertyLimit}
+                    userTier={tier}
                 />
             );
         }
@@ -310,13 +315,13 @@ const Dashboard = () => {
             <tr>
                 <td colSpan={7}>
                     <div className="text-center py-12 text-gray-500">
-                        <p>No properties match your criteria.</p>
+                        <p>No active properties match your criteria.</p>
                         {filterRecommendation !== 'All' && (
                              <button onClick={() => setFilterRecommendation('All')} className="mt-2 text-brand-blue font-semibold">
                                 Clear Filter
                             </button>
                         )}
-                        {properties.length === 0 && (
+                        {activeProperties.length === 0 && (
                              <button onClick={() => navigate('/add-property')} className="mt-2 text-brand-blue font-semibold">
                                 Analyze your first property
                             </button>
@@ -343,7 +348,7 @@ const Dashboard = () => {
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <SummaryCard title="Properties Analyzed" value={properties.length.toString()} icon={ChartBarIcon} iconBgColor="bg-blue-500" />
+                <SummaryCard title="Properties Analyzed" value={activeProperties.length.toString()} icon={ChartBarIcon} iconBgColor="bg-blue-500" />
                 <SummaryCard title="Avg Cap Rate" value={`${avgCapRate.toFixed(1)}%`} icon={ArrowTrendingUpIcon} change="Good" changeType="good" iconBgColor="bg-green-500" />
                 <SummaryCard title="Avg Monthly Cash Flow" value={`$${Math.round(avgMonthlyCashFlow)}`} icon={BanknotesIcon} iconBgColor="bg-purple-500" />
                 <SummaryCard title="High-Risk Properties" value={highRiskProperties.toString()} icon={ExclamationTriangleIcon} iconBgColor="bg-orange-500" />
@@ -352,7 +357,7 @@ const Dashboard = () => {
             <div className="flex flex-col lg:flex-row gap-8">
                 <div className="flex-grow">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                        <h2 className="text-xl font-bold text-gray-800">Recent Property Analyses</h2>
+                        <h2 className="text-xl font-bold text-gray-800">Active Property Analyses</h2>
                         
                         <div className="flex items-center gap-4 w-full sm:w-auto">
                              {/* Filter Dropdown */}
@@ -385,7 +390,7 @@ const Dashboard = () => {
                             )}
                         </div>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr>
@@ -404,12 +409,12 @@ const Dashboard = () => {
                         </table>
                     </div>
                     
-                    {properties.length > propertyLimit && (
-                         <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800 flex items-center justify-between">
+                    {activeProperties.length > propertyLimit && (
+                         <div className="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800 flex items-center justify-between">
                             <div className="flex items-center">
                                 <LockClosedIcon className="h-5 w-5 mr-2 text-blue-600" />
                                 <span>
-                                    You have <strong>{properties.length - propertyLimit}</strong> older analyses locked. 
+                                    You have <strong>{activeProperties.length - propertyLimit}</strong> older analyses locked. 
                                     Upgrade your plan to unlock all your historical data.
                                 </span>
                             </div>
@@ -419,6 +424,45 @@ const Dashboard = () => {
                             >
                                 Upgrade Now
                             </button>
+                        </div>
+                    )}
+
+                    {/* Archived / Deleted History Section */}
+                    {archivedProperties.length > 0 && (
+                        <div className="mt-8">
+                            <h2 className="text-lg font-bold text-gray-600 mb-2">Archived / Deleted History (Credits Used)</h2>
+                             <div className="bg-gray-50 rounded-xl shadow-sm overflow-hidden border border-gray-200 opacity-80">
+                                <table className="w-full text-left">
+                                    <thead className="bg-gray-100 border-b border-gray-200">
+                                        <tr>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Property</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Date Analyzed</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cap Rate</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cash Flow</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cash-on-Cash</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Recommendation</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {archivedProperties.map((prop) => (
+                                            <PropertyRow 
+                                                key={prop.id} 
+                                                property={prop} 
+                                                isSelected={false}
+                                                onSelect={() => {}}
+                                                onDelete={() => {}}
+                                                isLocked={false} // Always unlocked but read-only visually
+                                                userTier={tier}
+                                                isArchived={true}
+                                            />
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                             <p className="text-xs text-gray-400 mt-2 italic">
+                                * These records are preserved for audit purposes and count towards your analysis usage limits.
+                            </p>
                         </div>
                     )}
                 </div>
@@ -442,7 +486,7 @@ const Dashboard = () => {
                             <div className="flex justify-between items-center text-sm mb-1">
                                 <span className="font-semibold text-gray-700">Total Monthly Cash Flow</span>
                                 <span className="font-bold text-green-600 text-lg">
-                                    {formatCurrency(properties.reduce((sum, p) => sum + p.calculations.monthlyCashFlowWithDebt, 0))}
+                                    {formatCurrency(activeProperties.reduce((sum, p) => sum + p.calculations.monthlyCashFlowWithDebt, 0))}
                                 </span>
                             </div>
                              <p className="text-xs text-gray-500">
