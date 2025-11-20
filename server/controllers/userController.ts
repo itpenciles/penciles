@@ -1,16 +1,14 @@
 
-import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import { Request, Response } from 'express';
 import { query } from '../db.js';
 import jwt from 'jsonwebtoken';
 import { User, SubscriptionTier } from '../../types';
+import { AuthRequest } from '../middleware/authMiddleware.js';
 
-// Define a custom request type that includes the authenticated user's info
-type AuthRequest = ExpressRequest & {
-    user?: { id: string; role?: string };
-};
+const PAYG_RETAINER = 35;
 
-export const updateUserSubscription = async (req: AuthRequest, res: ExpressResponse) => {
-    const userId = req.user?.id;
+export const updateUserSubscription = async (req: Request, res: Response) => {
+    const userId = (req as AuthRequest).user?.id;
     const { tier } = req.body as { tier: SubscriptionTier };
 
     if (!tier) {
@@ -19,7 +17,7 @@ export const updateUserSubscription = async (req: AuthRequest, res: ExpressRespo
 
     try {
         // Get current tier first
-        const currentUserResult = await query('SELECT subscription_tier FROM users WHERE id = $1', [userId]);
+        const currentUserResult = await query('SELECT subscription_tier, credits FROM users WHERE id = $1', [userId]);
         if (currentUserResult.rows.length === 0) {
             return res.status(404).json({ message: 'User not found.' });
         }
@@ -39,14 +37,14 @@ export const updateUserSubscription = async (req: AuthRequest, res: ExpressRespo
         
         // Fallback if DB fetch fails (legacy hardcoded)
         if (plansRes.rows.length === 0) {
-             const TIER_PRICES = { 'Free': 0, 'Starter': 9, 'Pro': 29, 'Team': 79 };
+             const TIER_PRICES = { 'Free': 0, 'Starter': 9, 'Pro': 29, 'Team': 79, 'PayAsYouGo': 0 };
              // @ts-ignore
              oldPrice = TIER_PRICES[oldTier] || 0;
              // @ts-ignore
              newPrice = TIER_PRICES[tier] || 0;
         }
 
-        const isMonthlyPlan = tier !== 'Free'; // Basic assumption
+        const isMonthlyPlan = tier !== 'Free' && tier !== 'PayAsYouGo';
 
         let changeType = 'new';
         if (oldTier === 'Free' && tier !== 'Free') changeType = 'new';
@@ -54,26 +52,36 @@ export const updateUserSubscription = async (req: AuthRequest, res: ExpressRespo
         else if (newPrice < oldPrice && tier !== 'Free') changeType = 'downgrade';
         else if (tier === 'Free') changeType = 'cancel';
 
-        const revenueImpact = newPrice;
+        let revenueImpact = newPrice;
 
-        if (isMonthlyPlan) {
+        if (tier === 'PayAsYouGo' && oldTier !== 'PayAsYouGo') {
+             // Initial Retainer logic: User switching to PAYG pays $35 immediately.
+             revenueImpact = PAYG_RETAINER;
+             changeType = 'new'; // Or a custom type
+             
+             // Add the credits immediately
+             result = await query(
+                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = 0, analysis_limit_reset_at = NULL, credits = credits + $2 WHERE id = $3 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
+                [tier, PAYG_RETAINER, userId]
+            );
+        } else if (isMonthlyPlan) {
             // When upgrading to a paid plan, reset their count and set the renewal date
             const newResetDate = new Date();
             newResetDate.setMonth(newResetDate.getMonth() + 1);
             result = await query(
-                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = 0, analysis_limit_reset_at = $2 WHERE id = $3 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role',
+                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = 0, analysis_limit_reset_at = $2 WHERE id = $3 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
                 [tier, newResetDate, userId]
             );
         } else {
-            // For 'Free' plan, we keep the lifetime count but clear the reset date
+            // For 'Free' plan
             result = await query(
-                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_limit_reset_at = NULL WHERE id = $2 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role',
+                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_limit_reset_at = NULL WHERE id = $2 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
                 [tier, userId]
             );
         }
 
         // Log to history
-        if (oldTier !== tier) {
+        if (oldTier !== tier || tier === 'PayAsYouGo') {
              await query(
                 `INSERT INTO subscription_history (user_id, old_tier, new_tier, change_type, amount) VALUES ($1, $2, $3, $4, $5)`,
                 [userId, oldTier, tier, changeType, revenueImpact]
@@ -89,7 +97,8 @@ export const updateUserSubscription = async (req: AuthRequest, res: ExpressRespo
             subscriptionTier: dbUser.subscription_tier,
             analysisCount: dbUser.analysis_count,
             analysisLimitResetAt: dbUser.analysis_limit_reset_at,
-            role: dbUser.role || 'user'
+            role: dbUser.role || 'user',
+            credits: Number(dbUser.credits)
         };
 
         // Issue a new token with the updated subscription tier and usage data
@@ -102,6 +111,7 @@ export const updateUserSubscription = async (req: AuthRequest, res: ExpressRespo
                 subscriptionTier: updatedUser.subscriptionTier,
                 analysisCount: updatedUser.analysisCount,
                 analysisLimitResetAt: updatedUser.analysisLimitResetAt,
+                credits: updatedUser.credits,
                 role: updatedUser.role
             }, 
             process.env.JWT_SECRET!, 
@@ -116,31 +126,68 @@ export const updateUserSubscription = async (req: AuthRequest, res: ExpressRespo
     }
 };
 
-export const getUserProfile = async (req: AuthRequest, res: ExpressResponse) => {
-    const userId = req.user?.id;
+// New function to purchase credits
+export const purchaseCredits = async (req: Request, res: Response) => {
+    const userId = (req as AuthRequest).user?.id;
+    const { amount } = req.body;
+
+    // Validate increment
+    const validIncrements = [35, 70, 140];
+    if (!validIncrements.includes(amount)) {
+        return res.status(400).json({ message: 'Invalid credit amount. Must be 35, 70, or 140.' });
+    }
+
     try {
-        const result = await query('SELECT id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role FROM users WHERE id = $1', [userId]);
+        // Update credits
+        const result = await query(
+            'UPDATE users SET credits = credits + $1, updated_at = now() WHERE id = $2 RETURNING credits',
+            [amount, userId]
+        );
+
+        // Log transaction
+        await query(
+            `INSERT INTO subscription_history (user_id, old_tier, new_tier, change_type, amount) VALUES ($1, 'PayAsYouGo', 'PayAsYouGo', 'credit_purchase', $2)`,
+            [userId, amount]
+        );
+
+        const updatedCredits = Number(result.rows[0].credits);
+        res.status(200).json({ credits: updatedCredits, message: 'Credits added successfully.' });
+    } catch (error) {
+         console.error('Error purchasing credits:', error);
+        res.status(500).json({ message: 'Failed to purchase credits.' });
+    }
+};
+
+
+export const getUserProfile = async (req: Request, res: Response) => {
+    const userId = (req as AuthRequest).user?.id;
+    try {
+        const result = await query('SELECT id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, credits, role FROM users WHERE id = $1', [userId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
         const dbUser = result.rows[0];
-        // Normalize nulls if necessary
-        dbUser.subscriptionTier = dbUser.subscription_tier;
-        dbUser.analysisCount = dbUser.analysis_count;
-        dbUser.analysisLimitResetAt = dbUser.analysis_limit_reset_at;
-        delete dbUser.subscription_tier;
-        delete dbUser.analysis_count;
-        delete dbUser.analysis_limit_reset_at;
+        const user: User = {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            profilePictureUrl: dbUser.profile_picture_url,
+            subscriptionTier: dbUser.subscription_tier || null,
+            analysisCount: dbUser.analysis_count || 0,
+            analysisLimitResetAt: dbUser.analysis_limit_reset_at || null,
+            credits: Number(dbUser.credits || 0),
+            role: dbUser.role || 'user'
+        };
         
-        res.json(dbUser);
+        res.json(user);
     } catch (error) {
         console.error('Error fetching user profile:', error);
         res.status(500).json({ message: 'Failed to fetch user profile' });
     }
 };
 
-export const trackUserAction = async (req: AuthRequest, res: ExpressResponse) => {
-    const userId = req.user?.id;
+export const trackUserAction = async (req: Request, res: Response) => {
+    const userId = (req as AuthRequest).user?.id;
     const { action } = req.body;
 
     if (!userId || !action) {

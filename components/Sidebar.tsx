@@ -20,6 +20,40 @@ const Sidebar = () => {
   const renderAnalysisUsage = () => {
     if (!user || !analysisStatus) return null;
 
+    // Handle Pay As You Go UI
+    if (user.subscriptionTier === 'PayAsYouGo') {
+        const credits = user.credits || 0;
+        const costPerAnalysis = 7;
+        const canAnalyze = credits >= costPerAnalysis;
+
+        return (
+             <div className="mt-2">
+                <div className="flex justify-between items-center text-xs mb-1">
+                    <span className="font-medium text-gray-600">Available Credits</span>
+                    <span className={`font-bold ${credits < costPerAnalysis ? 'text-red-600' : 'text-green-600'}`}>
+                        ${credits.toFixed(2)}
+                    </span>
+                </div>
+                 <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                    {/* Visual representation of "full tank" up to $100 */}
+                    <div 
+                        className={`h-1.5 rounded-full ${credits < costPerAnalysis ? 'bg-red-500' : 'bg-green-500'}`}
+                        style={{ width: `${Math.min(100, (credits / 35) * 100)}%` }}
+                    ></div>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-1 text-right">Cost: ${costPerAnalysis} / report</p>
+                {credits < costPerAnalysis && (
+                    <button 
+                        onClick={() => navigate('/upgrade')}
+                        className="w-full mt-2 text-xs bg-green-600 text-white py-1 rounded hover:bg-green-700 transition-colors"
+                    >
+                        Top Up Balance
+                    </button>
+                )}
+            </div>
+        );
+    }
+
     const { count, limit } = analysisStatus;
     
     if (limit === 'Unlimited') {
@@ -63,14 +97,22 @@ const Sidebar = () => {
             <div className="flex justify-between items-center">
                 <div className="flex flex-col">
                      <span className="text-xs text-gray-500 uppercase tracking-wide font-bold">Current Plan</span>
-                     <h3 className="text-sm font-bold text-gray-900">{user.subscriptionTier}</h3>
+                     <h3 className="text-sm font-bold text-gray-900">{user.subscriptionTier === 'PayAsYouGo' ? 'Pay As You Go' : user.subscriptionTier}</h3>
                 </div>
-                {user.subscriptionTier !== 'Team' && (
+                {user.subscriptionTier !== 'Team' && user.subscriptionTier !== 'PayAsYouGo' && (
                     <button 
                         onClick={() => navigate('/upgrade')}
                         className="text-xs bg-white border border-brand-blue text-brand-blue px-2 py-1 rounded hover:bg-brand-blue hover:text-white transition-colors"
                     >
                         Upgrade
+                    </button>
+                )}
+                {user.subscriptionTier === 'PayAsYouGo' && (
+                    <button 
+                        onClick={() => navigate('/upgrade')}
+                        className="text-xs bg-white border border-green-600 text-green-600 px-2 py-1 rounded hover:bg-green-600 hover:text-white transition-colors"
+                    >
+                        Add Credits
                     </button>
                 )}
             </div>

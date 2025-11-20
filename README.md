@@ -52,7 +52,8 @@ CREATE TABLE "users" (
   "created_at" TIMESTAMPTZ DEFAULT (now()),
   "updated_at" TIMESTAMPTZ DEFAULT (now()),
   "analysis_count" INTEGER DEFAULT 0, -- Tracks AI analysis usage
-  "analysis_limit_reset_at" TIMESTAMPTZ -- Tracks when monthly limits reset
+  "analysis_limit_reset_at" TIMESTAMPTZ, -- Tracks when monthly limits reset
+  "credits" NUMERIC DEFAULT 0 -- [NEW] Tracks balance for Pay As You Go users
 );
 
 CREATE TABLE "properties" (
@@ -68,7 +69,7 @@ CREATE TABLE "subscription_history" (
     "user_id" INTEGER REFERENCES "users" ("id"),
     "old_tier" VARCHAR(50),
     "new_tier" VARCHAR(50),
-    "change_type" VARCHAR(20), -- 'new', 'upgrade', 'downgrade', 'cancel'
+    "change_type" VARCHAR(20), -- 'new', 'upgrade', 'downgrade', 'cancel', 'credit_purchase'
     "amount" NUMERIC,
     "created_at" TIMESTAMPTZ DEFAULT (now())
 );
@@ -80,7 +81,7 @@ CREATE TABLE plans (
     description TEXT,
     monthly_price INTEGER DEFAULT 0,
     annual_price INTEGER DEFAULT 0,
-    analysis_limit INTEGER DEFAULT 0, -- -1 for unlimited
+    analysis_limit INTEGER DEFAULT 0, -- -1 for unlimited, 0 for PAYG
     features JSONB,
     is_popular BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT now()
@@ -92,7 +93,8 @@ INSERT INTO plans (key, name, description, monthly_price, annual_price, analysis
 ('Starter', 'Starter', 'For active investors analyzing a few deals a month.', 9, 90, 15, '["15 AI Property Analyses per Month", "Standard Rental Analysis", "Comparison Tool", "Email Support"]'::jsonb, false),
 ('Experienced', 'Experienced', 'For growing investors analyzing weekly deals and building their portfolio.', 19, 190, 40, '["40 AI Property Analyses per Month", "Standard Rental Analysis", "Export Data to CSV & PDF", "Comparison Tool", "Email Support"]'::jsonb, true),
 ('Pro', 'Pro', 'For serious investors needing advanced tools.', 29, 290, 100, '["100 AI Property Analyses per Month", "Creative Finance Calculators", "Comparison Tool", "Export Data", "Priority Support"]'::jsonb, false),
-('Team', 'Team', 'For professional teams.', 79, 790, -1, '["Unlimited Analyses", "All Pro Features", "Dedicated Support"]'::jsonb, false)
+('Team', 'Team', 'For professional teams.', 79, 790, -1, '["Unlimited Analyses", "All Pro Features", "Dedicated Support"]'::jsonb, false),
+('PayAsYouGo', 'Pay As You Go', 'No monthly fees. Just pay for what you use.', 0, 0, 0, '["$7 per Analysis", "No Monthly Subscription", "Purchase Credits as Needed", "Full Pro Features Access"]'::jsonb, false)
 ON CONFLICT DO NOTHING;
 ```
 

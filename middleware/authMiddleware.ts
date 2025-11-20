@@ -1,13 +1,13 @@
 
-import { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// FIX: Explicitly use Express types to include the user payload.
-export interface AuthRequest extends ExpressRequest {
+// Extend the standard Express Request interface
+export interface AuthRequest extends Request {
     user?: { id: string; role?: string };
 }
 
-export const authMiddleware = (req: AuthRequest, res: ExpressResponse, next: NextFunction) => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -18,19 +18,20 @@ export const authMiddleware = (req: AuthRequest, res: ExpressResponse, next: Nex
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; role?: string };
-        req.user = { id: decoded.id, role: decoded.role };
+        (req as AuthRequest).user = { id: decoded.id, role: decoded.role };
         next();
     } catch (error) {
         return res.status(403).json({ message: 'Invalid or expired token.' });
     }
 };
 
-export const adminMiddleware = (req: AuthRequest, res: ExpressResponse, next: NextFunction) => {
-    if (!req.user) {
+export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as AuthRequest).user;
+    if (!user) {
         return res.status(401).json({ message: 'Authentication required.' });
     }
     
-    if (req.user.role !== 'admin') {
+    if (user.role !== 'admin') {
         return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
     }
     

@@ -167,6 +167,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             subscriptionTier: decodedToken.subscriptionTier || null,
                             analysisCount: decodedToken.analysisCount || 0,
                             analysisLimitResetAt: decodedToken.analysisLimitResetAt || null,
+                            credits: decodedToken.credits || 0,
                             role: decodedToken.role || 'user', // Restore role from token
                          };
                          setUser(userFromToken);

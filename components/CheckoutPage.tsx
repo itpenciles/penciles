@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,13 +9,16 @@ type TierDetails = {
     [key: string]: {
         name: string;
         price: number;
+        description?: string;
     }
 }
 
 const tierDetails: TierDetails = {
     starter: { name: 'Starter', price: 9 },
+    experienced: { name: 'Experienced', price: 19 },
     pro: { name: 'Pro', price: 29 },
     team: { name: 'Team', price: 79 },
+    payasyougo: { name: 'PayAsYouGo', price: 35, description: 'Initial Retainer Credit' }
 }
 
 const CheckoutPage = () => {
@@ -31,7 +35,7 @@ const CheckoutPage = () => {
         setIsLoading(true);
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1500));
-        await updateSubscription(currentTier.name as 'Starter' | 'Pro' | 'Team');
+        await updateSubscription(currentTier.name as any);
         setIsLoading(false);
         navigate('/dashboard');
     };
@@ -45,12 +49,23 @@ const CheckoutPage = () => {
                 </button>
                 <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
                     <h1 className="text-2xl font-bold text-gray-900">Complete Your Purchase</h1>
-                    <p className="text-gray-500 mt-1">You're subscribing to the <span className="font-semibold text-brand-blue">{currentTier.name}</span> plan.</p>
+                    <p className="text-gray-500 mt-1">
+                        {currentTier.name === 'PayAsYouGo' 
+                            ? "You're depositing a retainer for the Pay As You Go plan." 
+                            : <span>You're subscribing to the <span className="font-semibold text-brand-blue">{currentTier.name}</span> plan.</span>
+                        }
+                    </p>
                     
                     <div className="mt-6 bg-gray-50 p-4 rounded-lg flex justify-between items-center">
-                        <span className="font-semibold text-gray-800">Amount Due Today</span>
+                        <span className="font-semibold text-gray-800">{currentTier.name === 'PayAsYouGo' ? 'Retainer Deposit' : 'Amount Due Today'}</span>
                         <span className="text-2xl font-bold text-gray-900">${currentTier.price}.00</span>
                     </div>
+                    
+                    {currentTier.name === 'PayAsYouGo' && (
+                         <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded">
+                            This $35.00 will be added to your credit balance immediately.
+                        </div>
+                    )}
 
                     <div className="mt-6 space-y-4">
                         <div>

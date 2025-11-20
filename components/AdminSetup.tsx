@@ -82,12 +82,12 @@ const AdminSetup = () => {
             return;
         }
 
-        // Ensure numbers are numbers
+        // Ensure numbers are numbers and not strings, fixing the API error
         const payload = {
             ...formData,
-            monthlyPrice: Number(formData.monthlyPrice),
-            annualPrice: Number(formData.annualPrice),
-            analysisLimit: Number(formData.analysisLimit),
+            monthlyPrice: Number(formData.monthlyPrice || 0),
+            annualPrice: Number(formData.annualPrice || 0),
+            analysisLimit: Number(formData.analysisLimit || 0),
         };
 
         try {
@@ -144,9 +144,9 @@ const AdminSetup = () => {
                                 onChange={handleChange} 
                                 disabled={editMode !== 'NEW'}
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded bg-gray-50"
-                                placeholder="e.g., Enterprise"
+                                placeholder="e.g., PayAsYouGo"
                             />
-                            <p className="text-xs text-gray-500">Unique identifier (no spaces recommended).</p>
+                            <p className="text-xs text-gray-500">Unique identifier. No spaces recommended.</p>
                         </div>
                          <div>
                             <label className="block text-sm font-medium text-gray-700">Display Name</label>
@@ -163,7 +163,7 @@ const AdminSetup = () => {
                             <input 
                                 type="number" 
                                 name="monthlyPrice" 
-                                value={formData.monthlyPrice || 0} 
+                                value={formData.monthlyPrice} 
                                 onChange={handleChange} 
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
                             />
@@ -173,7 +173,7 @@ const AdminSetup = () => {
                             <input 
                                 type="number" 
                                 name="annualPrice" 
-                                value={formData.annualPrice || 0} 
+                                value={formData.annualPrice} 
                                 onChange={handleChange} 
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
                             />
@@ -183,11 +183,11 @@ const AdminSetup = () => {
                             <input 
                                 type="number" 
                                 name="analysisLimit" 
-                                value={formData.analysisLimit || 0} 
+                                value={formData.analysisLimit} 
                                 onChange={handleChange} 
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
                             />
-                            <p className="text-xs text-gray-500">Use -1 for Unlimited.</p>
+                            <p className="text-xs text-gray-500">Use -1 for Unlimited. Use 0 for Pay-As-You-Go.</p>
                         </div>
                          <div className="flex items-center pt-6">
                              <label className="flex items-center cursor-pointer">
@@ -279,7 +279,7 @@ const AdminSetup = () => {
                 <p className="text-sm text-gray-600">
                     Use this page to configure subscription tiers. The backend logic for limits and pricing will automatically pull the values set here.
                     <br/><br/>
-                    <strong>Pay As You Go:</strong> To create a pay-as-you-go model, create a new plan named "Pay As You Go", set the monthly price to 0, and set the limit to 0. (Note: Full credit-based logic requires additional backend development).
+                    <strong>Pay As You Go:</strong> To use the Pay As You Go logic, set the Key to "PayAsYouGo". The backend is hardcoded to look for this specific key to trigger credit deduction logic ($7 per report). Set the monthly price to 0.
                 </p>
             </div>
         </div>

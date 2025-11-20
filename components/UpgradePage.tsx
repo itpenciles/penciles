@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckIcon, BuildingOfficeIcon } from '../constants';
+import { CheckIcon, BuildingOfficeIcon, BanknotesIcon } from '../constants';
 import Loader from './Loader';
+import apiClient from '../services/apiClient';
 
 const UpgradePage = () => {
     const navigate = useNavigate();
@@ -11,6 +12,7 @@ const UpgradePage = () => {
     const [isLoading, setIsLoading] = useState(false);
 
     const currentTier = user?.subscriptionTier || 'Free';
+    const isPayAsYouGo = currentTier === 'PayAsYouGo';
 
     const handleDowngradeToFree = async () => {
         if (window.confirm("Are you sure you want to downgrade to the Free plan? You will lose access to advanced calculators and historical data access limits may apply.")) {
@@ -21,6 +23,22 @@ const UpgradePage = () => {
             } catch (error) {
                 console.error("Downgrade failed", error);
                 alert("Failed to downgrade. Please try again.");
+            } finally {
+                setIsLoading(false);
+            }
+        }
+    };
+    
+    const handlePurchaseCredits = async (amount: number) => {
+        if(window.confirm(`Purchase $${amount} in credits? (Simulated)`)) {
+            setIsLoading(true);
+            try {
+                await apiClient.post('/user/credits', { amount });
+                alert(`Successfully added $${amount} to your balance.`);
+                // Force reload to update context (or context should ideally update itself via response, but simple reload works for now to sync sidebar)
+                window.location.reload(); 
+            } catch (e) {
+                alert('Purchase failed.');
             } finally {
                 setIsLoading(false);
             }
@@ -71,8 +89,8 @@ const UpgradePage = () => {
             description: 'For serious investors who need advanced tools.',
             features: [
                 '100 AI Property Analyses per Month',
-                'All Creative Finance Calculators (Wholesale, Sub-To, Seller Financing)',
-                'Property Comparison Tool (up to 4)',
+                'All Creative Finance Calculators',
+                'Property Comparison Tool',
                 'Save & Export Data',
                 'Priority Email Support',
             ],
@@ -90,6 +108,24 @@ const UpgradePage = () => {
             ],
             action: () => navigate('/contact')
         },
+         {
+            name: 'PayAsYouGo',
+            price: 0, // Special case
+            description: 'No monthly fees. Pay for what you use.',
+            features: [
+                '$7 per Analysis',
+                'Purchase Credits as Needed',
+                'Full Pro Features Access',
+                'Credits Never Expire',
+            ],
+            action: () => {
+                if (window.confirm("Switching to Pay As You Go requires a $35 initial credit purchase. Proceed?")) {
+                    // In real app, redirect to checkout. Here we simulate direct switch + charge
+                    navigate('/checkout/payasyougo'); // We'll handle this in checkout or just direct switch API
+                }
+            },
+            special: true
+        },
     ];
 
     return (
@@ -100,18 +136,53 @@ const UpgradePage = () => {
                     <p className="mt-2 text-gray-600">Upgrade to unlock more analyses and advanced strategy tools.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-start">
-                    {plans.map(plan => {
+                {isPayAsYouGo && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-10 max-w-3xl mx-auto shadow-sm">
+                        <div className="flex items-center mb-4">
+                            <div className="p-2 bg-green-100 rounded-full mr-3">
+                                <BanknotesIcon className="h-6 w-6 text-green-600" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-green-900">Pay As You Go Balance</h2>
+                                <p className="text-green-700">Current Credits: <span className="font-bold text-xl">${user?.credits?.toFixed(2) || '0.00'}</span></p>
+                            </div>
+                        </div>
+                        <p className="text-sm text-green-800 mb-6">
+                            Each analysis costs $7.00. Purchase more credits below to continue analyzing deals.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <button 
+                                onClick={() => handlePurchaseCredits(35)}
+                                disabled={isLoading}
+                                className="bg-white border border-green-300 text-green-700 hover:bg-green-600 hover:text-white font-bold py-3 px-4 rounded-lg shadow-sm transition-colors"
+                            >
+                                Buy $35 (5 Rpts)
+                            </button>
+                            <button 
+                                onClick={() => handlePurchaseCredits(70)}
+                                disabled={isLoading}
+                                className="bg-white border border-green-300 text-green-700 hover:bg-green-600 hover:text-white font-bold py-3 px-4 rounded-lg shadow-sm transition-colors"
+                            >
+                                Buy $70 (10 Rpts)
+                            </button>
+                            <button 
+                                onClick={() => handlePurchaseCredits(140)}
+                                disabled={isLoading}
+                                className="bg-green-600 text-white hover:bg-green-700 font-bold py-3 px-4 rounded-lg shadow-md transition-colors"
+                            >
+                                Buy $140 (20 Rpts)
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+                    {plans.filter(p => !p.special || !isPayAsYouGo).map(plan => { // Don't show PAYG card if already on it (shown above)
                         const isCurrent = currentTier === plan.name;
-                        const isUpgrade = !isCurrent && (
-                             (currentTier === 'Free') || 
-                             (currentTier === 'Starter' && (plan.name === 'Experienced' || plan.name === 'Pro' || plan.name === 'Team')) ||
-                             (currentTier === 'Experienced' && (plan.name === 'Pro' || plan.name === 'Team')) ||
-                             (currentTier === 'Pro' && plan.name === 'Team')
-                        );
+                        const isPayGoCard = plan.name === 'PayAsYouGo';
 
                         return (
-                            <div key={plan.name} className={`bg-white p-6 rounded-xl shadow-sm border relative ${isCurrent ? 'border-gray-300 opacity-75' : 'border-gray-200 hover:shadow-md transition-shadow'}`}>
+                            <div key={plan.name} className={`bg-white p-6 rounded-xl shadow-sm border relative ${isCurrent ? 'border-gray-300 opacity-75' : 'border-gray-200 hover:shadow-md transition-shadow'} ${isPayGoCard ? 'border-green-200 bg-green-50/30' : ''}`}>
                                 {isCurrent && (
                                     <div className="absolute top-0 right-0 -mt-2 -mr-2">
                                         <span className="bg-gray-800 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Current Plan</span>
@@ -119,26 +190,41 @@ const UpgradePage = () => {
                                 )}
                                 <h3 className="text-xl font-bold text-gray-800">{plan.name}</h3>
                                 <div className="mt-4 mb-4">
-                                    <span className="text-4xl font-extrabold text-gray-900">${plan.price}</span>
-                                    <span className="text-base font-medium text-gray-500">/mo</span>
+                                    {isPayGoCard ? (
+                                        <div>
+                                             <span className="text-3xl font-extrabold text-gray-900">$35</span>
+                                             <span className="text-sm font-medium text-gray-500 block">Retainer Deposit</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span className="text-4xl font-extrabold text-gray-900">${plan.price}</span>
+                                            <span className="text-base font-medium text-gray-500">/mo</span>
+                                        </>
+                                    )}
                                 </div>
                                 <p className="text-sm text-gray-500 mb-6 h-12">{plan.description}</p>
                                 
                                 <button
-                                    onClick={plan.action}
+                                    onClick={() => {
+                                        if (plan.name === 'PayAsYouGo') {
+                                            // Direct to checkout for retainer
+                                            navigate('/checkout/payasyougo');
+                                        } else {
+                                            plan.action();
+                                        }
+                                    }}
                                     disabled={isCurrent || isLoading}
                                     className={`w-full text-center px-4 py-2 rounded-lg font-semibold text-sm transition flex items-center justify-center mb-6
                                         ${isCurrent 
                                             ? 'bg-gray-100 text-gray-500 cursor-default' 
-                                            : isUpgrade 
-                                                ? 'bg-brand-blue text-white hover:bg-blue-700 shadow-md' 
-                                                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                            : (plan.name === 'Free' ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50' : 'bg-brand-blue text-white hover:bg-blue-700 shadow-md')
                                         }
                                     `}
                                 >
                                     {isLoading && plan.name === 'Free' ? <Loader text="..." /> : 
                                         isCurrent ? 'Current Plan' : 
-                                        isUpgrade ? `Upgrade to ${plan.name}` : 'Downgrade'}
+                                        (plan.name === 'Free' ? 'Downgrade' : (plan.name === 'PayAsYouGo' ? 'Deposit $35' : `Upgrade to ${plan.name}`))
+                                    }
                                 </button>
 
                                 <ul className="space-y-3 text-sm">

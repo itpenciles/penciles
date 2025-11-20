@@ -1,16 +1,13 @@
 
-import { Response as ExpressResponse, Request as ExpressRequest } from 'express';
+import { Response, Request } from 'express';
 import { query } from '../db.js';
 import { Property } from '../../types';
 import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
-
-interface AuthRequest extends ExpressRequest {
-    user?: { id: string };
-}
+import { AuthRequest } from '../middleware/authMiddleware.js';
 
 // Get all properties for the logged-in user
-export const getProperties = async (req: AuthRequest, res: ExpressResponse) => {
-    const userId = req.user?.id;
+export const getProperties = async (req: Request, res: Response) => {
+    const userId = (req as AuthRequest).user?.id;
     try {
         const result = await query(
             'SELECT id, property_data FROM properties WHERE user_id = $1 ORDER BY created_at DESC', 
@@ -29,8 +26,8 @@ export const getProperties = async (req: AuthRequest, res: ExpressResponse) => {
 };
 
 // Add a new property
-export const addProperty = async (req: AuthRequest, res: ExpressResponse) => {
-    const userId = req.user?.id;
+export const addProperty = async (req: Request, res: Response) => {
+    const userId = (req as AuthRequest).user?.id;
     // The property data from the body does not have an ID yet.
     const propertyData: Omit<Property, 'id'> = req.body;
 
@@ -53,8 +50,8 @@ export const addProperty = async (req: AuthRequest, res: ExpressResponse) => {
 };
 
 // Update an existing property
-export const updateProperty = async (req: AuthRequest, res: ExpressResponse) => {
-    const userId = req.user?.id;
+export const updateProperty = async (req: Request, res: Response) => {
+    const userId = (req as AuthRequest).user?.id;
     const { id } = req.params;
     const propertyData: Property = req.body;
 
@@ -97,8 +94,8 @@ export const updateProperty = async (req: AuthRequest, res: ExpressResponse) => 
 };
 
 // Delete a property
-export const deleteProperty = async (req: AuthRequest, res: ExpressResponse) => {
-    const userId = req.user?.id;
+export const deleteProperty = async (req: Request, res: Response) => {
+    const userId = (req as AuthRequest).user?.id;
     const { id } = req.params;
 
     try {

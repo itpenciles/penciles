@@ -1,8 +1,8 @@
 
-import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import { Request, Response } from 'express';
 import { query } from '../db.js';
 
-export const getAdminStats = async (req: ExpressRequest, res: ExpressResponse) => {
+export const getAdminStats = async (req: Request, res: Response) => {
     try {
         const { range } = req.query; // 7, 14, 30, 60, YTD
 
@@ -98,7 +98,7 @@ export const getAdminStats = async (req: ExpressRequest, res: ExpressResponse) =
     }
 };
 
-export const getUsers = async (_req: ExpressRequest, res: ExpressResponse) => {
+export const getUsers = async (_req: Request, res: Response) => {
     try {
         // Include subscription history count to determine status
         const usersQuery = `
@@ -146,7 +146,7 @@ export const getUsers = async (_req: ExpressRequest, res: ExpressResponse) => {
     }
 };
 
-export const getUserDetail = async (req: ExpressRequest, res: ExpressResponse) => {
+export const getUserDetail = async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         // 1. Basic user info
@@ -248,7 +248,7 @@ export const getUserDetail = async (req: ExpressRequest, res: ExpressResponse) =
     }
 };
 
-export const cancelUserSubscription = async (req: ExpressRequest, res: ExpressResponse) => {
+export const cancelUserSubscription = async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         const userRes = await query('SELECT subscription_tier FROM users WHERE id = $1', [id]);

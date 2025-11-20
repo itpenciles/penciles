@@ -186,7 +186,7 @@ export type PropertyAction =
   | { type: 'UPDATE_PROPERTY'; payload: Property }
   | { type: 'DELETE_PROPERTY'; payload: string }; // id
 
-export type SubscriptionTier = 'Free' | 'Starter' | 'Pro' | 'Team' | string;
+export type SubscriptionTier = 'Free' | 'Starter' | 'Pro' | 'Team' | 'PayAsYouGo' | string;
 
 export interface User {
   id: string;
@@ -196,6 +196,7 @@ export interface User {
   subscriptionTier?: SubscriptionTier | null;
   analysisCount: number;
   analysisLimitResetAt?: string | null;
+  credits: number; // Amount in USD for PayAsYouGo
   role?: 'user' | 'admin';
   lastLoginAt?: string;
   loginCount?: number;
@@ -230,7 +231,7 @@ export interface BillingHistoryItem {
     id: string;
     date: string;
     amount: number;
-    billingType: 'Monthly' | 'Annually';
+    billingType: 'Monthly' | 'Annually' | 'Credits';
     cardType: string;
     last4: string;
     status: 'Paid' | 'Refunded' | 'Failed';
