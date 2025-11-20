@@ -1,5 +1,5 @@
 
-import { Request, Response } from 'express';
+import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { query } from '../db.js';
 import { Plan } from '../../types';
 
@@ -83,16 +83,17 @@ const DEFAULT_PLANS: Plan[] = [
     }
 ];
 
-export const getAllPlans = async (_req: Request, res: Response) => {
+export const getAllPlans = async (_req: ExpressRequest, res: ExpressResponse) => {
     try {
-        // Check if plans exist
-        const checkResult = await query('SELECT count(*) FROM plans');
-        const count = parseInt(checkResult.rows[0].count);
+        // 1. Fetch existing plan keys
+        const existingResult = await query('SELECT key FROM plans');
+        const existingKeys = new Set(existingResult.rows.map((r: any) => r.key));
 
-        if (count === 0) {
-            console.log("Plans table is empty. Seeding default plans...");
-            // Seed defaults
-            for (const plan of DEFAULT_PLANS) {
+        // 2. Identify and Insert Missing Defaults
+        // This ensures that if a user manually inserted some plans but missed "Experienced", it gets added now.
+        for (const plan of DEFAULT_PLANS) {
+            if (!existingKeys.has(plan.key)) {
+                console.log(`Seeding missing plan: ${plan.key}`);
                 await query(`
                     INSERT INTO plans (key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -110,7 +111,7 @@ export const getAllPlans = async (_req: Request, res: Response) => {
             }
         }
 
-        // Fetch from DB (now populated)
+        // 3. Fetch all plans from DB to return to frontend
         const result = await query('SELECT key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular FROM plans ORDER BY monthly_price ASC');
         
         const plans = result.rows.map((row: any) => ({
@@ -133,7 +134,7 @@ export const getAllPlans = async (_req: Request, res: Response) => {
     }
 };
 
-export const updatePlan = async (req: Request, res: Response) => {
+export const updatePlan = async (req: ExpressRequest, res: ExpressResponse) => {
     const { key } = req.params;
     const planData: Plan = req.body;
 
@@ -172,11 +173,11 @@ export const updatePlan = async (req: Request, res: Response) => {
     }
 };
 
-export const createPlan = async (req: Request, res: Response) => {
+export const createPlan = async (req: ExpressRequest, res: ExpressResponse) => {
     return updatePlan(req, res);
 };
 
-export const deletePlan = async (req: Request, res: Response) => {
+export const deletePlan = async (req: ExpressRequest, res: ExpressResponse) => {
     const { key } = req.params;
     try {
         await query('DELETE FROM plans WHERE key = $1', [key]);

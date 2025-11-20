@@ -1,14 +1,13 @@
 
-import { Request, Response, NextFunction } from 'express';
+import { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// FIX: Correctly extend the express.Request type to include the user payload.
-// Using an intersection type to ensure all properties from the base Request are included, as `extends` was not working correctly.
-type AuthRequest = Request & {
+// FIX: Explicitly use Express types to include the user payload.
+export interface AuthRequest extends ExpressRequest {
     user?: { id: string; role?: string };
-};
+}
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authMiddleware = (req: AuthRequest, res: ExpressResponse, next: NextFunction) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -26,7 +25,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     }
 };
 
-export const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const adminMiddleware = (req: AuthRequest, res: ExpressResponse, next: NextFunction) => {
     if (!req.user) {
         return res.status(401).json({ message: 'Authentication required.' });
     }

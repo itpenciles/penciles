@@ -1,5 +1,5 @@
 
-import { Request, Response } from 'express';
+import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import { query, pool } from '../db.js';
@@ -15,7 +15,7 @@ const getClientIdSnippet = (clientId: string | undefined): string => {
     return `${clientId.substring(0, 4)}...${clientId.substring(clientId.length - 4)}`;
 }
 
-export const handleGoogleLogin = async (req: Request, res: Response) => {
+export const handleGoogleLogin = async (req: ExpressRequest, res: ExpressResponse) => {
     console.log(`[AUTH] handleGoogleLogin triggered. Server is using Google Client ID ending in: ...${getClientIdSnippet(GOOGLE_CLIENT_ID)}`);
 
     if (!GOOGLE_CLIENT_ID) {

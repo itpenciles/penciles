@@ -1,16 +1,15 @@
-import { Response, Request } from 'express';
+
+import { Response as ExpressResponse, Request as ExpressRequest } from 'express';
 import { query } from '../db.js';
 import { Property } from '../../types';
 import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
 
-// FIX: Correctly extend the express.Request type to include the user payload.
-// Using an intersection type to ensure all properties from the base Request are included, as `extends` was not working correctly.
-type AuthRequest = Request & {
+interface AuthRequest extends ExpressRequest {
     user?: { id: string };
-};
+}
 
 // Get all properties for the logged-in user
-export const getProperties = async (req: AuthRequest, res: Response) => {
+export const getProperties = async (req: AuthRequest, res: ExpressResponse) => {
     const userId = req.user?.id;
     try {
         const result = await query(
@@ -30,7 +29,7 @@ export const getProperties = async (req: AuthRequest, res: Response) => {
 };
 
 // Add a new property
-export const addProperty = async (req: AuthRequest, res: Response) => {
+export const addProperty = async (req: AuthRequest, res: ExpressResponse) => {
     const userId = req.user?.id;
     // The property data from the body does not have an ID yet.
     const propertyData: Omit<Property, 'id'> = req.body;
@@ -54,7 +53,7 @@ export const addProperty = async (req: AuthRequest, res: Response) => {
 };
 
 // Update an existing property
-export const updateProperty = async (req: AuthRequest, res: Response) => {
+export const updateProperty = async (req: AuthRequest, res: ExpressResponse) => {
     const userId = req.user?.id;
     const { id } = req.params;
     const propertyData: Property = req.body;
@@ -98,7 +97,7 @@ export const updateProperty = async (req: AuthRequest, res: Response) => {
 };
 
 // Delete a property
-export const deleteProperty = async (req: AuthRequest, res: Response) => {
+export const deleteProperty = async (req: AuthRequest, res: ExpressResponse) => {
     const userId = req.user?.id;
     const { id } = req.params;
 

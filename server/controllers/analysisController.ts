@@ -1,13 +1,13 @@
 
-import { Request, Response } from 'express';
+import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { analyzePropertyWithGemini } from '../services/geminiService.js';
 import { query } from '../db.js';
 
-type AuthRequest = Request & {
+type AuthRequest = ExpressRequest & {
     user?: { id: string };
 };
 
-export const analyzeProperty = async (req: AuthRequest, res: Response) => {
+export const analyzeProperty = async (req: AuthRequest, res: ExpressResponse) => {
     const { inputType, value } = req.body;
     const userId = req.user?.id;
 

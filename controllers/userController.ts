@@ -1,15 +1,15 @@
 
-import { Request, Response } from 'express';
+import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { query } from '../db.js';
 import jwt from 'jsonwebtoken';
 import { User, SubscriptionTier } from '../../types';
 
 // Define a custom request type that includes the authenticated user's info
-type AuthRequest = Request & {
+type AuthRequest = ExpressRequest & {
     user?: { id: string; role?: string };
 };
 
-export const updateUserSubscription = async (req: AuthRequest, res: Response) => {
+export const updateUserSubscription = async (req: AuthRequest, res: ExpressResponse) => {
     const userId = req.user?.id;
     const { tier } = req.body as { tier: SubscriptionTier };
 
@@ -116,7 +116,7 @@ export const updateUserSubscription = async (req: AuthRequest, res: Response) =>
     }
 };
 
-export const getUserProfile = async (req: AuthRequest, res: Response) => {
+export const getUserProfile = async (req: AuthRequest, res: ExpressResponse) => {
     const userId = req.user?.id;
     try {
         const result = await query('SELECT id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role FROM users WHERE id = $1', [userId]);
@@ -139,7 +139,7 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
     }
 };
 
-export const trackUserAction = async (req: AuthRequest, res: Response) => {
+export const trackUserAction = async (req: AuthRequest, res: ExpressResponse) => {
     const userId = req.user?.id;
     const { action } = req.body;
 
