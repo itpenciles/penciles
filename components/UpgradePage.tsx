@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -52,6 +53,19 @@ const UpgradePage = () => {
             action: () => navigate('/checkout/starter')
         },
         {
+            name: 'Experienced',
+            price: 19,
+            description: 'For growing investors building their portfolio.',
+            features: [
+                '40 AI Property Analyses per Month',
+                'Export Data to CSV & PDF',
+                'Property Comparison Tool',
+                'Standard Rental Analysis',
+                'Email Support',
+            ],
+            action: () => navigate('/checkout/experienced')
+        },
+        {
             name: 'Pro',
             price: 29,
             description: 'For serious investors who need advanced tools.',
@@ -86,12 +100,13 @@ const UpgradePage = () => {
                     <p className="mt-2 text-gray-600">Upgrade to unlock more analyses and advanced strategy tools.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-start">
                     {plans.map(plan => {
                         const isCurrent = currentTier === plan.name;
                         const isUpgrade = !isCurrent && (
                              (currentTier === 'Free') || 
-                             (currentTier === 'Starter' && (plan.name === 'Pro' || plan.name === 'Team')) ||
+                             (currentTier === 'Starter' && (plan.name === 'Experienced' || plan.name === 'Pro' || plan.name === 'Team')) ||
+                             (currentTier === 'Experienced' && (plan.name === 'Pro' || plan.name === 'Team')) ||
                              (currentTier === 'Pro' && plan.name === 'Team')
                         );
 
@@ -107,7 +122,7 @@ const UpgradePage = () => {
                                     <span className="text-4xl font-extrabold text-gray-900">${plan.price}</span>
                                     <span className="text-base font-medium text-gray-500">/mo</span>
                                 </div>
-                                <p className="text-sm text-gray-500 mb-6 h-10">{plan.description}</p>
+                                <p className="text-sm text-gray-500 mb-6 h-12">{plan.description}</p>
                                 
                                 <button
                                     onClick={plan.action}

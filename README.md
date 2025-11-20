@@ -90,7 +90,8 @@ CREATE TABLE plans (
 INSERT INTO plans (key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular) VALUES
 ('Free', 'Free', 'For investors just getting started.', 0, 0, 3, '["3 AI Property Analyses (Lifetime)", "Standard Rental Analysis", "Save Properties to Browser"]'::jsonb, false),
 ('Starter', 'Starter', 'For active investors analyzing a few deals a month.', 9, 90, 15, '["15 AI Property Analyses per Month", "Standard Rental Analysis", "Comparison Tool", "Email Support"]'::jsonb, false),
-('Pro', 'Pro', 'For serious investors needing advanced tools.', 29, 290, 100, '["100 AI Property Analyses per Month", "Creative Finance Calculators", "Comparison Tool", "Export Data", "Priority Support"]'::jsonb, true),
+('Experienced', 'Experienced', 'For growing investors analyzing weekly deals.', 19, 190, 40, '["40 AI Property Analyses per Month", "Standard Rental Analysis", "Export Data to CSV & PDF", "Comparison Tool", "Email Support"]'::jsonb, true),
+('Pro', 'Pro', 'For serious investors needing advanced tools.', 29, 290, 100, '["100 AI Property Analyses per Month", "Creative Finance Calculators", "Comparison Tool", "Export Data", "Priority Support"]'::jsonb, false),
 ('Team', 'Team', 'For professional teams.', 79, 790, -1, '["Unlimited Analyses", "All Pro Features", "Dedicated Support"]'::jsonb, false)
 ON CONFLICT DO NOTHING;
 ```

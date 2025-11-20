@@ -35,6 +35,22 @@ const DEFAULT_PLANS: Plan[] = [
         isPopular: false
     },
     {
+        key: 'Experienced',
+        name: 'Experienced',
+        description: 'For growing investors analyzing weekly deals and building their portfolio.',
+        monthlyPrice: 19,
+        annualPrice: 190,
+        analysisLimit: 40,
+        features: [
+            '40 AI Property Analyses per Month',
+            'Standard Rental Analysis',
+            'Export Data to CSV & PDF',
+            'Property Comparison Tool',
+            'Email Support',
+        ],
+        isPopular: true
+    },
+    {
         key: 'Pro',
         name: 'Pro',
         description: 'For serious investors and small teams who need advanced tools.',
@@ -48,7 +64,7 @@ const DEFAULT_PLANS: Plan[] = [
             'Save & Export Data',
             'Priority Email Support',
         ],
-        isPopular: true
+        isPopular: false
     },
     {
         key: 'Team',
@@ -69,29 +85,50 @@ const DEFAULT_PLANS: Plan[] = [
 
 export const getAllPlans = async (_req: Request, res: Response) => {
     try {
-        // Try to fetch from DB
+        // Check if plans exist
+        const checkResult = await query('SELECT count(*) FROM plans');
+        const count = parseInt(checkResult.rows[0].count);
+
+        if (count === 0) {
+            console.log("Plans table is empty. Seeding default plans...");
+            // Seed defaults
+            for (const plan of DEFAULT_PLANS) {
+                await query(`
+                    INSERT INTO plans (key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    ON CONFLICT (key) DO NOTHING
+                `, [
+                    plan.key,
+                    plan.name,
+                    plan.description,
+                    plan.monthlyPrice,
+                    plan.annualPrice,
+                    plan.analysisLimit,
+                    JSON.stringify(plan.features),
+                    plan.isPopular
+                ]);
+            }
+        }
+
+        // Fetch from DB (now populated)
         const result = await query('SELECT key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular FROM plans ORDER BY monthly_price ASC');
         
-        if (result.rows.length > 0) {
-            const plans = result.rows.map((row: any) => ({
-                key: row.key,
-                name: row.name,
-                description: row.description,
-                monthlyPrice: row.monthly_price,
-                annualPrice: row.annual_price,
-                analysisLimit: row.analysis_limit,
-                features: row.features, // Assuming JSONB returns parsed array
-                isPopular: row.is_popular
-            }));
-            return res.json(plans);
-        } else {
-            // If table exists but empty, return empty or defaults? 
-            // Returning defaults for safety during migration
-            return res.json(DEFAULT_PLANS);
-        }
+        const plans = result.rows.map((row: any) => ({
+            key: row.key,
+            name: row.name,
+            description: row.description,
+            monthlyPrice: row.monthly_price,
+            annualPrice: row.annual_price,
+            analysisLimit: row.analysis_limit,
+            features: row.features,
+            isPopular: row.is_popular
+        }));
+        
+        return res.json(plans);
+
     } catch (error: any) {
-        // If table doesn't exist (e.g. before migration), return defaults
-        console.warn("Could not fetch plans from DB (table might not exist), returning defaults.", error.message);
+        console.error("Could not fetch plans from DB:", error);
+        // Fallback if DB completely fails
         return res.json(DEFAULT_PLANS);
     }
 };
@@ -136,7 +173,6 @@ export const updatePlan = async (req: Request, res: Response) => {
 };
 
 export const createPlan = async (req: Request, res: Response) => {
-    // Reuse update logic since we use UPSERT (INSERT ... ON CONFLICT) or standard INSERT
     return updatePlan(req, res);
 };
 

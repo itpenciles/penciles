@@ -42,7 +42,7 @@ export const analyzeProperty = async (req: AuthRequest, res: Response) => {
             limit = dbLimit === -1 ? Infinity : dbLimit;
         } else {
             // Fallback to hardcoded defaults if plan not in DB
-            const limits: { [key: string]: number } = { 'Free': 3, 'Starter': 15, 'Pro': 100, 'Team': Infinity };
+            const limits: { [key: string]: number } = { 'Free': 3, 'Starter': 15, 'Experienced': 40, 'Pro': 100, 'Team': Infinity };
             limit = limits[tier] !== undefined ? limits[tier] : 0;
         }
 

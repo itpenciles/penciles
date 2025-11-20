@@ -82,11 +82,19 @@ const AdminSetup = () => {
             return;
         }
 
+        // Ensure numbers are numbers
+        const payload = {
+            ...formData,
+            monthlyPrice: Number(formData.monthlyPrice),
+            annualPrice: Number(formData.annualPrice),
+            analysisLimit: Number(formData.analysisLimit),
+        };
+
         try {
             const endpoint = `/admin/plans/${formData.key}`;
             const method = 'PUT'; // We use PUT for upsert logic in backend
             
-            await apiClient.request(method, endpoint, formData);
+            await apiClient.request(method, endpoint, payload);
             alert("Plan saved successfully.");
             setEditMode(null);
             fetchPlans();
