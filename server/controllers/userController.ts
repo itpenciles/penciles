@@ -52,29 +52,40 @@ export const updateUserSubscription = async (req: any, res: any) => {
 
         let revenueImpact = newPrice;
 
+        // --- CRITICAL FIX: Calculate actual usage ---
+        // Instead of resetting to 0, we count the user's ACTIVE (non-deleted) properties.
+        // This ensures that if a user has 4 items and upgrades to a 15-item plan, their usage shows 4/15, not 0/15.
+        const countResult = await query(
+            `SELECT COUNT(*) FROM properties WHERE user_id = $1 AND (property_data->>'deletedAt') IS NULL`, 
+            [userId]
+        );
+        const currentActiveCount = parseInt(countResult.rows[0].count || '0');
+
+
         if (tier === 'PayAsYouGo') {
              // Initial Retainer logic: User switching to PAYG pays $35 immediately and gets credits.
              revenueImpact = PAYG_RETAINER;
              changeType = 'new'; 
              
              // Add the credits immediately and set tier
+             // PAYG doesn't use analysis_count for limits, but we sync it anyway for record keeping
              result = await query(
-                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = 0, analysis_limit_reset_at = NULL, credits = credits + $2 WHERE id = $3 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
-                [tier, PAYG_RETAINER, userId]
+                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = $2, analysis_limit_reset_at = NULL, credits = credits + $3 WHERE id = $4 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
+                [tier, currentActiveCount, PAYG_RETAINER, userId]
             );
         } else if (isMonthlyPlan) {
-            // When upgrading to a paid plan, reset their count and set the renewal date
+            // When upgrading to a paid plan, sync count to actual active properties and set the renewal date
             const newResetDate = new Date();
             newResetDate.setMonth(newResetDate.getMonth() + 1);
             result = await query(
-                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = 0, analysis_limit_reset_at = $2 WHERE id = $3 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
-                [tier, newResetDate, userId]
+                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = $2, analysis_limit_reset_at = $3 WHERE id = $4 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
+                [tier, currentActiveCount, newResetDate, userId]
             );
         } else {
-            // For 'Free' plan
+            // For 'Free' plan (downgrade or cancel)
             result = await query(
-                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_limit_reset_at = NULL WHERE id = $2 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
-                [tier, userId]
+                'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = $2, analysis_limit_reset_at = NULL WHERE id = $3 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
+                [tier, currentActiveCount, userId]
             );
         }
 

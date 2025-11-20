@@ -167,10 +167,22 @@ const Dashboard = () => {
     }, {} as Record<string, number>);
 
     // Logic for gating properties based on subscription plan
-    // Admin gets unlimited access
-    const propertyLimit = user?.role === 'admin' ? 999999 : (user?.tierLimit || 3); 
+    const getTierLimit = (tier: string | undefined | null, role: string | undefined): number => {
+        if (role === 'admin') return 999999;
+        switch (tier) {
+            case 'Starter': return 15;
+            case 'Experienced': return 40;
+            case 'Pro': return 100;
+            case 'Team': return 999999;
+            case 'PayAsYouGo': return 999999; // PayAsYouGo users pay per report, so they should see everything they bought
+            case 'Free':
+            default: return 3;
+        }
+    };
 
+    const propertyLimit = getTierLimit(user?.subscriptionTier, user?.role);
     const tier = user?.subscriptionTier || 'Free';
+
 
     const handleSelectProperty = useCallback((id: string) => {
         setSelectedPropertyIds(prevSelected => {
