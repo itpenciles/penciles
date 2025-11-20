@@ -1,10 +1,50 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import apiClient from '../services/apiClient';
 import Loader from './Loader';
 import { Plan } from '../types';
+
+interface PlanCardProps {
+    plan: Plan;
+    onEdit: (plan: Plan) => void;
+    onDelete: (key: string) => void;
+}
+
+const PlanCard: React.FC<PlanCardProps> = ({ plan, onEdit, onDelete }) => (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative flex flex-col h-full">
+        {plan.isPopular && <div className="bg-yellow-400 text-xs font-bold text-center py-1 text-yellow-900 uppercase">Most Popular</div>}
+        <div className="p-6 flex-1 flex flex-col">
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xl font-bold text-gray-800">{plan.name}</h3>
+                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">{plan.key}</span>
+            </div>
+            <div className="mb-4">
+                <span className="text-3xl font-bold">${plan.monthlyPrice}</span>
+                <span className="text-gray-500 text-sm">/mo</span>
+                <span className="text-gray-400 text-sm ml-2">(${plan.annualPrice}/yr)</span>
+            </div>
+            <div className="mb-4 text-sm text-gray-600">
+                <strong>Limit:</strong> {plan.analysisLimit === -1 ? 'Unlimited' : plan.analysisLimit} analyses
+            </div>
+            <p className="text-sm text-gray-500 h-10 overflow-hidden mb-4">{plan.description}</p>
+            
+            <div className="border-t border-gray-100 pt-4 flex-1">
+                <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Features</h4>
+                <ul className="text-sm text-gray-600 space-y-1 max-h-40 overflow-y-auto">
+                    {plan.features.map((f, i) => (
+                        <li key={i} className="flex items-start">
+                            <span className="mr-2">•</span> {f}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </div>
+        <div className="bg-gray-50 px-6 py-3 flex justify-between mt-auto">
+            <button onClick={() => onEdit(plan)} className="text-blue-600 hover:text-blue-800 font-medium text-sm">Edit Plan</button>
+            <button onClick={() => onDelete(plan.key)} className="text-red-500 hover:text-red-700 font-medium text-sm">Delete</button>
+        </div>
+    </div>
+);
 
 const AdminSetup = () => {
     const [plans, setPlans] = useState<Plan[]>([]);
@@ -99,7 +139,8 @@ const AdminSetup = () => {
         };
 
         try {
-            const endpoint = `/admin/plans/${formData.key}`;
+            // FIX: The route is mounted at /api/plans, so client should request /plans/{key}
+            const endpoint = `/plans/${formData.key}`;
             const method = 'PUT'; // We use PUT for upsert logic in backend
             
             await apiClient.request(method, endpoint, payload);
@@ -116,15 +157,21 @@ const AdminSetup = () => {
     const handleDelete = async (key: string) => {
         if (window.confirm(`Are you sure you want to delete the plan '${key}'? Users currently on this plan may experience issues.`)) {
             try {
-                await apiClient.delete(`/admin/plans/${key}`);
+                // FIX: The route is mounted at /api/plans, so client should request /plans/{key}
+                await apiClient.delete(`/plans/${key}`);
                 fetchPlans();
             } catch (e: any) {
-                alert(`Failed to delete plan: ${e.message}`);
+                console.error("Delete failed", e);
+                const errorMsg = e.response?.data?.message || e.message || "Unknown Error";
+                alert(`Failed to delete plan: ${errorMsg}`);
             }
         }
     };
 
     if (isLoading) return <div className="p-8 text-center"><Loader text="Loading Plans..." /></div>;
+
+    const monthlyPlans = plans.filter(p => p.key !== 'PayAsYouGo');
+    const paygPlans = plans.filter(p => p.key === 'PayAsYouGo');
 
     return (
         <div className="p-8 bg-gray-50 min-h-screen">
@@ -244,42 +291,19 @@ const AdminSetup = () => {
                 </div>
             )}
 
-            {/* Plans List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {plans.map(plan => (
-                    <div key={plan.key} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative">
-                        {plan.isPopular && <div className="bg-yellow-400 text-xs font-bold text-center py-1 text-yellow-900 uppercase">Most Popular</div>}
-                        <div className="p-6">
-                            <div className="flex justify-between items-center mb-2">
-                                <h3 className="text-xl font-bold text-gray-800">{plan.name}</h3>
-                                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">{plan.key}</span>
-                            </div>
-                            <div className="mb-4">
-                                <span className="text-3xl font-bold">${plan.monthlyPrice}</span>
-                                <span className="text-gray-500 text-sm">/mo</span>
-                                <span className="text-gray-400 text-sm ml-2">(${plan.annualPrice}/yr)</span>
-                            </div>
-                            <div className="mb-4 text-sm text-gray-600">
-                                <strong>Limit:</strong> {plan.analysisLimit === -1 ? 'Unlimited' : plan.analysisLimit} analyses
-                            </div>
-                            <p className="text-sm text-gray-500 h-10 overflow-hidden mb-4">{plan.description}</p>
-                            
-                            <div className="border-t border-gray-100 pt-4">
-                                <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Features</h4>
-                                <ul className="text-sm text-gray-600 space-y-1 h-32 overflow-y-auto">
-                                    {plan.features.map((f, i) => (
-                                        <li key={i} className="flex items-start">
-                                            <span className="mr-2">•</span> {f}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                        <div className="bg-gray-50 px-6 py-3 flex justify-between">
-                            <button onClick={() => handleEdit(plan)} className="text-blue-600 hover:text-blue-800 font-medium text-sm">Edit Plan</button>
-                            <button onClick={() => handleDelete(plan.key)} className="text-red-500 hover:text-red-700 font-medium text-sm">Delete</button>
-                        </div>
-                    </div>
+            {/* Monthly Plans Section */}
+            <h2 className="text-lg font-bold text-gray-700 mb-4">Monthly Subscriptions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-12">
+                {monthlyPlans.map(plan => (
+                    <PlanCard key={plan.key} plan={plan} onEdit={handleEdit} onDelete={handleDelete} />
+                ))}
+            </div>
+
+            {/* Pay As You Go Section */}
+            <h2 className="text-lg font-bold text-gray-700 mb-4">On-Demand</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6">
+                {paygPlans.map(plan => (
+                    <PlanCard key={plan.key} plan={plan} onEdit={handleEdit} onDelete={handleDelete} />
                 ))}
             </div>
 
