@@ -232,7 +232,14 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
         await apiClient.delete(`/properties/${id}`);
     }
     
-    setProperties(prev => prev.filter(p => p.id !== id));
+    // FIX: Instead of removing the property, update it to have a deletedAt timestamp
+    // This allows it to immediately appear in the "Archived" list on the Dashboard.
+    setProperties(prev => prev.map(p => {
+      if (p.id === id) {
+        return { ...p, deletedAt: new Date().toISOString() };
+      }
+      return p;
+    }));
   };
 
   return (

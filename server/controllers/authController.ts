@@ -60,27 +60,33 @@ export const handleGoogleLogin = async (req: any, res: any) => {
         const userResult = await query(userUpsertQuery, [email, name, googleId, profilePictureUrl]);
         let dbUser = userResult.rows[0];
         
-        // 2. [SELF-HEALING] Sync analysis_count with actual properties
-        // This fixes issues where usage counts drift or reset incorrectly.
-        try {
-            const countResult = await query(
-                `SELECT COUNT(*) FROM properties WHERE user_id = $1 AND (property_data->>'deletedAt') IS NULL`, 
-                [dbUser.id]
-            );
-            const actualCount = parseInt(countResult.rows[0].count || '0');
-            
-            // Only update if different to save writes (though login is infrequent enough that it's fine)
-            if (parseInt(dbUser.analysis_count) !== actualCount) {
-                console.log(`[AUTH] Correcting analysis_count for user ${dbUser.email}. DB: ${dbUser.analysis_count}, Real: ${actualCount}`);
-                const updateCountRes = await query(
-                    'UPDATE users SET analysis_count = $1 WHERE id = $2 RETURNING analysis_count',
-                    [actualCount, dbUser.id]
+        // 2. [SELF-HEALING] Sync analysis_count for FREE TIER ONLY
+        // Free tier is a lifetime limit, so it must equal total historical analyses (including deleted).
+        // We do NOT do this for paid tiers because their count resets monthly. Overwriting a monthly count
+        // with lifetime history would incorrectly cap them out.
+        const isFreeTier = !dbUser.subscription_tier || dbUser.subscription_tier === 'Free';
+
+        if (isFreeTier) {
+            try {
+                const countResult = await query(
+                    `SELECT COUNT(*) FROM properties WHERE user_id = $1`, 
+                    [dbUser.id]
                 );
-                dbUser.analysis_count = updateCountRes.rows[0].analysis_count;
+                const actualCount = parseInt(countResult.rows[0].count || '0');
+                
+                // Only update if different to save writes
+                if (parseInt(dbUser.analysis_count) !== actualCount) {
+                    console.log(`[AUTH] Correcting analysis_count for Free user ${dbUser.email}. DB: ${dbUser.analysis_count}, Real: ${actualCount}`);
+                    const updateCountRes = await query(
+                        'UPDATE users SET analysis_count = $1 WHERE id = $2 RETURNING analysis_count',
+                        [actualCount, dbUser.id]
+                    );
+                    dbUser.analysis_count = updateCountRes.rows[0].analysis_count;
+                }
+            } catch (err) {
+                console.error("[AUTH] Failed to sync analysis count on login", err);
+                // Continue logging in even if sync fails
             }
-        } catch (err) {
-            console.error("[AUTH] Failed to sync analysis count on login", err);
-            // Continue logging in even if sync fails
         }
 
         const user: User = {
@@ -99,7 +105,7 @@ export const handleGoogleLogin = async (req: any, res: any) => {
             { 
                 id: user.id, 
                 name: user.name, 
-                email: user.email,
+                email: user.email, 
                 profilePictureUrl: user.profilePictureUrl,
                 subscriptionTier: user.subscriptionTier,
                 analysisCount: user.analysisCount,

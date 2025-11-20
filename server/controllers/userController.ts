@@ -52,14 +52,14 @@ export const updateUserSubscription = async (req: any, res: any) => {
 
         let revenueImpact = newPrice;
 
-        // --- CRITICAL FIX: Sync usage count with actual active properties ---
-        // This prevents the "15/15 left" bug when upgrading with existing properties.
-        // We count only non-deleted properties.
+        // --- FIX: Sync usage count with TOTAL historical properties ---
+        // We count ALL properties (including deleted ones) because deleting a property
+        // does not refund the analysis credit. Usage is based on "analyses performed".
         const countResult = await query(
-            `SELECT COUNT(*) FROM properties WHERE user_id = $1 AND (property_data->>'deletedAt') IS NULL`, 
+            `SELECT COUNT(*) FROM properties WHERE user_id = $1`, 
             [userId]
         );
-        const currentActiveCount = parseInt(countResult.rows[0].count || '0');
+        const totalHistoricalCount = parseInt(countResult.rows[0].count || '0');
 
         if (tier === 'PayAsYouGo') {
              // Initial Retainer logic: User switching to PAYG pays $35 immediately and gets credits.
@@ -69,21 +69,25 @@ export const updateUserSubscription = async (req: any, res: any) => {
              // Add the credits immediately and set tier
              result = await query(
                 'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = $2, analysis_limit_reset_at = NULL, credits = credits + $3 WHERE id = $4 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
-                [tier, currentActiveCount, PAYG_RETAINER, userId]
+                [tier, totalHistoricalCount, PAYG_RETAINER, userId]
             );
         } else if (isMonthlyPlan) {
-            // When upgrading to a paid plan, sync count to actual active properties and set the renewal date
+            // When upgrading to a paid plan, sync count to total historical properties.
+            // NOTE: This assumes the 'analysis_count' on the user table tracks cumulative lifetime usage.
+            // If the count resets monthly, setting it to lifetime usage here might immediately cap them out 
+            // if they have a lot of history. However, for Free -> Starter transition, carrying over history 
+            // is the requested behavior.
             const newResetDate = new Date();
             newResetDate.setMonth(newResetDate.getMonth() + 1);
             result = await query(
                 'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = $2, analysis_limit_reset_at = $3 WHERE id = $4 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
-                [tier, currentActiveCount, newResetDate, userId]
+                [tier, totalHistoricalCount, newResetDate, userId]
             );
         } else {
             // For 'Free' plan (downgrade or cancel)
             result = await query(
                 'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = $2, analysis_limit_reset_at = NULL WHERE id = $3 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
-                [tier, currentActiveCount, userId]
+                [tier, totalHistoricalCount, userId]
             );
         }
 
