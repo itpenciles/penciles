@@ -1,5 +1,5 @@
 
-import { Request, Response, NextFunction } from 'express';
+import { Request, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 // Extend the standard Express Request interface
