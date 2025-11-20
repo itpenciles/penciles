@@ -1,9 +1,7 @@
 
-import { Request, Response } from 'express';
 import { query } from '../db.js';
 import jwt from 'jsonwebtoken';
 import { User, SubscriptionTier } from '../../types';
-import { AuthRequest } from '../middleware/authMiddleware.js';
 
 const PAYG_RETAINER = 35;
 

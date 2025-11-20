@@ -1,9 +1,7 @@
 
-import { Response, Request } from 'express';
 import { query } from '../db.js';
 import { Property } from '../../types';
 import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
-import { AuthRequest } from '../middleware/authMiddleware.js';
 
 // Get all properties for the logged-in user
 export const getProperties = async (req: any, res: any) => {

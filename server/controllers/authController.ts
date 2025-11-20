@@ -1,5 +1,4 @@
 
-import { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import { query, pool } from '../db.js';

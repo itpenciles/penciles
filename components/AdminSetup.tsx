@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import apiClient from '../services/apiClient';
 import Loader from './Loader';
@@ -90,9 +91,9 @@ const AdminSetup = () => {
             key: formData.key,
             name: formData.name,
             description: formData.description,
-            monthlyPrice: Number(formData.monthlyPrice || 0),
-            annualPrice: Number(formData.annualPrice || 0),
-            analysisLimit: Number(formData.analysisLimit || 0),
+            monthlyPrice: Number(formData.monthlyPrice),
+            annualPrice: Number(formData.annualPrice),
+            analysisLimit: Number(formData.analysisLimit),
             features: (formData.features || []).filter(f => f.trim() !== ''), // Remove empty features
             isPopular: !!formData.isPopular
         };

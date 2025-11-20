@@ -1,5 +1,4 @@
 
-import { Request, Response } from 'express';
 import { query } from '../db.js';
 import { Plan } from '../../types';
 

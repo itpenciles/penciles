@@ -1,8 +1,8 @@
 
-import { Request, Response } from 'express';
+
+
 import { analyzePropertyWithGemini } from '../services/geminiService.js';
 import { query } from '../db.js';
-import { AuthRequest } from '../middleware/authMiddleware.js';
 
 const PAYG_COST_PER_ANALYSIS = 7.00;
 

@@ -1,5 +1,4 @@
 
-import { Request, Response } from 'express';
 import { query } from '../db.js';
 
 export const getAdminStats = async (req: any, res: any) => {
