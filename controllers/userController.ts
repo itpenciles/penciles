@@ -52,15 +52,14 @@ export const updateUserSubscription = async (req: any, res: any) => {
 
         let revenueImpact = newPrice;
 
-        // --- CRITICAL FIX: Calculate actual usage ---
-        // Instead of resetting to 0, we count the user's ACTIVE (non-deleted) properties.
-        // This ensures that if a user has 4 items and upgrades to a 15-item plan, their usage shows 4/15, not 0/15.
+        // --- CRITICAL FIX: Sync usage count with actual active properties ---
+        // This prevents the "15/15 left" bug when upgrading with existing properties.
+        // We count only non-deleted properties.
         const countResult = await query(
             `SELECT COUNT(*) FROM properties WHERE user_id = $1 AND (property_data->>'deletedAt') IS NULL`, 
             [userId]
         );
         const currentActiveCount = parseInt(countResult.rows[0].count || '0');
-
 
         if (tier === 'PayAsYouGo') {
              // Initial Retainer logic: User switching to PAYG pays $35 immediately and gets credits.
@@ -68,7 +67,6 @@ export const updateUserSubscription = async (req: any, res: any) => {
              changeType = 'new'; 
              
              // Add the credits immediately and set tier
-             // PAYG doesn't use analysis_count for limits, but we sync it anyway for record keeping
              result = await query(
                 'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = $2, analysis_limit_reset_at = NULL, credits = credits + $3 WHERE id = $4 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
                 [tier, currentActiveCount, PAYG_RETAINER, userId]

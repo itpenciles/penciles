@@ -41,6 +41,9 @@ export const handleGoogleLogin = async (req: any, res: any) => {
         const { sub: googleId, email, name, picture: profilePictureUrl } = payload;
         
         // Upsert user and update login stats
+        // We use a CTE (Common Table Expression) or separate queries to ensure we get the user ID for the count sync
+        
+        // 1. Upsert the user
         const userUpsertQuery = `
             INSERT INTO users (email, name, google_id, profile_picture_url, login_count, last_login_at)
             VALUES ($1, $2, $3, $4, 1, now())
@@ -55,8 +58,31 @@ export const handleGoogleLogin = async (req: any, res: any) => {
         `;
 
         const userResult = await query(userUpsertQuery, [email, name, googleId, profilePictureUrl]);
-        const dbUser = userResult.rows[0];
+        let dbUser = userResult.rows[0];
         
+        // 2. [SELF-HEALING] Sync analysis_count with actual properties
+        // This fixes issues where usage counts drift or reset incorrectly.
+        try {
+            const countResult = await query(
+                `SELECT COUNT(*) FROM properties WHERE user_id = $1 AND (property_data->>'deletedAt') IS NULL`, 
+                [dbUser.id]
+            );
+            const actualCount = parseInt(countResult.rows[0].count || '0');
+            
+            // Only update if different to save writes (though login is infrequent enough that it's fine)
+            if (parseInt(dbUser.analysis_count) !== actualCount) {
+                console.log(`[AUTH] Correcting analysis_count for user ${dbUser.email}. DB: ${dbUser.analysis_count}, Real: ${actualCount}`);
+                const updateCountRes = await query(
+                    'UPDATE users SET analysis_count = $1 WHERE id = $2 RETURNING analysis_count',
+                    [actualCount, dbUser.id]
+                );
+                dbUser.analysis_count = updateCountRes.rows[0].analysis_count;
+            }
+        } catch (err) {
+            console.error("[AUTH] Failed to sync analysis count on login", err);
+            // Continue logging in even if sync fails
+        }
+
         const user: User = {
             id: dbUser.id,
             name: dbUser.name,
