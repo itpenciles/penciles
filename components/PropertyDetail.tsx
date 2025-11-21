@@ -14,7 +14,6 @@ const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="ht
 const formatCurrency = (amount: number, precision = 0) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: precision, maximumFractionDigits: precision }).format(amount);
 
 // --- EXIT STRATEGY DATA ---
-// ... (Keep existing Exit Strategy Data constants WHOLESALE_EXIT_STRATEGIES, SUBJECT_TO_EXIT_STRATEGIES, SELLER_FINANCING_EXIT_STRATEGIES exactly as is)
 interface ExitPoint {
   title: string;
   description: string;
@@ -185,7 +184,6 @@ const PropertyDetail = () => {
 
 // Sub-components
 
-// ... (StrategyLockedTooltip, ReportLockedTooltip, StrategySelector, RecommendationBadge, PropertyDetailsCard, DetailItem, InvestmentRecommendationCard, MarketAnalysisCard, GoogleMapCard - KEEP AS IS)
 const StrategyLockedTooltip: React.FC<{ children: React.ReactNode; isLocked: boolean }> = ({ children, isLocked }) => {
     const navigate = useNavigate();
     if (!isLocked) return <>{children}</>;
@@ -271,6 +269,13 @@ const RecommendationBadge = ({ level }: { level: Property['recommendation']['lev
     return <div className={`px-3 py-1 text-sm font-medium rounded-full ${colors[level]}`}>{level}</div>;
 };
 
+const DetailItem = ({ label, value }: { label: string, value: string }) => (
+    <div className="bg-gray-50 p-3 rounded-lg">
+        <span className="block text-xs font-semibold text-gray-500 uppercase">{label}</span>
+        <span className="block text-lg font-bold text-gray-800">{value}</span>
+    </div>
+);
+
 const PropertyDetailsCard = ({ property }: { property: Property }) => (
     <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
         <h2 className="text-xl font-bold text-gray-800 mb-4 print-hide-title">Property Details</h2>
@@ -283,975 +288,345 @@ const PropertyDetailsCard = ({ property }: { property: Property }) => (
         </div>
         <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-500">List Price</p>
-                <p className="text-lg font-bold text-gray-800">{formatCurrency(property.financials.listPrice)}</p>
+                <span className="text-sm text-gray-500">List Price</span>
+                <span className="block text-xl font-bold text-gray-800">{formatCurrency(property.financials.listPrice)}</span>
             </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-500">Estimated Value</p>
-                <p className="text-lg font-bold text-green-700">{formatCurrency(property.financials.estimatedValue)}</p>
+            <div className="bg-gray-50 p-4 rounded-lg">
+                <span className="text-sm text-gray-500">Estimated Value</span>
+                <span className="block text-xl font-bold text-brand-blue">{formatCurrency(property.financials.estimatedValue)}</span>
             </div>
         </div>
     </div>
 );
-const DetailItem = ({ label, value }: { label: string, value: string }) => (
-    <div className="bg-gray-50 p-3 rounded-lg">
-        <p className="text-2xl font-bold text-gray-800">{value}</p>
-        <p className="text-sm text-gray-500">{label}</p>
-    </div>
-);
 
-const InvestmentRecommendationCard = ({ property }: { property: Property }) => {
-    const { recommendation } = property;
-    const strategyText = recommendation.strategyAnalyzed
-        ? `Based on "${recommendation.strategyAnalyzed.replace('-', ' ')}" strategy`
-        : 'Based on "Rental" strategy';
-    
-    // FEATURE: Determine if the analyzed strategy is 'Rental' to conditionally show metrics.
-    const isRentalStrategy = recommendation.strategyAnalyzed === 'Rental';
+const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, onReset, hasChanges, isLoading, error }: { 
+    property: Property, 
+    setProperty: React.Dispatch<React.SetStateAction<Property | null>>, 
+    activeStrategy: Strategy,
+    onSave: () => void, 
+    onReset: () => void, 
+    hasChanges: boolean,
+    isLoading: boolean,
+    error: string | null
+}) => {
+    const [activeTab, setActiveTab] = useState<'metrics' | 'adjust' | 'expenses'>('metrics');
+
+    const handleInputChange = (field: keyof Financials, value: any) => {
+        setProperty(prev => {
+            if (!prev) return null;
+            const updatedFinancials = { ...prev.financials, [field]: parseFloat(value) || 0 };
+            return {
+                ...prev,
+                financials: updatedFinancials,
+                calculations: calculateMetrics(updatedFinancials)
+            };
+        });
+    };
+
+    // Handle array inputs (like monthlyRents)
+    const handleArrayInputChange = (field: keyof Financials, index: number, value: any) => {
+        setProperty(prev => {
+            if (!prev) return null;
+            const currentArray = prev.financials[field] as number[];
+            const newArray = [...currentArray];
+            newArray[index] = parseFloat(value) || 0;
+            const updatedFinancials = { ...prev.financials, [field]: newArray };
+            return {
+                ...prev,
+                financials: updatedFinancials,
+                calculations: calculateMetrics(updatedFinancials)
+            };
+        });
+    };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-green-200 printable-card">
-            <div className="flex items-start mb-2">
-                <CheckCircleIcon className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
-                <div>
-                    <h2 className="text-xl font-bold text-gray-800">Investment Recommendation</h2>
-                    <p className="text-sm text-gray-500">{strategyText}</p>
+        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
+             <div className="flex justify-between items-center mb-6 print-hide-title">
+                <h2 className="text-xl font-bold text-gray-800">Financial Analysis</h2>
+                <div className="flex bg-gray-100 rounded-lg p-1 no-print">
+                    <button onClick={() => setActiveTab('metrics')} className={`px-3 py-1.5 text-sm font-medium rounded-md ${activeTab === 'metrics' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Metrics</button>
+                    <button onClick={() => setActiveTab('adjust')} className={`px-3 py-1.5 text-sm font-medium rounded-md ${activeTab === 'adjust' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Adjust</button>
+                    <button onClick={() => setActiveTab('expenses')} className={`px-3 py-1.5 text-sm font-medium rounded-md ${activeTab === 'expenses' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Expenses</button>
                 </div>
             </div>
-            <div className="mb-4 ml-9">
-                 <RecommendationBadge level={property.recommendation.level} />
-            </div>
 
-            <p className="text-sm text-gray-600 mb-4 ml-9">{property.recommendation.summary}</p>
-            
-            <div className="mb-4 ml-9">
-                <h3 className="font-semibold text-gray-700 mb-2">Key Factors:</h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                    {property.recommendation.keyFactors.map((factor, i) => <li key={i}>{factor}</li>)}
-                </ul>
-            </div>
-            
-            <div className="mb-4 ml-9">
-                <h3 className="font-semibold text-gray-700 mb-2">Additional Notes:</h3>
-                <p className="text-sm text-gray-600">{property.recommendation.additionalNotes}</p>
-            </div>
+            {activeTab === 'metrics' && <MetricsTab property={property} />}
+            {activeTab === 'expenses' && <ExpensesTab property={property} />}
+            {activeTab === 'adjust' && (
+                 <div className="space-y-6">
+                    <h3 className="font-semibold text-gray-700 border-b pb-2">Purchase & Loan</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         <InputGroup label="Purchase Price" value={property.financials.purchasePrice} onChange={(v) => handleInputChange('purchasePrice', v)} prefix="$" />
+                         <InputGroup label="Down Payment %" value={property.financials.downPaymentPercent} onChange={(v) => handleInputChange('downPaymentPercent', v)} suffix="%" />
+                         <InputGroup label="Interest Rate" value={property.financials.loanInterestRate} onChange={(v) => handleInputChange('loanInterestRate', v)} suffix="%" />
+                         <InputGroup label="Loan Term (Years)" value={property.financials.loanTermYears} onChange={(v) => handleInputChange('loanTermYears', v)} />
+                         <InputGroup label="Rehab Cost" value={property.financials.rehabCost} onChange={(v) => handleInputChange('rehabCost', v)} prefix="$" />
+                    </div>
+                    
+                    <h3 className="font-semibold text-gray-700 border-b pb-2 pt-4">Monthly Income & Expenses</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {property.financials.monthlyRents.map((rent, idx) => (
+                             <InputGroup key={idx} label={`Unit ${idx + 1} Rent`} value={rent} onChange={(v) => handleArrayInputChange('monthlyRents', idx, v)} prefix="$" />
+                        ))}
+                         <InputGroup label="Vacancy Rate" value={property.financials.vacancyRate} onChange={(v) => handleInputChange('vacancyRate', v)} suffix="%" />
+                         <InputGroup label="Management Fee" value={property.financials.managementRate} onChange={(v) => handleInputChange('managementRate', v)} suffix="%" />
+                         <InputGroup label="Maintenance" value={property.financials.maintenanceRate} onChange={(v) => handleInputChange('maintenanceRate', v)} suffix="%" />
+                         <InputGroup label="CapEx Reserves" value={property.financials.capexRate} onChange={(v) => handleInputChange('capexRate', v)} suffix="%" />
+                         <InputGroup label="Property Taxes (Mo)" value={property.financials.monthlyTaxes} onChange={(v) => handleInputChange('monthlyTaxes', v)} prefix="$" />
+                         <InputGroup label="Insurance (Mo)" value={property.financials.monthlyInsurance} onChange={(v) => handleInputChange('monthlyInsurance', v)} prefix="$" />
+                         <InputGroup label="HOA (Mo)" value={property.financials.monthlyHoaFee} onChange={(v) => handleInputChange('monthlyHoaFee', v)} prefix="$" />
+                         <InputGroup label="Utilities (Mo)" value={property.financials.monthlyWaterSewer + property.financials.monthlyGas + property.financials.monthlyElectric} onChange={() => {}} disabled={true} prefix="$" helperText="Edit individual utilities below" />
+                    </div>
+                    
+                    <h3 className="font-semibold text-gray-700 border-b pb-2 pt-4">Utilities Breakdown (Monthly)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InputGroup label="Water/Sewer" value={property.financials.monthlyWaterSewer} onChange={(v) => handleInputChange('monthlyWaterSewer', v)} prefix="$" />
+                        <InputGroup label="Gas" value={property.financials.monthlyGas} onChange={(v) => handleInputChange('monthlyGas', v)} prefix="$" />
+                        <InputGroup label="Electric" value={property.financials.monthlyElectric} onChange={(v) => handleInputChange('monthlyElectric', v)} prefix="$" />
+                        <InputGroup label="Landscaping" value={property.financials.monthlyLandscaping} onChange={(v) => handleInputChange('monthlyLandscaping', v)} prefix="$" />
+                        <InputGroup label="Street Lights" value={property.financials.monthlyStreetLights} onChange={(v) => handleInputChange('monthlyStreetLights', v)} prefix="$" />
+                    </div>
 
-            {/* FEATURE: Only show Cap Rate and Cash Flow for the Rental strategy. */}
-            {isRentalStrategy && (
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                     <div className="text-center">
-                        <p className="text-sm text-gray-500">Adjusted Cap Rate</p>
-                        <p className="text-lg font-bold text-green-600">{property.calculations.capRate.toFixed(1)}%</p>
+                    <h3 className="font-semibold text-gray-700 border-b pb-2 pt-4">Closing Costs</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InputGroup label="Origination Fee %" value={property.financials.originationFeePercent} onChange={(v) => handleInputChange('originationFeePercent', v)} suffix="%" />
+                        <InputGroup label="Appraisal" value={property.financials.appraisalFee} onChange={(v) => handleInputChange('appraisalFee', v)} prefix="$" />
+                        <InputGroup label="Title" value={property.financials.titleFee} onChange={(v) => handleInputChange('titleFee', v)} prefix="$" />
+                        <InputGroup label="Broker/Agent Fee" value={property.financials.brokerAgentFee} onChange={(v) => handleInputChange('brokerAgentFee', v)} prefix="$" />
+                        <InputGroup label="Home Warranty" value={property.financials.homeWarrantyFee} onChange={(v) => handleInputChange('homeWarrantyFee', v)} prefix="$" />
+                        <InputGroup label="Attorney" value={property.financials.attorneyFee} onChange={(v) => handleInputChange('attorneyFee', v)} prefix="$" />
+                        <InputGroup label="Misc Closing" value={property.financials.closingMiscFee} onChange={(v) => handleInputChange('closingMiscFee', v)} prefix="$" />
                     </div>
-                     <div className="text-center">
-                        <p className="text-sm text-gray-500">Adjusted Monthly Cash Flow</p>
-                        <p className="text-lg font-bold text-green-600">{formatCurrency(property.calculations.monthlyCashFlowWithDebt)}</p>
+
+                    <h3 className="font-semibold text-gray-700 border-b pb-2 pt-4">Credits from Seller</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InputGroup label="Tax Proration" value={property.financials.sellerCreditTax} onChange={(v) => handleInputChange('sellerCreditTax', v)} prefix="$" />
+                        <InputGroup label="Sewer Proration" value={property.financials.sellerCreditSewer} onChange={(v) => handleInputChange('sellerCreditSewer', v)} prefix="$" />
+                        <InputGroup label="Origination Fees" value={property.financials.sellerCreditOrigination} onChange={(v) => handleInputChange('sellerCreditOrigination', v)} prefix="$" />
+                        <InputGroup label="Closing Costs" value={property.financials.sellerCreditClosing} onChange={(v) => handleInputChange('sellerCreditClosing', v)} prefix="$" />
+                        <InputGroup label="Rental Credit" value={property.financials.sellerCreditRental} onChange={(v) => handleInputChange('sellerCreditRental', v)} prefix="$" />
+                        <InputGroup label="Security Deposit Credit" value={property.financials.sellerCreditTenantSecurityDeposit} onChange={(v) => handleInputChange('sellerCreditTenantSecurityDeposit', v)} prefix="$" />
+                        <InputGroup label="Misc Credit" value={property.financials.sellerCreditMisc} onChange={(v) => handleInputChange('sellerCreditMisc', v)} prefix="$" />
                     </div>
+                 </div>
+            )}
+
+            {error && (
+                <div className="mt-4 p-3 bg-red-50 text-red-700 text-sm rounded">
+                    {error}
                 </div>
             )}
+
+            {/* Sticky Save Bar */}
+            <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg transform transition-transform duration-300 z-50 flex justify-between items-center ${hasChanges ? 'translate-y-0' : 'translate-y-full'}`}>
+                <div className="container mx-auto max-w-6xl flex justify-between items-center">
+                    <span className="text-gray-700 font-medium">You have unsaved changes.</span>
+                    <div className="flex space-x-4">
+                        <button onClick={onReset} className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">Reset</button>
+                        <button 
+                            onClick={onSave} 
+                            disabled={isLoading}
+                            className="px-6 py-2 bg-brand-blue text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                        >
+                            {isLoading ? 'Re-evaluating with AI...' : 'Save & Re-evaluate'}
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
 
+const InputGroup = ({ label, value, onChange, prefix, suffix, disabled = false, helperText }: any) => (
+    <div>
+        <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+        <div className="relative rounded-md shadow-sm">
+            {prefix && <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-gray-500 sm:text-sm">{prefix}</span></div>}
+            <input
+                type="number"
+                value={value === 0 ? '' : value}
+                onChange={(e) => onChange(e.target.value)}
+                disabled={disabled}
+                placeholder="0"
+                className={`focus:ring-brand-blue focus:border-brand-blue block w-full sm:text-sm border-gray-300 rounded-md py-2 ${prefix ? 'pl-7' : 'pl-3'} ${suffix ? 'pr-7' : 'pr-3'} ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            />
+            {suffix && <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-gray-500 sm:text-sm">{suffix}</span></div>}
+        </div>
+        {helperText && <p className="mt-1 text-xs text-gray-400">{helperText}</p>}
+    </div>
+);
+
+const MetricsTab = ({ property }: { property: Property }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-4">
+            <MetricRow label="Cap Rate" value={`${property.calculations.capRate.toFixed(2)}%`} highlight={property.calculations.capRate > 6} />
+            <MetricRow label="Cash on Cash Return" value={`${property.calculations.cashOnCashReturn.toFixed(2)}%`} highlight={property.calculations.cashOnCashReturn > 10} />
+            <MetricRow label="Monthly Cash Flow" value={formatCurrency(property.calculations.monthlyCashFlowWithDebt)} highlight={property.calculations.monthlyCashFlowWithDebt > 0} />
+            <MetricRow label="Net Operating Income (Annual)" value={formatCurrency(property.calculations.netOperatingIncome * 12)} />
+            <MetricRow label="Gross Rent Multiplier (GRM)" value={(property.financials.purchasePrice / property.calculations.grossAnnualRent).toFixed(2)} />
+        </div>
+        <div className="space-y-4">
+            <MetricRow label="Total Cash to Close" value={formatCurrency(property.calculations.totalCashToClose)} />
+            <MetricRow label="Monthly Mortgage" value={formatCurrency(property.calculations.monthlyDebtService)} />
+            <MetricRow label="Operating Expense Ratio" value={`${((property.calculations.totalOperatingExpenses * 12) / property.calculations.grossAnnualRent * 100).toFixed(1)}%`} />
+            <MetricRow label="DSCR" value={property.calculations.dscr.toFixed(2)} highlight={property.calculations.dscr > 1.25} />
+            <MetricRow label="1% Rule" value={`${((property.calculations.grossAnnualRent / 12) / property.financials.purchasePrice * 100).toFixed(2)}%`} highlight={((property.calculations.grossAnnualRent / 12) / property.financials.purchasePrice * 100) >= 1} />
+        </div>
+    </div>
+);
+
+const ExpensesTab = ({ property }: { property: Property }) => (
+    <div>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+            <ExpenseRow label="Property Taxes" value={property.financials.monthlyTaxes} />
+            <ExpenseRow label="Insurance" value={property.financials.monthlyInsurance} />
+            <ExpenseRow label="Vacancy" value={property.calculations.vacancyLoss / 12} subLabel={`(${property.financials.vacancyRate}%)`} />
+            <ExpenseRow label="Maintenance" value={property.calculations.maintenanceCost} subLabel={`(${property.financials.maintenanceRate}%)`} />
+            <ExpenseRow label="Management" value={property.calculations.managementCost} subLabel={`(${property.financials.managementRate}%)`} />
+            <ExpenseRow label="CapEx" value={property.calculations.capexCost} subLabel={`(${property.financials.capexRate}%)`} />
+            <ExpenseRow label="HOA" value={property.financials.monthlyHoaFee} />
+            <ExpenseRow label="Utilities" value={property.financials.monthlyWaterSewer + property.financials.monthlyGas + property.financials.monthlyElectric + property.financials.monthlyLandscaping + property.financials.monthlyStreetLights} />
+            <div className="col-span-2 border-t pt-2 mt-2 font-bold flex justify-between">
+                <span>Total Monthly Expenses</span>
+                <span>{formatCurrency(property.calculations.totalOperatingExpenses + property.calculations.monthlyDebtService)}</span>
+            </div>
+        </div>
+    </div>
+);
+
+const MetricRow = ({ label, value, highlight = false }: { label: string, value: string, highlight?: boolean }) => (
+    <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+        <span className="text-gray-600 text-sm">{label}</span>
+        <span className={`font-bold ${highlight ? 'text-green-600' : 'text-gray-900'}`}>{value}</span>
+    </div>
+);
+
+const ExpenseRow = ({ label, value, subLabel }: { label: string, value: number, subLabel?: string }) => (
+    <div className="flex justify-between items-center">
+        <span className="text-gray-600">{label} <span className="text-xs text-gray-400">{subLabel}</span></span>
+        <span className="font-medium">{formatCurrency(value)}</span>
+    </div>
+);
+
+const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => (
+    <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
+        <h3 className="font-bold text-gray-800 mb-4">Cash to Close Breakdown</h3>
+        <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+                <span>Down Payment ({property.financials.downPaymentPercent}%)</span>
+                <span>{formatCurrency(property.calculations.downPaymentAmount)}</span>
+            </div>
+            <div className="flex justify-between">
+                <span>Est. Rehab Costs</span>
+                <span>{formatCurrency(property.financials.rehabCost)}</span>
+            </div>
+            <div className="flex justify-between">
+                <span>Closing Costs & Fees</span>
+                <span>{formatCurrency(property.calculations.totalClosingCosts)}</span>
+            </div>
+             {/* Calculate total seller credits from the 4 separate fields for display logic */}
+            <div className="flex justify-between text-green-600">
+                <span>Less: Total Seller Credits</span>
+                <span>-{formatCurrency(
+                    (property.financials.sellerCreditTax || 0) + 
+                    (property.financials.sellerCreditSewer || 0) + 
+                    (property.financials.sellerCreditOrigination || 0) + 
+                    (property.financials.sellerCreditClosing || 0) +
+                    (property.financials.sellerCreditRental || 0) +
+                    (property.financials.sellerCreditTenantSecurityDeposit || 0) +
+                    (property.financials.sellerCreditMisc || 0)
+                )}</span>
+            </div>
+            <div className="flex justify-between font-bold border-t pt-2 mt-2 text-base">
+                <span>Total Cash Required</span>
+                <span>{formatCurrency(property.calculations.totalCashToClose)}</span>
+            </div>
+        </div>
+    </div>
+);
+
+const InvestmentRecommendationCard = ({ property }: { property: Property }) => (
+    <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-brand-blue printable-card">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">AI Recommendation</h2>
+        <div className="mb-4">
+            <RecommendationBadge level={property.recommendation.level} />
+        </div>
+        <p className="text-gray-700 font-medium mb-4">{property.recommendation.summary}</p>
+        
+        <h3 className="text-sm font-bold text-gray-500 uppercase mb-2">Key Factors</h3>
+        <ul className="space-y-2 mb-4">
+            {property.recommendation.keyFactors.map((factor, i) => (
+                <li key={i} className="flex items-start text-sm text-gray-600">
+                    <CheckCircleIcon className="h-5 w-5 text-brand-blue mr-2 flex-shrink-0" />
+                    {factor}
+                </li>
+            ))}
+        </ul>
+        
+        <h3 className="text-sm font-bold text-gray-500 uppercase mb-2">Notes</h3>
+        <p className="text-sm text-gray-500 italic">{property.recommendation.additionalNotes}</p>
+    </div>
+);
 
 const MarketAnalysisCard = ({ property }: { property: Property }) => {
-    const { safetyScore } = property.marketAnalysis;
+    const safetyColor = property.marketAnalysis.safetyScore >= 80 ? 'text-green-600' : property.marketAnalysis.safetyScore >= 60 ? 'text-yellow-600' : 'text-red-600';
+    const investColor = property.marketAnalysis.investmentScore >= 8 ? 'text-green-600' : property.marketAnalysis.investmentScore >= 5 ? 'text-yellow-600' : 'text-red-600';
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Market Analysis</h2>
-            <div className="space-y-4">
+             <h2 className="text-xl font-bold text-gray-800 mb-4">Market Analysis</h2>
+             <div className="flex justify-between items-center mb-4 border-b pb-4">
                 <div>
-                    <div className="flex justify-between text-sm mb-1">
-                        <span className="font-semibold text-gray-700">Safety Score</span>
-                        <span><span className="font-bold">{safetyScore}</span>/100</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-yellow-500 h-2 rounded-full" style={{width: `${safetyScore}%`}}></div></div>
-                    <p className="text-xs text-gray-500 mt-1">Average crime levels</p>
+                    <span className="block text-sm text-gray-500">Safety Score</span>
+                    <span className={`text-2xl font-bold ${safetyColor}`}>{property.marketAnalysis.safetyScore}/100</span>
                 </div>
                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-2">
-                        Rental Market Breakdown
-                        <span className="text-xs font-normal text-gray-500 ml-2">(per unit)</span>
-                    </h3>
-                    <div className="space-y-2">
-                        {property.financials.monthlyRents.map((rent, index) => {
-                            const unitDetail = property.details.unitDetails?.[index];
-                            const areaAverageRent = property.marketAnalysis.areaAverageRents?.[index] || 0;
-                            const rentDifference = rent - areaAverageRent;
-                            const isPositive = rentDifference >= 0;
-
-                            const unitLabel = property.details.numberOfUnits > 1 ? `Unit ${index + 1}` : 'Single Unit';
-                            const unitSpecs = unitDetail ? `(${unitDetail.bedrooms} bed / ${unitDetail.bathrooms} bath)` : '';
-
-                            return (
-                                <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="font-bold text-gray-800">
-                                            {unitLabel} <span className="text-xs font-normal text-gray-500">{unitSpecs}</span>
-                                        </span>
-                                        <span className={`font-bold text-lg ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                                            {isPositive ? '+' : ''}{formatCurrency(rentDifference)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs text-gray-500">
-                                        <span>
-                                            Your Rent: <span className="font-semibold text-gray-700">{formatCurrency(rent)}</span>
-                                        </span>
-                                        <span>
-                                            Market Avg: <span className="font-semibold text-gray-700">{formatCurrency(areaAverageRent)}</span>
-                                        </span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <span className="block text-sm text-gray-500">Investment Score</span>
+                    <span className={`text-2xl font-bold ${investColor}`}>{property.marketAnalysis.investmentScore}/10</span>
                 </div>
-                <div>
-                    <h3 className="font-semibold text-gray-700 mb-2">Location Factors</h3>
-                    <div className="text-sm space-y-1">
-                         <div className="flex justify-between"><span className="text-gray-500">Property Type</span><span className="font-semibold">{property.propertyType}</span></div>
-                         <div className="flex justify-between"><span className="text-gray-500">Investment Score</span><span className="font-semibold">{property.marketAnalysis.investmentScore}/10</span></div>
-                    </div>
+             </div>
+             <div>
+                <span className="block text-sm text-gray-500 mb-2">Area Average Rents</span>
+                <div className="space-y-1">
+                    {property.marketAnalysis.areaAverageRents.length > 0 ? (
+                        property.marketAnalysis.areaAverageRents.map((rent, i) => (
+                             <div key={i} className="flex justify-between text-sm">
+                                <span className="text-gray-600">Unit {i + 1} Comparable</span>
+                                <span className="font-medium">{formatCurrency(rent)}</span>
+                            </div>
+                        ))
+                    ) : (
+                        <span className="text-sm text-gray-400 italic">Data unavailable</span>
+                    )}
                 </div>
-            </div>
+             </div>
         </div>
-    )
+    );
 };
 
 const GoogleMapCard = ({ address }: { address: string }) => {
     const encodedAddress = encodeURIComponent(address);
-    const mapSrc = `https://www.google.com/maps?q=${encodedAddress}&layer=c&output=svembed`;
-
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Location & Street View</h2>
-            <div className="h-64 rounded-lg overflow-hidden border border-gray-200">
-                <iframe
-                    src={mapSrc}
-                    className="w-full h-full"
-                    style={{ border: 0 }}
-                    allowFullScreen={false}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title={`Google Street View of ${address}`}
-                ></iframe>
-            </div>
+        <div className="bg-gray-100 rounded-xl overflow-hidden h-64 shadow-sm relative group">
+            <iframe
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://www.google.com/maps/embed/v1/place?key=${process.env.API_KEY}&q=${encodedAddress}`}
+            ></iframe>
+            <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="absolute bottom-2 right-2 bg-white px-3 py-1 rounded shadow-md text-xs font-semibold text-blue-600 hover:bg-blue-50 opacity-90 hover:opacity-100"
+            >
+                Open in Google Maps
+            </a>
         </div>
     );
 };
-
-// --- Financial Analysis Card and Children ---
-const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, activeStrategy: Strategy, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
-    const [activeTab, setActiveTab] = useState<string>('Metrics');
-    const { featureAccess } = useAuth();
-    
-    useEffect(() => {
-        setActiveTab('Metrics');
-    }, [activeStrategy]);
-
-    const handlePrint = async () => {
-        try {
-            await apiClient.post('/user/track', { action: 'print_report' });
-        } catch (e) { console.error(e); }
-        window.print();
-    };
-
-    const handleExportCSV = async () => {
-        try {
-            await apiClient.post('/user/track', { action: 'export_csv' });
-        } catch (e) { console.error(e); }
-
-        const { details, financials, calculations, recommendation } = property;
-        const rows = [
-            // ... (rest of CSV generation logic remains the same)
-            ['Property Analysis Report'],
-            ['Property Address', `"${property.address}"`],
-            ['Date Analyzed', `"${property.dateAnalyzed}"`],
-            ['Strategy Analyzed', `"${activeStrategy}"`],
-            ['Recommendation', `"${recommendation.level}"`],
-            [],
-            ['--- Property Details ---'],
-            ['Property Type', `"${property.propertyType}"`],
-            ['Bedrooms', details.bedrooms],
-            ['Bathrooms', details.bathrooms],
-            ['SqFt', details.sqft],
-            ['Year Built', details.yearBuilt],
-            ['Units', details.numberOfUnits],
-            [],
-            ['--- Financial Inputs ---'],
-            ['Purchase Price', financials.purchasePrice],
-            ['Rehab Cost', financials.rehabCost],
-            ['Down Payment %', `${financials.downPaymentPercent}%`],
-            ['Loan Interest Rate %', `${financials.loanInterestRate}%`],
-            ['Monthly Taxes', financials.monthlyTaxes],
-            ['Monthly Insurance', financials.monthlyInsurance],
-            [],
-            ['--- Rental Metrics ---'],
-            ['Cap Rate', `${calculations.capRate.toFixed(2)}%`],
-            ['Cash on Cash Return', `${calculations.cashOnCashReturn.toFixed(2)}%`],
-            ['Monthly Cash Flow', calculations.monthlyCashFlowWithDebt.toFixed(2)],
-            ['NOI (Annual)', calculations.netOperatingIncome.toFixed(2)],
-            ['Total Cash to Close', calculations.totalCashToClose.toFixed(2)],
-            ['DSCR', calculations.dscr.toFixed(2)],
-        ];
-
-        // Add specific strategy metrics if active
-        if (activeStrategy === 'Wholesale' && property.wholesaleAnalysis) {
-             const ws = property.wholesaleAnalysis;
-             rows.push(
-                 [],
-                 ['--- Wholesale Metrics ---'],
-                 ['ARV', ws.inputs.arv],
-                 ['MAO', ws.calculations.mao.toFixed(2)],
-                 ['Estimated Rehab', ws.inputs.estimatedRehab],
-                 ['Potential Fee', ws.calculations.potentialFees.toFixed(2)],
-                 ['Eligible?', ws.calculations.isEligible ? 'Yes' : 'No']
-             );
-        }
-        
-        if (activeStrategy === 'Subject-To' && property.subjectToAnalysis) {
-             const sub = property.subjectToAnalysis;
-             rows.push(
-                 [],
-                 ['--- Subject-To Metrics ---'],
-                 ['Monthly Spread', sub.calculations.monthlySpread.toFixed(2)],
-                 ['Cash Needed', sub.calculations.cashNeeded.toFixed(2)],
-                 ['Cash on Cash Return', `${sub.calculations.cashOnCashReturn.toFixed(2)}%`],
-             );
-        }
-
-        if (activeStrategy === 'Seller Financing' && property.sellerFinancingAnalysis) {
-             const sf = property.sellerFinancingAnalysis;
-             rows.push(
-                 [],
-                 ['--- Seller Financing Metrics ---'],
-                 ['Monthly Payment', sf.calculations.monthlyPayment.toFixed(2)],
-                 ['Spread vs Market Rent', sf.calculations.spreadVsMarketRent.toFixed(2)],
-                 ['Return on Down Payment', `${sf.calculations.returnOnDp.toFixed(2)}%`],
-             );
-        }
-
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + rows.map(e => e.join(",")).join("\n");
-            
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `Analysis_${property.address.substring(0, 20).replace(/[^a-z0-9]/gi, '_')}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const renderTabs = () => {
-        const tabs = activeStrategy === 'Rental'
-            ? ['Metrics', 'Expenses', 'Adjust']
-            : ['Metrics', 'Parameters'];
-
-        return (
-            <div className="flex border border-gray-200 rounded-lg p-0.5">
-                {tabs.map(tab => (
-                    <TabButton key={tab} name={tab} activeTab={activeTab} setActiveTab={setActiveTab} />
-                ))}
-            </div>
-        );
-    };
-
-    const renderContent = () => {
-        const commonProps = {
-            property,
-            setProperty,
-            onSave,
-            onReset,
-            hasChanges,
-            isLoading,
-            error,
-        };
-
-        switch (activeStrategy) {
-            case 'Wholesale':
-                if (activeTab === 'Metrics') return <WholesaleMetricsTab {...commonProps} />;
-                if (activeTab === 'Parameters') return <WholesaleParamsTab {...commonProps} />;
-                return null;
-            case 'Subject-To':
-                if (activeTab === 'Metrics') return <SubjectToMetricsTab {...commonProps} />;
-                if (activeTab === 'Parameters') return <SubjectToParamsTab {...commonProps} />;
-                return null;
-            case 'Seller Financing':
-                if (activeTab === 'Metrics') return <SellerFinancingMetricsTab {...commonProps} />;
-                if (activeTab === 'Parameters') return <SellerFinancingParamsTab {...commonProps} />;
-                return null;
-            case 'Rental':
-            default:
-                if (activeTab === 'Metrics') return <MetricsTab property={property} />;
-                if (activeTab === 'Expenses') return <ExpensesTab property={property} />;
-                if (activeTab === 'Adjust') return <AdjustTab property={property} setProperty={setProperty} onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />;
-                return null;
-        }
-    };
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">Financial Analysis: {activeStrategy.replace('-', ' ')}</h2>
-                <div className="flex items-center space-x-2">
-                    <div className="no-print">{renderTabs()}</div>
-                    
-                    <ReportLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Print/Export">
-                        <button 
-                            onClick={handlePrint} 
-                            title="Print Report" 
-                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-md no-print disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={!featureAccess.canExportCsv}
-                        >
-                            <DocumentArrowDownIcon className="h-5 w-5" />
-                        </button>
-                    </ReportLockedTooltip>
-
-                    <ReportLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Export CSV">
-                         <button 
-                            onClick={handleExportCSV} 
-                            title="Export CSV" 
-                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-md no-print disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={!featureAccess.canExportCsv}
-                        >
-                            <TableCellsIcon className="h-5 w-5" />
-                        </button>
-                    </ReportLockedTooltip>
-                </div>
-            </div>
-            <div>{renderContent()}</div>
-        </div>
-    );
-};
-
-// ... (Rest of the components - TabButton, MetricBox, MetricsTab, ExpensesTab, ExpenseRow, AdjustTab, InputField, SelectField, ToggleField, SliderField, InvestmentSummaryBreakdown, SummaryRow - KEEP AS IS)
-const TabButton: React.FC<{ name: string, activeTab: string, setActiveTab: (name: string) => void}> = ({ name, activeTab, setActiveTab }) => (
-    <button onClick={() => setActiveTab(name)} className={`px-4 py-1 text-sm font-semibold rounded-md transition-colors ${activeTab === name ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}>
-        {name}
-    </button>
-);
-
-const MetricBox = ({ label, value, description, color }: { label: string, value: string | number, description: string, color: string}) => {
-    const colorClasses = {
-        green: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-        red: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-        blue: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-    };
-    const c = colorClasses[color as keyof typeof colorClasses] || colorClasses.green;
-    return (
-        <div className={`p-4 rounded-lg ${c.bg} border ${c.border}`}>
-            <p className="text-sm text-gray-500">{label}</p>
-            <p className={`text-2xl font-bold ${c.text}`}>{value}</p>
-            <p className="text-xs text-gray-500">{description}</p>
-        </div>
-    );
-}
-
-// --- RENTAL STRATEGY COMPONENTS ---
-
-const MetricsTab = ({ property }: { property: Property }) => {
-    const calcs = property.calculations;
-    const { monthlyDebtService, dscr } = calcs;
-
-    const dscrValue = monthlyDebtService > 0 ? dscr.toFixed(2) : 'N/A';
-    const dscrColor = monthlyDebtService === 0 || dscr >= 1.2 ? 'green' : 'red';
-
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MetricBox label="Cap Rate" value={`${calcs.capRate.toFixed(1)}%`} description="Annual return on purchase price" color="green" />
-            <MetricBox label="All-in Cap Rate" value={`${calcs.allInCapRate.toFixed(1)}%`} description="Annual return including rehab costs" color="green" />
-            <MetricBox 
-                label="Cash-on-Cash Return" 
-                value={`${calcs.cashOnCashReturn.toFixed(1)}%`} 
-                description="Return on total cash invested (incl. rehab)" 
-                color={calcs.cashOnCashReturn >= 8 ? 'green' : 'red'} 
-            />
-            <MetricBox 
-                label="Cash Flow (With Debt)" 
-                value={formatCurrency(calcs.monthlyCashFlowWithDebt)} 
-                description="Net monthly cash after debt service" 
-                color={calcs.monthlyCashFlowWithDebt > 0 ? 'green' : 'red'} 
-            />
-            <MetricBox 
-                label="DSCR" 
-                value={dscrValue} 
-                description="Debt Service Coverage Ratio" 
-                color={dscrColor} 
-            />
-            <MetricBox 
-                label="Monthly Cash Flow (No Debt)" 
-                value={formatCurrency(calcs.monthlyCashFlowNoDebt)} 
-                description="Net monthly income before debt" 
-                color="green" 
-            />
-        </div>
-    );
-};
-
-const ExpensesTab = ({ property }: { property: Property }) => {
-    const calcs = property.calculations;
-    const { 
-        monthlyTaxes, monthlyInsurance, monthlyWaterSewer, monthlyStreetLights, 
-        monthlyGas, monthlyElectric, monthlyLandscaping, vacancyRate, 
-        maintenanceRate, managementRate, capexRate, monthlyHoaFee, operatingMiscFee
-    } = property.financials;
-    const totalMonthlyRent = property.financials.monthlyRents.reduce((a, b) => a + b, 0);
-
-    return (
-        <div className="space-y-4 text-sm">
-            <div className="p-4 bg-green-50 rounded-lg space-y-2">
-                <ExpenseRow label="Gross Monthly Rent" value={formatCurrency(totalMonthlyRent)} />
-                <ExpenseRow label="Gross Annual Rent" value={formatCurrency(calcs.grossAnnualRent)} />
-                <ExpenseRow label={`Less: Vacancy (${vacancyRate}%)`} value={`-${formatCurrency(calcs.vacancyLoss / 12)}/month`} isSub />
-                <ExpenseRow label="Effective Gross Income" value={formatCurrency(calcs.effectiveGrossIncome / 12)} isTotal />
-            </div>
-            <div className="p-4 bg-red-50 rounded-lg space-y-2">
-                 <h4 className="font-semibold text-gray-700">Operating Expenses</h4>
-                 <ExpenseRow label={`Maintenance & Repairs (${maintenanceRate}%)`} value={`${formatCurrency(calcs.maintenanceCost)}/month`} valueYear={`${formatCurrency(calcs.maintenanceCost*12)}/year`} isSub />
-                 <ExpenseRow label={`Property Management (${managementRate}%)`} value={`${formatCurrency(calcs.managementCost)}/month`} valueYear={`${formatCurrency(calcs.managementCost*12)}/year`} isSub />
-                 <ExpenseRow label={`CapEx Reserves (${capexRate}%)`} value={`${formatCurrency(calcs.capexCost)}/month`} valueYear={`${formatCurrency(calcs.capexCost*12)}/year`} isSub />
-                 <ExpenseRow label="Property Taxes" value={`${formatCurrency(monthlyTaxes)}/month`} valueYear={`${formatCurrency(monthlyTaxes * 12)}/year`} isSub />
-                 <ExpenseRow label="Insurance" value={`${formatCurrency(monthlyInsurance)}/month`} valueYear={`${formatCurrency(monthlyInsurance*12)}/year`} isSub />
-                 <ExpenseRow label="HOA Fee" value={`${formatCurrency(monthlyHoaFee)}/month`} valueYear={`${formatCurrency(monthlyHoaFee*12)}/year`} isSub />
-                 <ExpenseRow label="Misc. Fees" value={`${formatCurrency(operatingMiscFee)}/month`} valueYear={`${formatCurrency(operatingMiscFee*12)}/year`} isSub />
-                 <h5 className="font-semibold text-gray-600 text-xs uppercase pt-2">Utilities</h5>
-                 <ExpenseRow label="Water/Sewer" value={`${formatCurrency(monthlyWaterSewer)}/month`} valueYear={`${formatCurrency(monthlyWaterSewer*12)}/year`} isSub />
-                 <ExpenseRow label="Street Lights" value={`${formatCurrency(monthlyStreetLights)}/month`} valueYear={`${formatCurrency(monthlyStreetLights*12)}/year`} isSub />
-                 <ExpenseRow label="Gas" value={`${formatCurrency(monthlyGas)}/month`} valueYear={`${formatCurrency(monthlyGas*12)}/year`} isSub />
-                 <ExpenseRow label="Electric" value={`${formatCurrency(monthlyElectric)}/month`} valueYear={`${formatCurrency(monthlyElectric*12)}/year`} isSub />
-                 <ExpenseRow label="Landscaping" value={`${formatCurrency(monthlyLandscaping)}/month`} valueYear={`${formatCurrency(monthlyLandscaping*12)}/year`} isSub />
-                 <ExpenseRow label="Total Operating Expenses" value={`${formatCurrency(calcs.totalOperatingExpenses)}/month`} valueYear={`${formatCurrency(calcs.totalOperatingExpenses * 12)}/year`} isTotal isNegative />
-            </div>
-             <div className="p-4 bg-blue-50 rounded-lg space-y-2">
-                 <ExpenseRow label="Effective Gross Income" value={formatCurrency(calcs.effectiveGrossIncome / 12)} />
-                 <ExpenseRow label="Less: Operating Expenses" value={`-${formatCurrency(calcs.totalOperatingExpenses)}`} isSub />
-                 <ExpenseRow label="Net Operating Income (NOI)" value={formatCurrency(calcs.netOperatingIncome)} isTotal />
-                 <ExpenseRow label="Monthly Cash Flow" value={formatCurrency(calcs.monthlyCashFlowNoDebt)} isTotal />
-            </div>
-        </div>
-    );
-};
-const ExpenseRow = ({ label, value, valueYear, isSub=false, isTotal=false, isNegative=false } : {label:string, value:string, valueYear?: string, isSub?:boolean, isTotal?:boolean, isNegative?:boolean}) => (
-    <div className={`flex justify-between items-center ${isTotal ? 'pt-2 border-t border-gray-300/50' : ''}`}>
-        <span className={`${isSub ? 'pl-4' : ''} ${isTotal ? 'font-bold' : ''} text-gray-600`}>{label}</span>
-        <div className="text-right">
-            <span className={`font-semibold ${isTotal && !isNegative ? 'text-gray-900' : ''} ${isNegative ? 'text-red-600' : ''}`}>{value}</span>
-            {valueYear && <span className="text-xs text-gray-500 ml-2">{valueYear}</span>}
-        </div>
-    </div>
-);
-
-const AdjustTab = ({ property, setProperty, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
-    
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const newFinancials = { ...property.financials, [name]: Number(value) };
-        const newCalculations = calculateMetrics(newFinancials);
-        setProperty({ ...property, financials: newFinancials, calculations: newCalculations });
-    };
-
-    const handleRentChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-        const { value } = e.target;
-        const newRents = [...property.financials.monthlyRents];
-        newRents[index] = Number(value);
-        const newFinancials = { ...property.financials, monthlyRents: newRents };
-        const newCalculations = calculateMetrics(newFinancials);
-        setProperty({ ...property, financials: newFinancials, calculations: newCalculations });
-    };
-
-    const handleSliderChange = (name: keyof Financials, value: number) => {
-        const newFinancials = { ...property.financials, [name]: value };
-        const newCalculations = calculateMetrics(newFinancials);
-        setProperty({ ...property, financials: newFinancials, calculations: newCalculations });
-    };
-    
-    const downPaymentAmountValue = property.financials.purchasePrice * (property.financials.downPaymentPercent / 100);
-
-    return (
-         <div className="space-y-4">
-            <p className="text-sm bg-yellow-50 p-3 rounded-lg text-yellow-800">Adjust the parameters below to model different scenarios. Click "Save Changes" to persist your adjustments.</p>
-            
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Purchase & Rehab</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Purchase Price ($)" name="purchasePrice" value={property.financials.purchasePrice} onChange={handleInputChange} />
-                    <InputField label="Rehab/Renovation Cost ($)" name="rehabCost" value={property.financials.rehabCost} onChange={handleInputChange} />
-                </div>
-            </div>
-            
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Loan & Closing Costs</h4>
-                <SliderField label="Down Payment" displayValue={`${property.financials.downPaymentPercent}% (${formatCurrency(downPaymentAmountValue)})`} name="downPaymentPercent" value={property.financials.downPaymentPercent} onChange={v => handleSliderChange('downPaymentPercent', v)} unit="%" min={0} max={100} step={1} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Loan Interest Rate (%)" name="loanInterestRate" value={property.financials.loanInterestRate} onChange={handleInputChange} />
-                    <InputField label="Loan Term (Years)" name="loanTermYears" value={property.financials.loanTermYears} onChange={handleInputChange} />
-                    <InputField label="Origination Fee (%)" name="originationFeePercent" value={property.financials.originationFeePercent} onChange={handleInputChange} />
-                    <InputField label="Closing Fee ($)" name="closingFee" value={property.financials.closingFee} onChange={handleInputChange} />
-                    <InputField label="Processing Fee ($)" name="processingFee" value={property.financials.processingFee} onChange={handleInputChange} />
-                    <InputField label="Appraisal Fee ($)" name="appraisalFee" value={property.financials.appraisalFee} onChange={handleInputChange} />
-                    <InputField label="Title Fee ($)" name="titleFee" value={property.financials.titleFee} onChange={handleInputChange} />
-                    <InputField label="Broker/Agent Fee ($)" name="brokerAgentFee" value={property.financials.brokerAgentFee || 0} onChange={handleInputChange} />
-                    <InputField label="Home Warranty Fee ($)" name="homeWarrantyFee" value={property.financials.homeWarrantyFee || 0} onChange={handleInputChange} />
-                    <InputField label="Attorney Fee ($)" name="attorneyFee" value={property.financials.attorneyFee || 0} onChange={handleInputChange} />
-                    <InputField label="Misc Closing Fees ($)" name="closingMiscFee" value={property.financials.closingMiscFee || 0} onChange={handleInputChange} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Credits from Seller</h4>
-                <p className="text-xs text-gray-500 -mt-2">These credits reduce your total cash to close.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Taxes Credit ($)" name="sellerCreditTax" value={property.financials.sellerCreditTax || 0} onChange={handleInputChange} />
-                    <InputField label="Sewer Credit ($)" name="sellerCreditSewer" value={property.financials.sellerCreditSewer || 0} onChange={handleInputChange} />
-                    <InputField label="Origination Fee Credit ($)" name="sellerCreditOrigination" value={property.financials.sellerCreditOrigination || 0} onChange={handleInputChange} />
-                    <InputField label="Closing Fees Credit ($)" name="sellerCreditClosing" value={property.financials.sellerCreditClosing || 0} onChange={handleInputChange} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Income</h4>
-                 {property.financials.monthlyRents.length > 1 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {property.financials.monthlyRents.map((rent, index) => (
-                        <div key={index}>
-                            <label className="block text-sm font-medium text-gray-700">Unit {index + 1} Rent ($)</label>
-                            <input type="number" value={rent} onChange={(e) => handleRentChange(e, index)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-blue focus:border-brand-blue" />
-                        </div>
-                    ))}
-                    </div>
-                ) : (
-                    <InputField label="Monthly Rent ($)" name="monthlyRents" value={property.financials.monthlyRents[0] || 0} onChange={(e) => handleRentChange(e, 0)} />
-                )}
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                 <h4 className="font-semibold text-gray-700 -mb-2">Operating Expenses</h4>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <SliderField label="Vacancy Rate" name="vacancyRate" value={property.financials.vacancyRate} onChange={v => handleSliderChange('vacancyRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <SliderField label="Maintenance" name="maintenanceRate" value={property.financials.maintenanceRate} onChange={v => handleSliderChange('maintenanceRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <SliderField label="Management" name="managementRate" value={property.financials.managementRate} onChange={v => handleSliderChange('managementRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <SliderField label="CapEx" name="capexRate" value={property.financials.capexRate} onChange={v => handleSliderChange('capexRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <InputField label="Monthly Property Taxes ($)" name="monthlyTaxes" value={property.financials.monthlyTaxes} onChange={handleInputChange} />
-                    <InputField label="Monthly Insurance ($)" name="monthlyInsurance" value={property.financials.monthlyInsurance} onChange={handleInputChange} />
-                </div>
-                <h5 className="font-semibold text-gray-600 text-sm pt-2 -mb-2">Utilities & Other</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Water/Sewer ($)" name="monthlyWaterSewer" value={property.financials.monthlyWaterSewer} onChange={handleInputChange} />
-                    <InputField label="Street Lights ($)" name="monthlyStreetLights" value={property.financials.monthlyStreetLights} onChange={handleInputChange} />
-                    <InputField label="Gas ($)" name="monthlyGas" value={property.financials.monthlyGas} onChange={handleInputChange} />
-                    <InputField label="Electric ($)" name="monthlyElectric" value={property.financials.monthlyElectric} onChange={handleInputChange} />
-                    <InputField label="Landscaping ($)" name="monthlyLandscaping" value={property.financials.monthlyLandscaping} onChange={handleInputChange} />
-                    <InputField label="HOA Fee ($)" name="monthlyHoaFee" value={property.financials.monthlyHoaFee || 0} onChange={handleInputChange} />
-                    <InputField label="Misc Operating Fees ($)" name="operatingMiscFee" value={property.financials.operatingMiscFee || 0} onChange={handleInputChange} />
-                </div>
-            </div>
-            
-            <SaveChangesFooter onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />
-        </div>
-    );
-};
-
-// --- STRATEGY EXIT GUIDE COMPONENT ---
-const ExitStrategyGuide = ({ title, strategies }: { title: string, strategies: ExitPoint[] }) => (
-    <div className="mt-8">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">{title}</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {strategies.map((strategy, index) => (
-                <div key={index} className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300">
-                    <h4 className="font-bold text-gray-900 text-base mb-2">{index + 1}) {strategy.title}</h4>
-                    <p className="text-sm text-gray-600 mb-3">{strategy.description}</p>
-                    {strategy.points.items.length > 0 && (
-                        <div className="mb-3">
-                            <p className="font-semibold text-sm text-gray-700">{strategy.points.label}</p>
-                            <ul className="mt-1 space-y-1.5">
-                                {strategy.points.items.map((point, i) => (
-                                    <li key={i} className="flex items-start">
-                                        <CheckIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                                        <span className="text-sm text-gray-600" dangerouslySetInnerHTML={{ __html: point.replace(/→/g, '<span class="mx-1 font-bold">→</span>') }}></span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    {strategy.notes && strategy.notes.length > 0 && (
-                        <div className="mt-4 space-y-2">
-                            {strategy.notes.map((note, i) => (
-                                <p key={i} className="text-xs bg-yellow-50 text-yellow-800 p-2 rounded-md">{note}</p>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
-    </div>
-);
-
-// ... (WholesaleMetricsTab, WholesaleParamsTab, SubjectToMetricsTab, SubjectToParamsTab, SellerFinancingMetricsTab, SellerFinancingParamsTab, SaveChangesFooter, InputField, SelectField, ToggleField, SliderField, InvestmentSummaryBreakdown, SummaryRow - KEEP ALL AS IS)
-// [OMITTED FOR BREVITY - NO CHANGES]
-const CalculationRow = ({ label, value, isSubTotal=false, isTotal=false, isNegative=false, color='default' } : {label:string, value:string, isSubTotal?:boolean, isTotal?:boolean, isNegative?:boolean, color?: 'green' | 'red' | 'default' }) => {
-    const colorClasses = {
-        green: 'text-green-600',
-        red: 'text-red-600',
-        default: 'text-gray-900',
-    };
-    
-    return (
-        <div className={`flex justify-between items-center ${isTotal || isSubTotal ? 'pt-2 border-t' : ''} ${isSubTotal ? 'border-dashed border-gray-300' : ''} ${isTotal ? 'border-gray-300' : ''}`}>
-            <span className={`${isTotal ? 'font-semibold' : ''} text-gray-600`}>{label}</span>
-            <span className={`font-semibold ${isTotal ? `font-bold text-lg ${colorClasses[color]}` : 'text-gray-800'} ${isNegative ? 'text-red-600' : ''}`}>
-                {isNegative ? `-${value}` : value}
-            </span>
-        </div>
-    );
-};
-
-const WholesaleMetricsTab = ({ property }: { property: Property }) => {
-    const inputs = property.wholesaleAnalysis?.inputs;
-    const calcs = property.wholesaleAnalysis?.calculations;
-
-    if (!calcs || !inputs) return null;
-
-    const grossOfferPrice = inputs.arv * (inputs.maoPercentOfArv / 100);
-
-    return (
-        <div className="space-y-6">
-            <div className="p-4 border rounded-lg bg-gray-50/50">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">MAO Calculation Breakdown</h3>
-                <div className="space-y-2 text-sm">
-                    <CalculationRow label="After Repair Value (ARV)" value={formatCurrency(inputs.arv)} />
-                    <CalculationRow label={`x MAO Percentage (${inputs.maoPercentOfArv}%)`} value={formatCurrency(grossOfferPrice)} isSubTotal={true} />
-                    <CalculationRow label="Less: Estimated Rehab" value={formatCurrency(inputs.estimatedRehab)} isNegative={true} />
-                    <CalculationRow label="Less: Closing Costs" value={formatCurrency(inputs.closingCost)} isNegative={true} />
-                    <CalculationRow label="Less: Your Wholesale Fee Goal" value={formatCurrency(inputs.wholesaleFeeGoal)} isNegative={true} />
-                    <CalculationRow label="Max Allowable Offer (MAO)" value={formatCurrency(calcs.mao)} isTotal={true} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg bg-gray-50/50">
-                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Deal Analysis</h3>
-                 <div className="space-y-2 text-sm">
-                    <CalculationRow label="Your Max Allowable Offer (MAO)" value={formatCurrency(calcs.mao)} />
-                    <CalculationRow label="Less: Seller's Asking Price" value={formatCurrency(inputs.sellerAsk)} isNegative={true} />
-                    <CalculationRow label="Potential Wholesale Fee (Spread)" value={formatCurrency(calcs.potentialFees)} isTotal={true} color={calcs.potentialFees >= 0 ? 'green' : 'red'} />
-                 </div>
-                 <div className={`mt-4 p-3 rounded-lg flex items-center justify-center text-center ${calcs.isEligible ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
-                    <span className="font-bold text-lg">{calcs.isEligible ? 'This deal is eligible!' : 'This deal is NOT eligible based on your MAO.'}</span>
-                 </div>
-            </div>
-            <div className="screen-only">
-                <ExitStrategyGuide title="Wholesale Exit Options" strategies={WHOLESALE_EXIT_STRATEGIES} />
-            </div>
-        </div>
-    );
-};
-
-
-const WholesaleParamsTab = ({ property, setProperty, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
-    const inputs = property.wholesaleAnalysis?.inputs;
-    if (!inputs) return null;
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type, checked } = e.target;
-        const newInputs = { ...inputs, [name]: type === 'checkbox' ? checked : Number(value) };
-        const newCalculations = calculateWholesaleMetrics(newInputs);
-        setProperty({ ...property, wholesaleAnalysis: { inputs: newInputs, calculations: newCalculations } });
-    };
-
-    return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="ARV ($)" name="arv" value={inputs.arv} onChange={handleInputChange} />
-                <InputField label="Estimated Rehab ($)" name="estimatedRehab" value={inputs.estimatedRehab} onChange={handleInputChange} />
-                <InputField label="MAO (% of ARV)" name="maoPercentOfArv" value={inputs.maoPercentOfArv} onChange={handleInputChange} />
-                <InputField label="Closing Cost ($)" name="closingCost" value={inputs.closingCost} onChange={handleInputChange} />
-                <InputField label="Wholesale Fee Goal ($)" name="wholesaleFeeGoal" value={inputs.wholesaleFeeGoal} onChange={handleInputChange} />
-                <InputField label="Seller Ask ($)" name="sellerAsk" value={inputs.sellerAsk} onChange={handleInputChange} />
-            </div>
-            <ToggleField label="Assignable Contract?" name="isAssignable" checked={inputs.isAssignable} onChange={handleInputChange} />
-            <SaveChangesFooter onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />
-        </div>
-    );
-};
-
-// --- SUBJECT-TO STRATEGY COMPONENTS ---
-
-const SubjectToMetricsTab = ({ property }: { property: Property }) => {
-    const inputs = property.subjectToAnalysis?.inputs;
-    const calcs = property.subjectToAnalysis?.calculations;
-    if (!calcs || !inputs) return null;
-    return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <MetricBox label="Total Cash Needed" value={formatCurrency(calcs.cashNeeded)} description="Upfront cash to close the deal" color="blue" />
-                <MetricBox label="Monthly Spread" value={formatCurrency(calcs.monthlySpread)} description="Market Rent minus existing PITI" color={calcs.monthlySpread > 0 ? 'green' : 'red'} />
-                <MetricBox label="Blended CoC Return" value={`${calcs.cashOnCashReturn.toFixed(1)}%`} description="Annualized return on cash needed" color={calcs.cashOnCashReturn > 0 ? 'green' : 'red'} />
-            </div>
-            
-            <div className="p-4 border rounded-lg bg-gray-50/50">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Cash Needed Breakdown</h3>
-                <div className="space-y-2 text-sm">
-                    <CalculationRow label="Reinstatement Needed" value={formatCurrency(inputs.reinstatementNeeded)} />
-                    <CalculationRow label="Seller Cash Needed" value={formatCurrency(inputs.sellerCashNeeded)} />
-                    <CalculationRow label="Closing Costs" value={formatCurrency(inputs.closingCosts)} />
-                    <CalculationRow label="Total Cash Needed to Close" value={formatCurrency(calcs.cashNeeded)} isTotal={true} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg bg-gray-50/50">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Monthly Spread Breakdown</h3>
-                <div className="space-y-2 text-sm">
-                    <CalculationRow label="Market Rent" value={formatCurrency(inputs.marketRent)} />
-                    <CalculationRow label="Less: Existing Monthly PITI" value={formatCurrency(inputs.monthlyPITI)} isNegative={true} />
-                    <CalculationRow label="Net Monthly Spread" value={formatCurrency(calcs.monthlySpread)} isTotal={true} color={calcs.monthlySpread > 0 ? 'green' : 'red'} />
-                </div>
-            </div>
-
-            <div className="screen-only">
-                <ExitStrategyGuide title="Subject-To Exit Options" strategies={SUBJECT_TO_EXIT_STRATEGIES} />
-            </div>
-        </div>
-    );
-};
-
-const SubjectToParamsTab = ({ property, setProperty, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
-    const inputs = property.subjectToAnalysis?.inputs;
-    if (!inputs) return null;
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const newInputs = { ...inputs, [name]: Number(value) };
-        const newCalculations = calculateSubjectToMetrics(newInputs);
-        setProperty({ ...property, subjectToAnalysis: { inputs: newInputs, calculations: newCalculations } });
-    };
-
-    return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Existing Loan Balance ($)" name="existingLoanBalance" value={inputs.existingLoanBalance} onChange={handleInputChange} />
-                <InputField label="Existing Loan Rate (%)" name="existingLoanRate" value={inputs.existingLoanRate} onChange={handleInputChange} />
-                <InputField label="Monthly PITI ($)" name="monthlyPITI" value={inputs.monthlyPITI} onChange={handleInputChange} />
-                <InputField label="Reinstatement Needed ($)" name="reinstatementNeeded" value={inputs.reinstatementNeeded} onChange={handleInputChange} />
-                <InputField label="Seller Cash Needed ($)" name="sellerCashNeeded" value={inputs.sellerCashNeeded} onChange={handleInputChange} />
-                <InputField label="Closing Costs ($)" name="closingCosts" value={inputs.closingCosts} onChange={handleInputChange} />
-                <InputField label="Market Rent ($)" name="marketRent" value={inputs.marketRent} onChange={handleInputChange} />
-            </div>
-            <SaveChangesFooter onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />
-        </div>
-    );
-};
-
-// --- SELLER FINANCING STRATEGY COMPONENTS ---
-
-const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
-    const inputs = property.sellerFinancingAnalysis?.inputs;
-    const calcs = property.sellerFinancingAnalysis?.calculations;
-    if (!calcs || !inputs) return null;
-
-    const loanAmount = inputs.purchasePrice - inputs.downPayment;
-
-    return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <MetricBox label="Monthly Payment" value={formatCurrency(calcs.monthlyPayment)} description="Payment to the seller" color="blue" />
-                <MetricBox label="Spread vs. Market Rent" value={formatCurrency(calcs.spreadVsMarketRent)} description="Cash flow potential" color={calcs.spreadVsMarketRent > 0 ? 'green' : 'red'} />
-                <MetricBox label="Return on Down Payment" value={`${calcs.returnOnDp.toFixed(1)}%`} description="Annualized return on DP" color={calcs.returnOnDp > 0 ? 'green' : 'red'} />
-            </div>
-            
-            <div className="p-4 border rounded-lg bg-gray-50/50">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Monthly Payment Calculation</h3>
-                <div className="space-y-2 text-sm">
-                    <CalculationRow label="Purchase Price" value={formatCurrency(inputs.purchasePrice)} />
-                    <CalculationRow label="Less: Down Payment" value={formatCurrency(inputs.downPayment)} isNegative={true} />
-                    <CalculationRow label="Loan Amount" value={formatCurrency(loanAmount)} isSubTotal={true} />
-                    <div className="text-xs text-gray-500 pt-2 text-center">
-                        Calculated based on a {inputs.loanTerm}-year term at {inputs.sellerLoanRate}% interest ({inputs.paymentType})
-                    </div>
-                    <CalculationRow label="Seller Financed Monthly Payment" value={formatCurrency(calcs.monthlyPayment)} isTotal={true} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg bg-gray-50/50">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Spread & Return Breakdown</h3>
-                <div className="space-y-2 text-sm">
-                    <CalculationRow label="Market Rent" value={formatCurrency(inputs.marketRent)} />
-                    <CalculationRow label="Less: Monthly Payment" value={formatCurrency(calcs.monthlyPayment)} isNegative={true} />
-                    <CalculationRow label="Spread vs Market Rent" value={formatCurrency(calcs.spreadVsMarketRent)} isTotal={true} color={calcs.spreadVsMarketRent > 0 ? 'green' : 'red'} />
-                </div>
-            </div>
-
-            <div className="screen-only">
-                <ExitStrategyGuide title="Seller Financing Exit Options" strategies={SELLER_FINANCING_EXIT_STRATEGIES} />
-            </div>
-        </div>
-    );
-};
-
-const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
-    const inputs = property.sellerFinancingAnalysis?.inputs;
-    if (!inputs) return null;
-
-    const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const newInputs = { ...inputs, [name]: Number(value) };
-        const newCalculations = calculateSellerFinancingMetrics(newInputs);
-        setProperty({ ...property, sellerFinancingAnalysis: { inputs: newInputs, calculations: newCalculations } });
-    };
-    
-    const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        const newInputs = { ...inputs, [name]: value as 'Amortization' | 'Interest Only' };
-        const newCalculations = calculateSellerFinancingMetrics(newInputs);
-        setProperty({ ...property, sellerFinancingAnalysis: { inputs: newInputs, calculations: newCalculations } });
-    };
-
-
-    return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Purchase Price ($)" name="purchasePrice" value={inputs.purchasePrice} onChange={handleNumberInputChange} />
-                <InputField label="Down Payment ($)" name="downPayment" value={inputs.downPayment} onChange={handleNumberInputChange} />
-                <InputField label="Seller Loan Rate (%)" name="sellerLoanRate" value={inputs.sellerLoanRate} onChange={handleNumberInputChange} />
-                <InputField label="Loan Term (Years)" name="loanTerm" value={inputs.loanTerm} onChange={handleNumberInputChange} />
-                <InputField label="Balloon (Years, 0 if none)" name="balloonYears" value={inputs.balloonYears} onChange={handleNumberInputChange} />
-                <InputField label="Market Rent ($)" name="marketRent" value={inputs.marketRent} onChange={handleNumberInputChange} />
-                <SelectField 
-                    label="Payment Type" 
-                    name="paymentType" 
-                    value={inputs.paymentType} 
-                    onChange={handleSelectChange}
-                    options={['Amortization', 'Interest Only']}
-                />
-            </div>
-            <SaveChangesFooter onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />
-        </div>
-    );
-};
-
-
-// --- COMMON & UTILITY COMPONENTS ---
-
-const SaveChangesFooter = ({ onSave, onReset, hasChanges, isLoading, error }: { onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => (
-    <div className="mt-6 no-print">
-        {error && <div className="bg-red-100 border border-red-300 text-red-800 text-sm p-3 rounded-md mb-4">{error}</div>}
-        <div className="flex justify-end items-center space-x-4">
-            {hasChanges ? (
-                <>
-                    <button onClick={onReset} disabled={isLoading} className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50">Reset</button>
-                    <button onClick={onSave} disabled={isLoading} className="px-4 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 flex items-center min-w-[170px] justify-center">
-                        {isLoading ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                                Re-evaluating...
-                            </>
-                        ) : 'Save & Re-evaluate'}
-                    </button>
-                </>
-            ) : (
-                <p className="text-sm text-gray-500 italic">No unsaved changes.</p>
-            )}
-        </div>
-    </div>
-);
-
-
-const InputField = ({ label, name, value, onChange, type = "number" }: { label: string, name: string, value: number | string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, type?: string }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <input type={type} name={name} value={value} onChange={onChange} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-blue focus:border-brand-blue" />
-    </div>
-);
-
-const SelectField = ({ label, name, value, onChange, options }: { label: string, name: string, value: string, onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void, options: string[] }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <select name={name} value={value} onChange={onChange} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-blue focus:border-brand-blue bg-white">
-            {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-    </div>
-);
-
-const ToggleField = ({ label, name, checked, onChange }: { label: string, name: string, checked: boolean, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-    <div className="flex items-center">
-        <label htmlFor={name} className="flex items-center cursor-pointer">
-            <div className="relative">
-                <input type="checkbox" id={name} name={name} className="sr-only" checked={checked} onChange={onChange} />
-                <div className={`block w-14 h-8 rounded-full ${checked ? 'bg-brand-blue' : 'bg-gray-200'}`}></div>
-                <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${checked ? 'transform translate-x-6' : ''}`}></div>
-            </div>
-            <div className="ml-3 text-sm font-medium text-gray-700">{label}</div>
-        </label>
-    </div>
-);
-
-
-const SliderField = ({ label, name, value, onChange, unit, min, max, step, displayValue }: { label: string, name: keyof Financials, value: number, onChange: (v: number) => void, unit: string, min: number, max: number, step: number, displayValue?: string }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}: <span className="font-bold">{displayValue || `${value}${unit}`}</span></label>
-        <input type="range" name={name} value={value} onChange={(e) => onChange(Number(e.target.value))} min={min} max={max} step={step} className="mt-1 w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-blue" />
-    </div>
-);
-
-const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
-    const calcs = property.calculations;
-    const financials = property.financials; // Get financials for itemized costs
-    const totalMonthlyRent = financials.monthlyRents.reduce((a, b) => a + b, 0);
-    const totalSellerCredits = (financials.sellerCreditTax || 0) + (financials.sellerCreditSewer || 0) + (financials.sellerCreditOrigination || 0) + (financials.sellerCreditClosing || 0);
-    const originationFeeAmount = calcs.loanAmount * (financials.originationFeePercent / 100);
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 print-hide-title">Investment Summary (Rental Strategy)</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                {/* Upfront Costs Section */}
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-3 pb-2 border-b">Upfront Costs (Cash to Close)</h3>
-                    <div className="space-y-2 text-sm">
-                        <SummaryRow label="Down Payment" value={formatCurrency(calcs.downPaymentAmount)} />
-                        <SummaryRow label="Rehab Cost" value={formatCurrency(financials.rehabCost)} />
-                        <h4 className="font-semibold text-gray-600 text-xs uppercase pt-2">Closing Costs</h4>
-                        <SummaryRow label="Origination Fee" value={formatCurrency(originationFeeAmount)} isSub />
-                        <SummaryRow label="Closing Fee" value={formatCurrency(financials.closingFee)} isSub />
-                        <SummaryRow label="Processing Fee" value={formatCurrency(financials.processingFee)} isSub />
-                        <SummaryRow label="Appraisal Fee" value={formatCurrency(financials.appraisalFee)} isSub />
-                        <SummaryRow label="Title Fee" value={formatCurrency(financials.titleFee)} isSub />
-                        <SummaryRow label="Broker/Agent Fee" value={formatCurrency(financials.brokerAgentFee || 0)} isSub />
-                        <SummaryRow label="Home Warranty Fee" value={formatCurrency(financials.homeWarrantyFee || 0)} isSub />
-                        <SummaryRow label="Attorney Fee" value={formatCurrency(financials.attorneyFee || 0)} isSub />
-                        <SummaryRow label="Misc. Fees" value={formatCurrency(financials.closingMiscFee || 0)} isSub />
-                        <SummaryRow label="Total Closing Costs" value={formatCurrency(calcs.totalClosingCosts)} isSubTotal />
-                        <SummaryRow label="Less: Seller Credits" value={formatCurrency(totalSellerCredits)} isNegative />
-                        <SummaryRow label="Total Cash To Close" value={formatCurrency(calcs.totalCashToClose)} isTotal />
-                    </div>
-                </div>
-                {/* Monthly Cash Flow Section */}
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-3 pb-2 border-b">Monthly Cash Flow</h3>
-                    <div className="space-y-2 text-sm">
-                        <SummaryRow label="Gross Rent" value={formatCurrency(totalMonthlyRent)} />
-                        <SummaryRow label="Operating Expenses" value={formatCurrency(calcs.totalOperatingExpenses)} isNegative />
-                        <SummaryRow label="Net Operating Income" value={formatCurrency(calcs.netOperatingIncome)} isSubTotal />
-                        <SummaryRow label="Debt Service" value={formatCurrency(calcs.monthlyDebtService)} isNegative />
-                        <SummaryRow label="Net Cash Flow" value={formatCurrency(calcs.monthlyCashFlowWithDebt)} isTotal />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-const SummaryRow = ({ label, value, isTotal = false, isSubTotal = false, isNegative = false, isSub = false }: { label: string, value: string, isTotal?: boolean, isSubTotal?: boolean, isNegative?: boolean, isSub?: boolean }) => {
-    const baseClasses = "flex justify-between items-center";
-    const totalClasses = isTotal ? "pt-2 mt-2 border-t font-bold" : "";
-    const subTotalClasses = isSubTotal ? "pt-2 mt-2 border-t" : "";
-    
-    return (
-        <div className={`${baseClasses} ${totalClasses} ${subTotalClasses}`}>
-            <span className={`text-gray-600 ${isTotal ? 'text-gray-800' : ''} ${isSub ? 'pl-4' : ''}`}>{label}</span>
-            <span className={`font-semibold ${isTotal ? 'text-lg text-gray-900' : 'text-gray-700'} ${isNegative ? 'text-red-600' : ''}`}>{isNegative ? '-' + value: value}</span>
-        </div>
-    );
-};
-
 
 export default PropertyDetail;
