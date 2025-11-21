@@ -203,7 +203,7 @@ export const getUserDetail = async (req: any, res: any) => {
 
         // 4. Properties List
         const propsQuery = `
-            SELECT id, address, property_data, created_at 
+            SELECT id, property_data, created_at 
             FROM properties 
             WHERE user_id = $1 
             ORDER BY created_at DESC
@@ -213,7 +213,7 @@ export const getUserDetail = async (req: any, res: any) => {
         const properties = propsRes.rows.map((row: any) => ({
             ...row.property_data,
             id: row.id,
-            address: row.address, // Fallback if not in property_data, though it should be
+            address: row.property_data.address, // Address is in property_data
             dateAnalyzed: new Date(row.created_at).toLocaleDateString(),
             createdAt: row.created_at,
             deletedAt: row.property_data.deletedAt ? new Date(row.property_data.deletedAt).toISOString() : undefined
