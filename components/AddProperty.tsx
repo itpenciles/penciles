@@ -24,7 +24,7 @@ const AddProperty = () => {
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const { addProperty } = useProperties();
-    const { analysisStatus } = useAuth();
+    const { analysisStatus, refreshUser } = useAuth();
     
     const remainingAnalyses = analysisStatus.limit === 'Unlimited' ? Infinity : Math.max(0, analysisStatus.limit - analysisStatus.count);
     const isOverLimit = analysisStatus.isOverLimit;
@@ -48,6 +48,8 @@ const AddProperty = () => {
         try {
             const analyzedData = await apiClient.post('/analyze', { inputType, value });
             const newProperty = await addProperty(analyzedData);
+            // Sync the user stats to update the "Analyses Left" count immediately
+            await refreshUser();
             return newProperty;
         } catch (e: any) {
             setError(e.response?.data?.message || e.message || 'An unknown error occurred during analysis.');

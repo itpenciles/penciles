@@ -11,7 +11,7 @@ const Sidebar = () => {
   const { user, logout, analysisStatus } = useAuth();
   const navigate = useNavigate();
 
-  // Properties Analyzed counts the list.
+  // Visual metric only - does not affect limit calculation
   const propertiesAnalyzed = properties.length;
   
   const avgCapRate =
@@ -57,35 +57,18 @@ const Sidebar = () => {
         );
     }
 
-    // --- DYNAMIC USAGE CALCULATION (Frontend Source of Truth) ---
-    // This solves the issue where the backend 'analysisCount' lags behind due to caching or race conditions.
-    // We count the properties actually loaded in the browser.
-    let usedCount = properties.length;
-
-    if (user.subscriptionTier !== 'Free' && user.analysisLimitResetAt) {
-        // For Monthly Plans, filter by current cycle
-        // Reset date is the *end* of the current cycle. Start was 1 month prior.
-        const resetDate = new Date(user.analysisLimitResetAt);
-        const cycleStartDate = new Date(resetDate);
-        cycleStartDate.setMonth(cycleStartDate.getMonth() - 1);
-        
-        usedCount = properties.filter(p => {
-            // Prefer backend timestamp, fallback to analysis date string
-            const dateStr = p.createdAt || p.dateAnalyzed; 
-            const pDate = new Date(dateStr);
-            return pDate >= cycleStartDate;
-        }).length;
-    }
-
-    const { limit } = analysisStatus;
+    // --- FIXED USAGE DISPLAY ---
+    // We now use the shared 'analysisStatus' from AuthContext. 
+    // This ensures the Sidebar matches the Add Property page exactly.
+    const { count, limit } = analysisStatus;
     
     if (limit === 'Unlimited') {
         return <p className="text-xs font-semibold text-green-600 mt-1">Unlimited Analyses</p>;
     }
     
-    // Calculate remaining based on visual list
-    const remaining = typeof limit === 'number' ? Math.max(0, limit - usedCount) : 0;
-    const percentage = limit > 0 ? (usedCount / limit) * 100 : 0;
+    // Calculate remaining based on the official backend count
+    const remaining = typeof limit === 'number' ? Math.max(0, limit - count) : 0;
+    const percentage = limit > 0 ? (count / limit) * 100 : 0;
 
     return (
         <div className="mt-2">

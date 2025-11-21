@@ -28,6 +28,7 @@ interface AuthContextType {
     clientIdForDebugging: string | null;
     handleGoogleLogin: (response: any) => void;
     updateSubscription: (tier: SubscriptionTier) => Promise<void>;
+    refreshUser: () => Promise<void>;
     featureAccess: FeatureAccess;
     analysisStatus: AnalysisStatus;
 }
@@ -114,6 +115,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, [user]);
 
+    const refreshUser = useCallback(async () => {
+        try {
+            // The apiClient.get automatically adds the token
+            const updatedUser = await apiClient.get('/user/me');
+            // Only update if we have a user (user is logged in)
+            if(updatedUser) {
+                setUser(prev => ({ ...prev, ...updatedUser }));
+            }
+        } catch (error) {
+            console.error("Failed to refresh user stats", error);
+        }
+    }, []);
+
     const handleGoogleLogin = useCallback(async (response: any) => {
         setIsLoading(true);
         setAuthError(null);
@@ -171,6 +185,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             role: decodedToken.role || 'user', // Restore role from token
                          };
                          setUser(userFromToken);
+                         // Fetch fresh data immediately to ensure count is accurate
+                         try {
+                             const freshUser = await apiClient.get('/user/me');
+                             setUser(freshUser);
+                         } catch (e) { console.warn("Could not fetch fresh user details on load", e); }
+
                      } else {
                          localStorage.removeItem('authToken');
                      }
@@ -202,6 +222,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         clientIdForDebugging,
         handleGoogleLogin,
         updateSubscription,
+        refreshUser,
         featureAccess,
         analysisStatus,
     };
