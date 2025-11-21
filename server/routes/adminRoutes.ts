@@ -1,7 +1,7 @@
 
 import { Router } from 'express';
 import { adminMiddleware, authMiddleware } from '../middleware/authMiddleware.js';
-import { getAdminStats, getUsers, getUserDetail, cancelUserSubscription, togglePropertyStatus } from '../controllers/adminController.js';
+import { getAdminStats, getUsers, getUserDetail, cancelUserSubscription } from '../controllers/adminController.js';
 
 const router = Router();
 
@@ -13,6 +13,5 @@ router.get('/stats', getAdminStats);
 router.get('/users', getUsers);
 router.get('/users/:id', getUserDetail);
 router.post('/users/:id/cancel', cancelUserSubscription);
-router.post('/properties/:id/status', togglePropertyStatus);
 
 export default router;

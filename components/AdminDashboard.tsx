@@ -62,21 +62,7 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleTogglePropertyStatus = async (propertyId: string, currentStatus: string) => {
-        const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-        if (window.confirm(`Are you sure you want to change status to ${newStatus}?`)) {
-            try {
-                await apiClient.post(`/admin/properties/${propertyId}/status`, { status: newStatus });
-                // Refresh user details
-                if (selectedUser) {
-                    const detail = await apiClient.get(`/admin/users/${selectedUser.id}`);
-                    setUserDetailStats(detail);
-                }
-            } catch (e: any) {
-                alert("Failed to update property status: " + e.message);
-            }
-        }
-    };
+
 
     const filteredUsers = users.filter(user => {
         if (filterStatus === 'All') return true;
@@ -357,49 +343,43 @@ const AdminDashboard = () => {
                                         </div>
                                     )}
 
-                                    {/* --- Analyzed Properties --- */}
-                                    {userDetailStats.properties && (
-                                        <div className="mt-8">
-                                            <h3 className="font-bold text-gray-700 mb-4">Analyzed Properties ({userDetailStats.properties.length})</h3>
+                                    {userDetailStats.billingHistory && (
+                                        <div>
+                                            <h3 className="font-bold text-gray-700 mb-4">Billing History</h3>
                                             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                                                 <table className="w-full text-left text-sm">
                                                     <thead className="bg-gray-50 text-gray-500 font-medium text-xs uppercase">
                                                         <tr>
-                                                            <th className="px-4 py-3">Address</th>
-                                                            <th className="px-4 py-3">Date Analyzed</th>
+                                                            <th className="px-4 py-3">Date</th>
+                                                            <th className="px-4 py-3">Description</th>
+                                                            <th className="px-4 py-3">Amount</th>
+                                                            <th className="px-4 py-3">Payment Method</th>
                                                             <th className="px-4 py-3">Status</th>
-                                                            <th className="px-4 py-3">Action</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-200">
-                                                        {userDetailStats.properties.length > 0 ? (
-                                                            userDetailStats.properties.map((property) => {
-                                                                const isInactive = !!property.deletedAt;
-                                                                const status = isInactive ? 'Inactive' : 'Active';
-                                                                return (
-                                                                    <tr key={property.id}>
-                                                                        <td className="px-4 py-3 text-gray-900 font-medium">{property.address}</td>
-                                                                        <td className="px-4 py-3 text-gray-500">{property.dateAnalyzed}</td>
-                                                                        <td className="px-4 py-3">
-                                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${!isInactive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                                                                                {status}
-                                                                            </span>
-                                                                        </td>
-                                                                        <td className="px-4 py-3">
-                                                                            <button
-                                                                                onClick={() => handleTogglePropertyStatus(property.id, status)}
-                                                                                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                                                                            >
-                                                                                {isInactive ? 'Activate' : 'Deactivate'}
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            })
+                                                        {userDetailStats.billingHistory.length > 0 ? (
+                                                            userDetailStats.billingHistory.map((item) => (
+                                                                <tr key={item.id}>
+                                                                    <td className="px-4 py-3 text-gray-900">{item.date}</td>
+                                                                    <td className="px-4 py-3 text-gray-600">{item.billingType} Subscription</td>
+                                                                    <td className="px-4 py-3 font-medium text-gray-900">${item.amount.toFixed(2)}</td>
+                                                                    <td className="px-4 py-3 text-gray-600">
+                                                                        <span className="inline-flex items-center">
+                                                                            {item.cardType} •••• {item.last4}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <span className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-medium">
+                                                                            {item.status}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            ))
                                                         ) : (
                                                             <tr>
-                                                                <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
-                                                                    No properties analyzed yet.
+                                                                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
+                                                                    No billing history available.
                                                                 </td>
                                                             </tr>
                                                         )}
