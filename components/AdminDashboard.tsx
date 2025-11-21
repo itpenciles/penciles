@@ -343,51 +343,7 @@ const AdminDashboard = () => {
                                         </div>
                                     )}
 
-                                    {userDetailStats.billingHistory && (
-                                        <div>
-                                            <h3 className="font-bold text-gray-700 mb-4">Billing History</h3>
-                                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                                                <table className="w-full text-left text-sm">
-                                                    <thead className="bg-gray-50 text-gray-500 font-medium text-xs uppercase">
-                                                        <tr>
-                                                            <th className="px-4 py-3">Date</th>
-                                                            <th className="px-4 py-3">Description</th>
-                                                            <th className="px-4 py-3">Amount</th>
-                                                            <th className="px-4 py-3">Payment Method</th>
-                                                            <th className="px-4 py-3">Status</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-200">
-                                                        {userDetailStats.billingHistory.length > 0 ? (
-                                                            userDetailStats.billingHistory.map((item) => (
-                                                                <tr key={item.id}>
-                                                                    <td className="px-4 py-3 text-gray-900">{item.date}</td>
-                                                                    <td className="px-4 py-3 text-gray-600">{item.billingType} Subscription</td>
-                                                                    <td className="px-4 py-3 font-medium text-gray-900">${item.amount.toFixed(2)}</td>
-                                                                    <td className="px-4 py-3 text-gray-600">
-                                                                        <span className="inline-flex items-center">
-                                                                            {item.cardType} •••• {item.last4}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-4 py-3">
-                                                                        <span className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-medium">
-                                                                            {item.status}
-                                                                        </span>
-                                                                    </td>
-                                                                </tr>
-                                                            ))
-                                                        ) : (
-                                                            <tr>
-                                                                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                                                                    No billing history available.
-                                                                </td>
-                                                            </tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    )}
+
                                 </>
                             )}
                         </div>
