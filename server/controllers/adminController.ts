@@ -201,6 +201,24 @@ export const getUserDetail = async (req: any, res: any) => {
         const isFree = !u.subscription_tier || u.subscription_tier === 'Free';
         const lastChange = historyRes.rows[0];
 
+        // 4. Properties List
+        const propsQuery = `
+            SELECT id, address, property_data, created_at 
+            FROM properties 
+            WHERE user_id = $1 
+            ORDER BY created_at DESC
+        `;
+        const propsRes = await query(propsQuery, [id]);
+
+        const properties = propsRes.rows.map((row: any) => ({
+            ...row.property_data,
+            id: row.id,
+            address: row.address, // Fallback if not in property_data, though it should be
+            dateAnalyzed: new Date(row.created_at).toLocaleDateString(),
+            createdAt: row.created_at,
+            deletedAt: row.property_data.deletedAt ? new Date(row.property_data.deletedAt).toISOString() : undefined
+        }));
+
         // Determine Start Date (First upgrade)
         const startRow = historyRes.rows.slice().reverse().find((r: any) => r.change_type === 'new' || r.change_type === 'upgrade');
         const startDate = startRow ? new Date(startRow.created_at).toLocaleDateString() : new Date(u.created_at).toLocaleDateString();
@@ -238,7 +256,8 @@ export const getUserDetail = async (req: any, res: any) => {
             },
             strategyUsage: strategies,
             billingSummary: billingSummary,
-            billingHistory: billingHistory
+            billingHistory: billingHistory,
+            properties: properties
         });
 
     } catch (error) {
@@ -271,7 +290,34 @@ export const cancelUserSubscription = async (req: any, res: any) => {
 
         res.json({ message: 'Subscription cancelled successfully' });
     } catch (error) {
-        console.error('Error cancelling subscription:', error);
+    }
+};
+
+export const togglePropertyStatus = async (req: any, res: any) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'Active' or 'Inactive'
+
+    try {
+        // 1. Fetch existing data
+        const selectRes = await query('SELECT property_data FROM properties WHERE id = $1', [id]);
+        if (selectRes.rows.length === 0) return res.status(404).json({ message: 'Property not found' });
+
+        const propertyData = selectRes.rows[0].property_data;
+
+        // 2. Modify deletedAt
+        if (status === 'Active') {
+            delete propertyData.deletedAt;
+        } else {
+            propertyData.deletedAt = new Date().toISOString();
+        }
+
+        // 3. Update DB
+        await query('UPDATE properties SET property_data = $1 WHERE id = $2', [propertyData, id]);
+
+        res.json({ message: `Property status updated to ${status}` });
+    } catch (error) {
+        console.error('Error updating property status:', error);
+        res.status(500).json({ message: 'Server error updating property status' });
     }
 };
 

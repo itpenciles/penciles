@@ -263,6 +263,7 @@ export interface UserDetailStats {
   };
   billingSummary?: BillingSummary;
   billingHistory?: BillingHistoryItem[];
+  properties: Property[];
 }
 
 export interface Plan {

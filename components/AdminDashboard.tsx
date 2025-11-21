@@ -62,6 +62,22 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleTogglePropertyStatus = async (propertyId: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+        if (window.confirm(`Are you sure you want to change status to ${newStatus}?`)) {
+            try {
+                await apiClient.post(`/admin/properties/${propertyId}/status`, { status: newStatus });
+                // Refresh user details
+                if (selectedUser) {
+                    const detail = await apiClient.get(`/admin/users/${selectedUser.id}`);
+                    setUserDetailStats(detail);
+                }
+            } catch (e: any) {
+                alert("Failed to update property status: " + e.message);
+            }
+        }
+    };
+
 
 
     const filteredUsers = users.filter(user => {
@@ -342,7 +358,57 @@ const AdminDashboard = () => {
                                             </div>
                                         </div>
                                     )}
-
+                                    {/* --- Analyzed Properties --- */}
+                                    {userDetailStats.properties && (
+                                        <div className="mt-8">
+                                            <h3 className="font-bold text-gray-700 mb-4">Analyzed Properties ({userDetailStats.properties.length})</h3>
+                                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                                <table className="w-full text-left text-sm">
+                                                    <thead className="bg-gray-50 text-gray-500 font-medium text-xs uppercase">
+                                                        <tr>
+                                                            <th className="px-4 py-3">Address</th>
+                                                            <th className="px-4 py-3">Date Analyzed</th>
+                                                            <th className="px-4 py-3">Status</th>
+                                                            <th className="px-4 py-3">Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-200">
+                                                        {userDetailStats.properties.length > 0 ? (
+                                                            userDetailStats.properties.map((property) => {
+                                                                const isInactive = !!property.deletedAt;
+                                                                const status = isInactive ? 'Inactive' : 'Active';
+                                                                return (
+                                                                    <tr key={property.id}>
+                                                                        <td className="px-4 py-3 text-gray-900 font-medium">{property.address}</td>
+                                                                        <td className="px-4 py-3 text-gray-500">{property.dateAnalyzed}</td>
+                                                                        <td className="px-4 py-3">
+                                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${!isInactive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                                                                                {status}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-4 py-3">
+                                                                            <button
+                                                                                onClick={() => handleTogglePropertyStatus(property.id, status)}
+                                                                                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                                                            >
+                                                                                {isInactive ? 'Activate' : 'Deactivate'}
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <tr>
+                                                                <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                                                                    No properties analyzed yet.
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
 
                                 </>
                             )}
