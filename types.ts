@@ -13,6 +13,7 @@ export interface Property {
   imageUrl: string;
   dateAnalyzed: string;
   deletedAt?: string; // New field for Soft Delete audit trail
+  createdAt?: string; // Reliable timestamp from backend DB
   
   details: {
     bedrooms: number;

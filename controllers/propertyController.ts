@@ -8,14 +8,16 @@ export const getProperties = async (req: any, res: any) => {
     const userId = req.user?.id;
     try {
         // Fetch ALL properties. The frontend will handle filtering Active vs Deleted.
+        // We fetch 'created_at' to allow precise frontend filtering for monthly cycles.
         const result = await query(
-            'SELECT id, property_data FROM properties WHERE user_id = $1 ORDER BY created_at DESC', 
+            'SELECT id, property_data, created_at FROM properties WHERE user_id = $1 ORDER BY created_at DESC', 
             [userId]
         );
-        // The property object is stored in property_data, and we also need the db id
+        // The property object is stored in property_data, and we also need the db id and timestamp
         const properties = result.rows.map(row => ({
             ...row.property_data,
-            id: row.id.toString() // Ensure ID is a string for frontend consistency
+            id: row.id.toString(), // Ensure ID is a string for frontend consistency
+            createdAt: row.created_at // Pass the server timestamp
         }));
         res.status(200).json(properties);
     } catch (error) {
@@ -33,13 +35,14 @@ export const addProperty = async (req: any, res: any) => {
     try {
         // Let the database generate the ID (SERIAL PRIMARY KEY). We don't pass an ID.
         const result = await query(
-            'INSERT INTO properties (user_id, property_data) VALUES ($1, $2) RETURNING id, property_data',
+            'INSERT INTO properties (user_id, property_data) VALUES ($1, $2) RETURNING id, property_data, created_at',
             [userId, propertyData]
         );
         // The returned ID from the database is the source of truth.
         const newProperty = {
             ...result.rows[0].property_data,
-            id: result.rows[0].id.toString() // Ensure ID is a string, as frontend expects
+            id: result.rows[0].id.toString(), // Ensure ID is a string
+            createdAt: result.rows[0].created_at // Pass the server timestamp
         };
         res.status(201).json(newProperty);
     } catch (error) {
@@ -75,7 +78,7 @@ export const updateProperty = async (req: any, res: any) => {
 
         // Step 3: Save the fully updated object to the database.
         const result = await query(
-            'UPDATE properties SET property_data = $1, updated_at = now() WHERE id = $2 AND user_id = $3 RETURNING id, property_data',
+            'UPDATE properties SET property_data = $1, updated_at = now() WHERE id = $2 AND user_id = $3 RETURNING id, property_data, created_at',
             [updatedDataToStore, id, userId]
         );
 
@@ -86,7 +89,8 @@ export const updateProperty = async (req: any, res: any) => {
         // Step 4: Return the complete, re-evaluated property to the frontend.
         const updatedProperty = {
             ...result.rows[0].property_data,
-            id: result.rows[0].id.toString() // Ensure ID is a string
+            id: result.rows[0].id.toString(), // Ensure ID is a string
+            createdAt: result.rows[0].created_at
         };
         res.status(200).json(updatedProperty);
     } catch (error: any) {

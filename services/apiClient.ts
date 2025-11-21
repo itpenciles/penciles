@@ -22,6 +22,10 @@ const apiClient = {
     async request(method: string, endpoint: string, body?: any) {
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
+            // Critical: Tell browser/proxies not to cache this
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
         };
         const token = getAuthToken();
         if (token) {
@@ -37,7 +41,14 @@ const apiClient = {
             config.body = JSON.stringify(body);
         }
 
-        const response = await fetch(`/api${endpoint}`, config);
+        // Add timestamp to GET requests to force browser to bypass cache
+        let url = `/api${endpoint}`;
+        if (method === 'GET') {
+            const separator = url.includes('?') ? '&' : '?';
+            url = `${url}${separator}_t=${Date.now()}`;
+        }
+
+        const response = await fetch(url, config);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
