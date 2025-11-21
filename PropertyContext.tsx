@@ -8,15 +8,16 @@ import { useAuth } from './AuthContext';
 
 // --- CALCULATIONS (These remain on the frontend for real-time adjustments) ---
 export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
-  const { 
-    purchasePrice, rehabCost, downPaymentPercent, monthlyRents, vacancyRate, 
+  const {
+    purchasePrice, rehabCost, downPaymentPercent, monthlyRents, vacancyRate,
     maintenanceRate, managementRate, capexRate, monthlyTaxes, monthlyInsurance,
     monthlyWaterSewer, monthlyStreetLights, monthlyGas, monthlyElectric, monthlyLandscaping,
     monthlyHoaFee, operatingMiscFee,
-    loanInterestRate, loanTermYears, originationFeePercent, closingFee, 
+    loanInterestRate, loanTermYears, originationFeePercent, closingFee,
     processingFee, appraisalFee, titleFee,
     brokerAgentFee, homeWarrantyFee, attorneyFee, closingMiscFee,
-    sellerCreditTax, sellerCreditSewer, sellerCreditOrigination, sellerCreditClosing
+    sellerCreditTax, sellerCreditSewer, sellerCreditOrigination, sellerCreditClosing,
+    sellerCreditRents, sellerCreditSecurityDeposit, sellerCreditMisc
   } = financials;
 
   const downPaymentAmount = purchasePrice * (downPaymentPercent / 100);
@@ -25,8 +26,8 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const originationFeeAmount = loanAmount * (originationFeePercent / 100);
   const otherClosingFees = (closingFee || 0) + (processingFee || 0) + (appraisalFee || 0) + (titleFee || 0) + (brokerAgentFee || 0) + (homeWarrantyFee || 0) + (attorneyFee || 0) + (closingMiscFee || 0);
   const totalClosingCosts = otherClosingFees + originationFeeAmount;
-  
-  const totalSellerCredits = (sellerCreditTax || 0) + (sellerCreditSewer || 0) + (sellerCreditOrigination || 0) + (sellerCreditClosing || 0);
+
+  const totalSellerCredits = (sellerCreditTax || 0) + (sellerCreditSewer || 0) + (sellerCreditOrigination || 0) + (sellerCreditClosing || 0) + (sellerCreditRents || 0) + (sellerCreditSecurityDeposit || 0) + (sellerCreditMisc || 0);
   const totalCashToClose = downPaymentAmount + rehabCost + totalClosingCosts - totalSellerCredits;
   const totalInvestment = purchasePrice + rehabCost; // For "All-in Cap Rate"
 
@@ -34,7 +35,7 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const monthlyInterestRate = (loanInterestRate / 100) / 12;
   const numberOfPayments = loanTermYears * 12;
   const monthlyDebtService = loanAmount > 0 && loanInterestRate > 0 ? (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1) : 0;
-  
+
   const annualDebtService = monthlyDebtService * 12;
 
   const totalMonthlyRent = monthlyRents.reduce((acc, rent) => acc + rent, 0);
@@ -47,9 +48,9 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const capexCost = grossAnnualRent * (capexRate / 100);
   const annualUtilities = ((monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) + (monthlyElectric || 0) + (monthlyLandscaping || 0)) * 12;
   const totalOperatingExpensesAnnual = maintenanceCost + managementCost + capexCost + (monthlyTaxes * 12) + (monthlyInsurance * 12) + annualUtilities + ((monthlyHoaFee || 0) * 12) + ((operatingMiscFee || 0) * 12);
-  
+
   const netOperatingIncomeAnnual = effectiveGrossIncome - totalOperatingExpensesAnnual;
-  
+
   const monthlyCashFlowNoDebt = netOperatingIncomeAnnual / 12;
   const monthlyCashFlowWithDebt = monthlyCashFlowNoDebt - monthlyDebtService;
 
@@ -93,9 +94,9 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
       const monthlyInterestRate = (sellerLoanRate / 100) / 12;
       const numberOfPayments = loanTerm * 12;
       if (monthlyInterestRate > 0) {
-          monthlyPayment = (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
+        monthlyPayment = (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
       } else {
-          monthlyPayment = loanAmount / numberOfPayments;
+        monthlyPayment = loanAmount / numberOfPayments;
       }
     } else if (paymentType === 'Interest Only') {
       monthlyPayment = (loanAmount * (sellerLoanRate / 100)) / 12;
@@ -117,10 +118,10 @@ export const PropertyContext = createContext<{
   error: string | null;
 }>({
   properties: [],
-  setProperties: () => {},
+  setProperties: () => { },
   addProperty: async () => ({} as Property),
   updateProperty: async () => ({} as Property),
-  deleteProperty: async () => {},
+  deleteProperty: async () => { },
   loading: true,
   error: null,
 });
@@ -138,48 +139,48 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Check for orphan local properties and move them to the DB
   const syncLocalProperties = useCallback(async () => {
-      if (!user) return;
-      try {
-          const localProps = await localPropertyService.getProperties(user.id);
-          if (localProps.length > 0) {
-              console.log("Found local properties. Migrating to database...");
-              // Process serially to avoid overwhelming the server
-              for (const prop of localProps) {
-                  const { id, ...dataToSync } = prop;
-                  // Add to DB
-                  await apiClient.post('/properties', dataToSync);
-                  // Remove from Local Storage
-                  await localPropertyService.deleteProperty(user.id, id);
-              }
-              console.log("Local to DB Migration complete.");
-          }
-      } catch (err) {
-          console.error("Error migrating local properties:", err);
+    if (!user) return;
+    try {
+      const localProps = await localPropertyService.getProperties(user.id);
+      if (localProps.length > 0) {
+        console.log("Found local properties. Migrating to database...");
+        // Process serially to avoid overwhelming the server
+        for (const prop of localProps) {
+          const { id, ...dataToSync } = prop;
+          // Add to DB
+          await apiClient.post('/properties', dataToSync);
+          // Remove from Local Storage
+          await localPropertyService.deleteProperty(user.id, id);
+        }
+        console.log("Local to DB Migration complete.");
       }
+    } catch (err) {
+      console.error("Error migrating local properties:", err);
+    }
   }, [user]);
 
   const fetchProperties = useCallback(async () => {
     if (!user) {
-        setProperties([]);
-        setLoading(false);
-        return;
+      setProperties([]);
+      setLoading(false);
+      return;
     };
     setLoading(true);
     setError(null);
     try {
       let fetchedProperties: Property[];
-      
+
       if (shouldUseLocalStorage()) {
         // Use Local Storage Service
         fetchedProperties = await localPropertyService.getProperties(user.id);
       } else {
         // Check if we need to push local data up to the server (Migration)
         await syncLocalProperties();
-        
+
         // Use Backend API
         fetchedProperties = await apiClient.get('/properties');
       }
-      
+
       setProperties(fetchedProperties);
     } catch (err) {
       setError('Failed to fetch properties.');
@@ -195,13 +196,13 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const addProperty = async (propertyData: Omit<Property, 'id'>): Promise<Property> => {
     if (!user) throw new Error("User not authenticated");
-    
+
     let newProperty: Property;
-    
+
     if (shouldUseLocalStorage()) {
-       newProperty = await localPropertyService.addProperty(user.id, propertyData);
+      newProperty = await localPropertyService.addProperty(user.id, propertyData);
     } else {
-       newProperty = await apiClient.post('/properties', propertyData);
+      newProperty = await apiClient.post('/properties', propertyData);
     }
 
     setProperties(prev => [newProperty, ...prev]);
@@ -210,13 +211,13 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const updateProperty = async (id: string, propertyData: Property): Promise<Property> => {
     if (!user) throw new Error("User not authenticated");
-    
+
     let updatedProperty: Property;
 
     if (shouldUseLocalStorage()) {
-        updatedProperty = await localPropertyService.updateProperty(user.id, id, propertyData);
+      updatedProperty = await localPropertyService.updateProperty(user.id, id, propertyData);
     } else {
-        updatedProperty = await apiClient.put(`/properties/${id}`, propertyData);
+      updatedProperty = await apiClient.put(`/properties/${id}`, propertyData);
     }
 
     setProperties(prev => prev.map(p => (p.id === id ? updatedProperty : p)));
@@ -227,11 +228,11 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
     if (!user) throw new Error("User not authenticated");
 
     if (shouldUseLocalStorage()) {
-        await localPropertyService.deleteProperty(user.id, id);
+      await localPropertyService.deleteProperty(user.id, id);
     } else {
-        await apiClient.delete(`/properties/${id}`);
+      await apiClient.delete(`/properties/${id}`);
     }
-    
+
     // FIX: Instead of removing the property, update it to have a deletedAt timestamp
     // This allows it to immediately appear in the "Archived" list on the Dashboard.
     setProperties(prev => prev.map(p => {

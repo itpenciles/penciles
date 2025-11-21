@@ -94,6 +94,9 @@ export interface Financials {
   sellerCreditSewer: number;
   sellerCreditOrigination: number;
   sellerCreditClosing: number;
+  sellerCreditRents: number;
+  sellerCreditSecurityDeposit: number;
+  sellerCreditMisc: number;
 }
 
 export interface Recommendation {
