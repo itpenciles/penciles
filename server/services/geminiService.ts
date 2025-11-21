@@ -179,7 +179,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
             });
 
             rawResponseForDebugging = (response.text ?? '').trim();
-            
+
             let jsonString = rawResponseForDebugging;
             if (jsonString.startsWith("```json")) {
                 jsonString = jsonString.substring(7);
@@ -225,6 +225,9 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 sellerCreditSewer: 0,
                 sellerCreditOrigination: 0,
                 sellerCreditClosing: 0,
+                sellerCreditRents: 0,
+                sellerCreditSecurityDeposit: 0,
+                sellerCreditMisc: 0,
             };
 
             const totalMarketRent = data.financials.monthlyRents.reduce((a: number, b: number) => a + b, 0);
@@ -263,7 +266,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                     calculations: { monthlyPayment: 0, spreadVsMarketRent: 0, returnOnDp: 0 }
                 }
             };
-            
+
             if (newProperty.wholesaleAnalysis) {
                 newProperty.wholesaleAnalysis.calculations = calculateWholesaleMetrics(newProperty.wholesaleAnalysis.inputs);
             }
@@ -285,7 +288,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
 
     console.error("All models failed to analyze the property.", lastError);
     console.error("Raw response that caused the final error:", rawResponseForDebugging);
-    
+
     let finalErrorMessage = "Failed to analyze property. All available AI models may be temporarily unavailable or the input was invalid.";
 
     if (lastError instanceof SyntaxError) {
@@ -297,7 +300,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
             finalErrorMessage = "Failed to analyze property due to high request volume. Please wait a moment and try again.";
         }
     }
-    
+
     throw new Error(finalErrorMessage);
 };
 
@@ -409,12 +412,12 @@ export const reevaluatePropertyWithGemini = async (property: Property, strategy:
 
             rawResponseForDebugging = (response.text ?? '').trim();
             const data = JSON.parse(rawResponseForDebugging);
-            
+
             if (data.level && data.summary && Array.isArray(data.keyFactors)) {
                 console.log(`Successfully re-evaluated property with model: ${model}`);
                 return data as Recommendation;
             } else {
-                 throw new Error("Parsed JSON does not match the expected Recommendation structure.");
+                throw new Error("Parsed JSON does not match the expected Recommendation structure.");
             }
 
         } catch (error) {
@@ -425,11 +428,11 @@ export const reevaluatePropertyWithGemini = async (property: Property, strategy:
 
     console.error("All models failed to re-evaluate the property.", lastError);
     console.error("Raw response that caused the final error:", rawResponseForDebugging);
-    
+
     let finalErrorMessage = "Failed to re-evaluate property. All available AI models may be temporarily unavailable.";
-    
+
     if (lastError instanceof SyntaxError) {
-         finalErrorMessage = "Failed to re-evaluate property. The AI returned an invalid data format.";
+        finalErrorMessage = "Failed to re-evaluate property. The AI returned an invalid data format.";
     } else if (lastError && lastError.message) {
         if (lastError.message.includes('API key not valid')) {
             finalErrorMessage = "Failed to re-evaluate property. Your API key is invalid. Please check your configuration.";
@@ -437,6 +440,6 @@ export const reevaluatePropertyWithGemini = async (property: Property, strategy:
             finalErrorMessage = "Failed to re-evaluate property due to high request volume. Please wait a moment and try again.";
         }
     }
-    
+
     throw new Error(finalErrorMessage);
 };

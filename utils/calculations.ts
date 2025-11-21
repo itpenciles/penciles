@@ -2,15 +2,16 @@ import { Financials, CalculatedMetrics, WholesaleInputs, WholesaleCalculations, 
 
 // --- CALCULATIONS ---
 export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
-  const { 
-    purchasePrice, rehabCost, downPaymentPercent, monthlyRents, vacancyRate, 
+  const {
+    purchasePrice, rehabCost, downPaymentPercent, monthlyRents, vacancyRate,
     maintenanceRate, managementRate, capexRate, monthlyTaxes, monthlyInsurance,
     monthlyWaterSewer, monthlyStreetLights, monthlyGas, monthlyElectric, monthlyLandscaping,
     monthlyHoaFee, operatingMiscFee,
-    loanInterestRate, loanTermYears, originationFeePercent, closingFee, 
+    loanInterestRate, loanTermYears, originationFeePercent, closingFee,
     processingFee, appraisalFee, titleFee,
     brokerAgentFee, homeWarrantyFee, attorneyFee, closingMiscFee,
-    sellerCreditTax, sellerCreditSewer, sellerCreditOrigination, sellerCreditClosing
+    sellerCreditTax, sellerCreditSewer, sellerCreditOrigination, sellerCreditClosing,
+    sellerCreditRents, sellerCreditSecurityDeposit, sellerCreditMisc
   } = financials;
 
   const downPaymentAmount = purchasePrice * (downPaymentPercent / 100);
@@ -19,8 +20,8 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const originationFeeAmount = loanAmount * (originationFeePercent / 100);
   const otherClosingFees = (closingFee || 0) + (processingFee || 0) + (appraisalFee || 0) + (titleFee || 0) + (brokerAgentFee || 0) + (homeWarrantyFee || 0) + (attorneyFee || 0) + (closingMiscFee || 0);
   const totalClosingCosts = otherClosingFees + originationFeeAmount;
-  
-  const totalSellerCredits = (sellerCreditTax || 0) + (sellerCreditSewer || 0) + (sellerCreditOrigination || 0) + (sellerCreditClosing || 0);
+
+  const totalSellerCredits = (sellerCreditTax || 0) + (sellerCreditSewer || 0) + (sellerCreditOrigination || 0) + (sellerCreditClosing || 0) + (sellerCreditRents || 0) + (sellerCreditSecurityDeposit || 0) + (sellerCreditMisc || 0);
   const totalCashToClose = downPaymentAmount + rehabCost + totalClosingCosts - totalSellerCredits;
   const totalInvestment = purchasePrice + rehabCost; // For "All-in Cap Rate"
 
@@ -28,7 +29,7 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const monthlyInterestRate = (loanInterestRate / 100) / 12;
   const numberOfPayments = loanTermYears * 12;
   const monthlyDebtService = loanAmount > 0 && loanInterestRate > 0 ? (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1) : 0;
-  
+
   const annualDebtService = monthlyDebtService * 12;
 
   const totalMonthlyRent = monthlyRents.reduce((acc, rent) => acc + rent, 0);
@@ -41,9 +42,9 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const capexCost = grossAnnualRent * (capexRate / 100);
   const annualUtilities = ((monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) + (monthlyElectric || 0) + (monthlyLandscaping || 0)) * 12;
   const totalOperatingExpensesAnnual = maintenanceCost + managementCost + capexCost + (monthlyTaxes * 12) + (monthlyInsurance * 12) + annualUtilities + ((monthlyHoaFee || 0) * 12) + ((operatingMiscFee || 0) * 12);
-  
+
   const netOperatingIncomeAnnual = effectiveGrossIncome - totalOperatingExpensesAnnual;
-  
+
   const monthlyCashFlowNoDebt = netOperatingIncomeAnnual / 12;
   const monthlyCashFlowWithDebt = monthlyCashFlowNoDebt - monthlyDebtService;
 
@@ -87,9 +88,9 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
       const monthlyInterestRate = (sellerLoanRate / 100) / 12;
       const numberOfPayments = loanTerm * 12;
       if (monthlyInterestRate > 0) {
-          monthlyPayment = (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
+        monthlyPayment = (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
       } else {
-          monthlyPayment = loanAmount / numberOfPayments;
+        monthlyPayment = loanAmount / numberOfPayments;
       }
     } else if (paymentType === 'Interest Only') {
       monthlyPayment = (loanAmount * (sellerLoanRate / 100)) / 12;
