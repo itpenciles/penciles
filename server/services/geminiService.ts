@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Property, Financials, Recommendation, Strategy } from '../../types';
 import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../utils/calculations.js';
@@ -226,9 +225,6 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 sellerCreditSewer: 0,
                 sellerCreditOrigination: 0,
                 sellerCreditClosing: 0,
-                sellerCreditRental: 0,
-                sellerCreditTenantSecurityDeposit: 0,
-                sellerCreditMisc: 0,
             };
 
             const totalMarketRent = data.financials.monthlyRents.reduce((a: number, b: number) => a + b, 0);

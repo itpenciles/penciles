@@ -16,8 +16,7 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
     loanInterestRate, loanTermYears, originationFeePercent, closingFee, 
     processingFee, appraisalFee, titleFee,
     brokerAgentFee, homeWarrantyFee, attorneyFee, closingMiscFee,
-    sellerCreditTax, sellerCreditSewer, sellerCreditOrigination, sellerCreditClosing,
-    sellerCreditRental, sellerCreditTenantSecurityDeposit, sellerCreditMisc
+    sellerCreditTax, sellerCreditSewer, sellerCreditOrigination, sellerCreditClosing
   } = financials;
 
   const downPaymentAmount = purchasePrice * (downPaymentPercent / 100);
@@ -27,7 +26,7 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const otherClosingFees = (closingFee || 0) + (processingFee || 0) + (appraisalFee || 0) + (titleFee || 0) + (brokerAgentFee || 0) + (homeWarrantyFee || 0) + (attorneyFee || 0) + (closingMiscFee || 0);
   const totalClosingCosts = otherClosingFees + originationFeeAmount;
   
-  const totalSellerCredits = (sellerCreditTax || 0) + (sellerCreditSewer || 0) + (sellerCreditOrigination || 0) + (sellerCreditClosing || 0) + (sellerCreditRental || 0) + (sellerCreditTenantSecurityDeposit || 0) + (sellerCreditMisc || 0);
+  const totalSellerCredits = (sellerCreditTax || 0) + (sellerCreditSewer || 0) + (sellerCreditOrigination || 0) + (sellerCreditClosing || 0);
   const totalCashToClose = downPaymentAmount + rehabCost + totalClosingCosts - totalSellerCredits;
   const totalInvestment = purchasePrice + rehabCost; // For "All-in Cap Rate"
 
