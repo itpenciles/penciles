@@ -62,6 +62,22 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleTogglePropertyStatus = async (propertyId: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+        if (window.confirm(`Are you sure you want to change status to ${newStatus}?`)) {
+            try {
+                await apiClient.post(`/admin/properties/${propertyId}/status`, { status: newStatus });
+                // Refresh user details
+                if (selectedUser) {
+                    const detail = await apiClient.get(`/admin/users/${selectedUser.id}`);
+                    setUserDetailStats(detail);
+                }
+            } catch (e: any) {
+                alert("Failed to update property status: " + e.message);
+            }
+        }
+    };
+
     const filteredUsers = users.filter(user => {
         if (filterStatus === 'All') return true;
         return user.status === filterStatus;
@@ -82,15 +98,15 @@ const AdminDashboard = () => {
                     <StatCard title="Today's Revenue Impact" value={`$${stats.today.revenue}`} icon={BanknotesIcon} color="green" subtext={`Upgrades: ${stats.today.upgrades} | Downs: ${stats.today.downgrades} | Cancel: ${stats.today.cancellations}`} />
                     <StatCard title="Total Subscribers" value={(Object.values(stats.subscribersByTier) as number[]).reduce((a, b) => a + b, 0)} icon={UsersIcon} color="purple" />
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                         <h3 className="text-sm text-gray-500 font-medium mb-2">Subscribers by Tier</h3>
-                         <div className="space-y-1 text-sm">
+                        <h3 className="text-sm text-gray-500 font-medium mb-2">Subscribers by Tier</h3>
+                        <div className="space-y-1 text-sm">
                             {Object.entries(stats.subscribersByTier).map(([tier, count]) => (
                                 <div key={tier} className="flex justify-between">
                                     <span>{tier}</span>
                                     <span className="font-bold">{count}</span>
                                 </div>
                             ))}
-                         </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -102,8 +118,8 @@ const AdminDashboard = () => {
                         <h2 className="text-lg font-bold text-gray-800">Subscriber Growth</h2>
                         <div className="flex space-x-2">
                             {['7', '14', '30', '60', 'YTD'].map(r => (
-                                <button 
-                                    key={r} 
+                                <button
+                                    key={r}
                                     onClick={() => setRange(r)}
                                     className={`px-3 py-1 text-xs rounded-md ${range === r ? 'bg-brand-blue text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                                 >
@@ -115,7 +131,7 @@ const AdminDashboard = () => {
                     <div className="h-64 flex items-end space-x-2 pb-2 border-b border-gray-100">
                         {stats.subscriberGraph.length > 0 ? stats.subscriberGraph.map((point, i) => (
                             <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                                <div 
+                                <div
                                     className="w-full bg-brand-blue/80 rounded-t hover:bg-brand-blue transition-all min-h-[4px]"
                                     style={{ height: `${(point.count / maxSubscribers) * 100}%` }}
                                 ></div>
@@ -137,8 +153,8 @@ const AdminDashboard = () => {
                     <h2 className="text-lg font-bold text-gray-800 mb-2 sm:mb-0">Subscribers List</h2>
                     <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-500">Status:</span>
-                        <select 
-                            value={filterStatus} 
+                        <select
+                            value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value as any)}
                             className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-brand-blue focus:border-brand-blue"
                         >
@@ -200,7 +216,7 @@ const AdminDashboard = () => {
                                 <XMarkIcon className="h-6 w-6 text-gray-500" />
                             </button>
                         </div>
-                        
+
                         <div className="p-6">
                             {isDetailLoading || !userDetailStats ? (
                                 <div className="py-12 text-center"><Loader text="Loading details..." /></div>
@@ -225,8 +241,8 @@ const AdminDashboard = () => {
                                                     <span className="font-semibold">{s.count}</span>
                                                 </div>
                                                 <div className="w-full bg-gray-100 rounded-full h-2">
-                                                    <div 
-                                                        className="bg-brand-blue h-2 rounded-full" 
+                                                    <div
+                                                        className="bg-brand-blue h-2 rounded-full"
                                                         style={{ width: `${Math.min(100, (s.count / Math.max(1, ...userDetailStats.strategyUsage.map(x => x.count))) * 100)}%` }}
                                                     ></div>
                                                 </div>
@@ -240,7 +256,7 @@ const AdminDashboard = () => {
                                             <div className="flex justify-between items-center mb-4">
                                                 <h3 className="font-bold text-gray-700">Billing Summary</h3>
                                                 {userDetailStats.billingSummary.status === 'Active' && userDetailStats.billingSummary.plan !== 'Free' && (
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleCancelSubscription(selectedUser.id)}
                                                         className="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1 rounded hover:bg-red-100"
                                                     >
@@ -248,7 +264,7 @@ const AdminDashboard = () => {
                                                     </button>
                                                 )}
                                             </div>
-                                            
+
                                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                                                     <div>
@@ -269,7 +285,7 @@ const AdminDashboard = () => {
                                                         <span className="text-xs text-gray-500 block uppercase">Start Date</span>
                                                         <span className="font-semibold text-gray-800">{userDetailStats.billingSummary.startDate}</span>
                                                     </div>
-                                                    
+
                                                     {userDetailStats.billingSummary.status === 'Active' && userDetailStats.billingSummary.plan !== 'Free' && (
                                                         <div>
                                                             <span className="text-xs text-gray-500 block uppercase">Next Billing Date</span>
@@ -332,6 +348,58 @@ const AdminDashboard = () => {
                                                             <tr>
                                                                 <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
                                                                     No billing history available.
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* --- Analyzed Properties --- */}
+                                    {userDetailStats.properties && (
+                                        <div className="mt-8">
+                                            <h3 className="font-bold text-gray-700 mb-4">Analyzed Properties ({userDetailStats.properties.length})</h3>
+                                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                                <table className="w-full text-left text-sm">
+                                                    <thead className="bg-gray-50 text-gray-500 font-medium text-xs uppercase">
+                                                        <tr>
+                                                            <th className="px-4 py-3">Address</th>
+                                                            <th className="px-4 py-3">Date Analyzed</th>
+                                                            <th className="px-4 py-3">Status</th>
+                                                            <th className="px-4 py-3">Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-200">
+                                                        {userDetailStats.properties.length > 0 ? (
+                                                            userDetailStats.properties.map((property) => {
+                                                                const isInactive = !!property.deletedAt;
+                                                                const status = isInactive ? 'Inactive' : 'Active';
+                                                                return (
+                                                                    <tr key={property.id}>
+                                                                        <td className="px-4 py-3 text-gray-900 font-medium">{property.address}</td>
+                                                                        <td className="px-4 py-3 text-gray-500">{property.dateAnalyzed}</td>
+                                                                        <td className="px-4 py-3">
+                                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${!isInactive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                                                                                {status}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-4 py-3">
+                                                                            <button
+                                                                                onClick={() => handleTogglePropertyStatus(property.id, status)}
+                                                                                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                                                            >
+                                                                                {isInactive ? 'Activate' : 'Deactivate'}
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <tr>
+                                                                <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                                                                    No properties analyzed yet.
                                                                 </td>
                                                             </tr>
                                                         )}

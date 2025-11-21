@@ -76,9 +76,9 @@ export const getAdminStats = async (req: any, res: any) => {
             GROUP BY ds.date
             ORDER BY ds.date;
         `;
-        
+
         const graphResult = await query(graphQuery);
-        
+
         // Force integer parsing for counts
         const graphData = graphResult.rows.map(row => ({
             date: row.date,
@@ -112,11 +112,11 @@ export const getUsers = async (_req: any, res: any) => {
             LIMIT 100
         `;
         const result = await query(usersQuery);
-        
+
         const users = result.rows.map((u: any) => {
             const tier = u.subscription_tier || 'Free';
             const historyCount = parseInt(u.history_count || 0);
-            
+
             // Logic: If on Free tier AND has history, they are 'Cancelled'. Otherwise 'Active'.
             // Paid users are always Active. Free users with no history are Active (Freemium).
             let status = 'Active';
@@ -129,7 +129,7 @@ export const getUsers = async (_req: any, res: any) => {
                 email: u.email,
                 name: u.name,
                 role: u.role,
-                subscriptionTier: tier, 
+                subscriptionTier: tier,
                 createdAt: new Date(u.created_at).toLocaleDateString(),
                 propertyCount: parseInt(u.property_count || 0),
                 monthlyVal: getPrice(tier, 'monthly'),
@@ -151,7 +151,7 @@ export const getUserDetail = async (req: any, res: any) => {
         // 1. Basic user info
         const userQuery = `SELECT id, login_count, last_login_at, csv_export_count, report_download_count, subscription_tier, created_at, updated_at FROM users WHERE id = $1`;
         const userRes = await query(userQuery, [id]);
-        
+
         if (userRes.rows.length === 0) return res.status(404).json({ message: 'User not found' });
         const u = userRes.rows[0];
 
@@ -165,7 +165,7 @@ export const getUserDetail = async (req: any, res: any) => {
             GROUP BY strategy
         `;
         const strategyRes = await query(strategyQuery, [id]);
-        
+
         const strategies = [
             { name: 'Rental', count: 0 },
             { name: 'Wholesale', count: 0 },
@@ -181,7 +181,7 @@ export const getUserDetail = async (req: any, res: any) => {
         // 3. Billing History & Summary Construction
         const historyQuery = `SELECT * FROM subscription_history WHERE user_id = $1 ORDER BY created_at DESC`;
         const historyRes = await query(historyQuery, [id]);
-        
+
         // Mock Data Helpers (Since DB doesn't store card info yet)
         const MOCK_CARDS = ['Visa', 'MasterCard', 'Amex'];
         const getRandomCard = () => MOCK_CARDS[Math.floor(Math.random() * MOCK_CARDS.length)];
@@ -200,7 +200,25 @@ export const getUserDetail = async (req: any, res: any) => {
         // Construct Billing Summary
         const isFree = !u.subscription_tier || u.subscription_tier === 'Free';
         const lastChange = historyRes.rows[0];
-        
+
+        // 4. Properties List
+        const propsQuery = `
+            SELECT id, address, property_data, created_at, deleted_at 
+            FROM properties 
+            WHERE user_id = $1 
+            ORDER BY created_at DESC
+        `;
+        const propsRes = await query(propsQuery, [id]);
+
+        const properties = propsRes.rows.map((row: any) => ({
+            ...row.property_data,
+            id: row.id,
+            address: row.address,
+            dateAnalyzed: new Date(row.created_at).toLocaleDateString(),
+            createdAt: row.created_at,
+            deletedAt: row.deleted_at ? new Date(row.deleted_at).toISOString() : undefined
+        }));
+
         // Determine Start Date (First upgrade)
         const startRow = historyRes.rows.slice().reverse().find((r: any) => r.change_type === 'new' || r.change_type === 'upgrade');
         const startDate = startRow ? new Date(startRow.created_at).toLocaleDateString() : new Date(u.created_at).toLocaleDateString();
@@ -238,11 +256,12 @@ export const getUserDetail = async (req: any, res: any) => {
             },
             strategyUsage: strategies,
             billingSummary: billingSummary,
-            billingHistory: billingHistory
+            billingHistory: billingHistory,
+            properties: properties
         });
 
     } catch (error) {
-         console.error('Error fetching user detail:', error);
+        console.error('Error fetching user detail:', error);
         res.status(500).json({ message: 'Server error fetching user detail' });
     }
 };
@@ -252,9 +271,9 @@ export const cancelUserSubscription = async (req: any, res: any) => {
     try {
         const userRes = await query('SELECT subscription_tier FROM users WHERE id = $1', [id]);
         if (userRes.rows.length === 0) return res.status(404).json({ message: 'User not found' });
-        
+
         const oldTier = userRes.rows[0].subscription_tier || 'Free';
-        
+
         if (oldTier === 'Free') {
             return res.status(400).json({ message: 'User is already on Free plan' });
         }
@@ -272,7 +291,23 @@ export const cancelUserSubscription = async (req: any, res: any) => {
         res.json({ message: 'Subscription cancelled successfully' });
     } catch (error) {
         console.error('Error cancelling subscription:', error);
-        res.status(500).json({ message: 'Server error cancelling subscription' });
+    }
+};
+
+export const togglePropertyStatus = async (req: any, res: any) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'Active' or 'Inactive'
+
+    try {
+        if (status === 'Active') {
+            await query('UPDATE properties SET deleted_at = NULL WHERE id = $1', [id]);
+        } else {
+            await query('UPDATE properties SET deleted_at = NOW() WHERE id = $1', [id]);
+        }
+        res.json({ message: `Property status updated to ${status}` });
+    } catch (error) {
+        console.error('Error updating property status:', error);
+        res.status(500).json({ message: 'Server error updating property status' });
     }
 };
 

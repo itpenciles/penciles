@@ -14,7 +14,7 @@ export interface Property {
   dateAnalyzed: string;
   deletedAt?: string; // New field for Soft Delete audit trail
   createdAt?: string; // Reliable timestamp from backend DB
-  
+
   details: {
     bedrooms: number;
     bathrooms: number;
@@ -23,15 +23,15 @@ export interface Property {
     numberOfUnits: number;
     unitDetails: Unit[];
   };
-  
+
   financials: Financials;
-  
+
   marketAnalysis: {
     safetyScore: number;
     areaAverageRents: number[];
     investmentScore: number;
   };
-  
+
   recommendation: Recommendation;
 
   calculations: CalculatedMetrics;
@@ -82,7 +82,7 @@ export interface Financials {
   processingFee: number;
   appraisalFee: number;
   titleFee: number;
-  
+
   // New Closing Costs
   brokerAgentFee: number;
   homeWarrantyFee: number;
@@ -113,11 +113,11 @@ export interface CalculatedMetrics {
   totalInvestment: number;
   loanAmount: number;
   monthlyDebtService: number; // Assuming fixed for simplicity
-  
+
   grossAnnualRent: number;
   vacancyLoss: number;
   effectiveGrossIncome: number;
-  
+
   maintenanceCost: number;
   managementCost: number;
   capexCost: number;
@@ -234,44 +234,45 @@ export interface AdminStats {
 }
 
 export interface BillingHistoryItem {
-    id: string;
-    date: string;
-    amount: number;
-    billingType: 'Monthly' | 'Annually' | 'Credits';
-    cardType: string;
-    last4: string;
-    status: 'Paid' | 'Refunded' | 'Failed';
+  id: string;
+  date: string;
+  amount: number;
+  billingType: 'Monthly' | 'Annually' | 'Credits';
+  cardType: string;
+  last4: string;
+  status: 'Paid' | 'Refunded' | 'Failed';
 }
 
 export interface BillingSummary {
-    status: 'Active' | 'Cancelled' | 'Past Due';
-    plan: string;
-    billingType: 'Monthly' | 'Annually';
-    startDate: string;
-    nextBillingDate?: string;
-    cancellationDate?: string;
-    cancellationReason?: string;
+  status: 'Active' | 'Cancelled' | 'Past Due';
+  plan: string;
+  billingType: 'Monthly' | 'Annually';
+  startDate: string;
+  nextBillingDate?: string;
+  cancellationDate?: string;
+  cancellationReason?: string;
 }
 
 export interface UserDetailStats {
-    strategyUsage: { name: string; count: number }[];
-    activity: {
-        logins: number;
-        lastLogin: string;
-        exports: number;
-        downloads: number;
-    };
-    billingSummary?: BillingSummary;
-    billingHistory?: BillingHistoryItem[];
+  strategyUsage: { name: string; count: number }[];
+  activity: {
+    logins: number;
+    lastLogin: string;
+    exports: number;
+    downloads: number;
+  };
+  billingSummary?: BillingSummary;
+  billingHistory?: BillingHistoryItem[];
+  properties: Property[];
 }
 
 export interface Plan {
-    key: string; // e.g., 'Free', 'Starter'
-    name: string;
-    description: string;
-    monthlyPrice: number;
-    annualPrice: number;
-    analysisLimit: number; // -1 for unlimited
-    features: string[];
-    isPopular: boolean;
+  key: string; // e.g., 'Free', 'Starter'
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  annualPrice: number;
+  analysisLimit: number; // -1 for unlimited
+  features: string[];
+  isPopular: boolean;
 }
