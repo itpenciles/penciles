@@ -30,6 +30,7 @@ interface AuthContextType {
     updateSubscription: (tier: SubscriptionTier) => Promise<void>;
     featureAccess: FeatureAccess;
     analysisStatus: AnalysisStatus;
+    refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -169,6 +170,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, [navigate]);
 
+    const refreshUser = useCallback(async () => {
+        if (!user) return;
+        try {
+            const res = await apiClient.get('/user/profile');
+            setUser(prev => prev ? { ...prev, ...res } : res);
+        } catch (error) {
+            console.error("Failed to refresh user profile:", error);
+        }
+    }, [user]);
+
     // This effect runs on initial load to check for an existing session
     useEffect(() => {
         setClientIdForDebugging(GOOGLE_CLIENT_ID || 'Not Found in environment variables');
@@ -236,6 +247,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateSubscription,
         featureAccess,
         analysisStatus,
+        refreshUser,
     };
 
     return (

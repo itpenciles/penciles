@@ -127,7 +127,7 @@ export const PropertyContext = createContext<{
 });
 
 export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -206,6 +206,10 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     setProperties(prev => [newProperty, ...prev]);
+
+    // Refresh user to update analysis count
+    await refreshUser();
+
     return newProperty;
   };
 
