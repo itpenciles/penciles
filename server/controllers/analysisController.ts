@@ -1,6 +1,23 @@
 
 import { analyzePropertyWithGemini } from '../services/geminiService.js';
 import { query } from '../db.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logFilePath = path.join(__dirname, '..', 'debug.log');
+
+const logToFile = (message: string) => {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] ${message}\n`;
+    try {
+        fs.appendFileSync(logFilePath, logMessage);
+    } catch (err) {
+        console.error("Failed to write to log file:", err);
+    }
+};
 
 const PAYG_COST_PER_ANALYSIS = 7.00;
 
@@ -34,7 +51,9 @@ export const analyzeProperty = async (req: any, res: any) => {
         credits = Number(credits || 0);
         count = Number(count || 0);
 
-        console.log(`[Analysis Debug] User: ${userId}, Tier: ${tier}, Count: ${count}, Role: ${role}`);
+        const debugMsg = `[Analysis Debug] User: ${userId}, Tier: ${tier}, Count: ${count}, Role: ${role}`;
+        console.log(debugMsg);
+        logToFile(debugMsg);
 
         // ADMIN OVERRIDE: Admins bypass all limits
         if (role !== 'admin') {
@@ -95,9 +114,15 @@ export const analyzeProperty = async (req: any, res: any) => {
         } else {
             // Standard Subscription: Always increment count, even for Admins
             const newCount = count + 1;
-            console.log(`[Analysis Debug] Incrementing count for user ${userId} to ${newCount} (Standard Plan)`);
+            const incMsg = `[Analysis Debug] Incrementing count for user ${userId} to ${newCount} (Standard Plan)`;
+            console.log(incMsg);
+            logToFile(incMsg);
+
             const updateRes = await query('UPDATE users SET analysis_count = $1 WHERE id = $2', [newCount, userId]);
-            console.log(`[Analysis Debug] Update Result: ${updateRes.rowCount} rows affected.`);
+
+            const resMsg = `[Analysis Debug] Update Result: ${updateRes.rowCount} rows affected.`;
+            console.log(resMsg);
+            logToFile(resMsg);
         }
 
         res.status(200).json(propertyData);
