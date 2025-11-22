@@ -191,7 +191,7 @@ export type PropertyAction =
   | { type: 'UPDATE_PROPERTY'; payload: Property }
   | { type: 'DELETE_PROPERTY'; payload: string }; // id
 
-export type SubscriptionTier = 'Free' | 'Starter' | 'Pro' | 'Team' | 'PayAsYouGo' | string;
+export type SubscriptionTier = 'Free' | 'Starter' | 'Experienced' | 'Pro' | 'Team' | 'PayAsYouGo' | string;
 
 export interface User {
   id: string;

@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, SubscriptionTier } from '../types';
+import { User, SubscriptionTier, Plan } from '../types';
 import apiClient from '../services/apiClient';
 
 interface FeatureAccess {
@@ -36,9 +36,9 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 // Add google to the window interface for the GSI library
 declare global {
-  interface Window {
-    google: any;
-  }
+    interface Window {
+        google: any;
+    }
 }
 
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
@@ -65,7 +65,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [clientIdForDebugging, setClientIdForDebugging] = useState<string | null>(null);
     const [featureAccess, setFeatureAccess] = useState<FeatureAccess>(initialFeatureAccess);
     const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>(initialAnalysisStatus);
+    const [plans, setPlans] = useState<Plan[]>([]);
     const navigate = useNavigate();
+
+    // Fetch plans on mount
+    useEffect(() => {
+        const fetchPlans = async () => {
+            try {
+                const fetchedPlans = await apiClient.get('/plans');
+                setPlans(fetchedPlans);
+            } catch (error) {
+                console.error("Failed to fetch plans:", error);
+            }
+        };
+        fetchPlans();
+    }, []);
 
     // Effect to calculate feature flags and analysis status when user changes
     useEffect(() => {
@@ -86,8 +100,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
 
             // Calculate analysis status
-            const limits: { [key in SubscriptionTier]?: number } = { 'Free': 3, 'Starter': 15, 'Pro': 100 };
-            const limit = tier === 'Team' ? 'Unlimited' : (limits[tier] || 0);
+            // Calculate analysis status
+            let limit: number | 'Unlimited' = 0;
+
+            // Try to find in dynamic plans first
+            const plan = plans.find(p => p.key === tier);
+
+            if (plan) {
+                limit = plan.analysisLimit === -1 ? 'Unlimited' : plan.analysisLimit;
+            } else {
+                // Fallback defaults (legacy)
+                const limits: { [key: string]: number | 'Unlimited' } = {
+                    'Free': 3,
+                    'Starter': 15,
+                    'Experienced': 40,
+                    'Pro': 100,
+                    'Team': 'Unlimited'
+                };
+                limit = limits[tier] !== undefined ? limits[tier] : 0;
+            }
+
             const count = user.analysisCount || 0;
             const isOverLimit = limit !== 'Unlimited' && count >= limit;
             const renewsOn = user.analysisLimitResetAt ? new Date(user.analysisLimitResetAt).toLocaleDateString() : null;
@@ -98,7 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setFeatureAccess(initialFeatureAccess);
             setAnalysisStatus(initialAnalysisStatus);
         }
-    }, [user]);
+    }, [user, plans]);
 
     const updateSubscription = useCallback(async (tier: SubscriptionTier) => {
         if (user) {
@@ -120,7 +152,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             const res = await apiClient.post('/auth/google', { token: response.credential });
             const { token, user: loggedInUser } = res;
-            
+
             localStorage.setItem('authToken', token);
             setUser(loggedInUser);
 
@@ -150,16 +182,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const validateToken = async () => {
             const storedToken = localStorage.getItem('authToken');
             if (storedToken) {
-                 try {
-                     const base64Url = storedToken.split('.')[1];
-                     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                     const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-                         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                     }).join(''));
-                     const decodedToken = JSON.parse(jsonPayload);
+                try {
+                    const base64Url = storedToken.split('.')[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join(''));
+                    const decodedToken = JSON.parse(jsonPayload);
 
-                     if (decodedToken.exp * 1000 > Date.now()) {
-                         const userFromToken: User = {
+                    if (decodedToken.exp * 1000 > Date.now()) {
+                        const userFromToken: User = {
                             id: decodedToken.id,
                             name: decodedToken.name,
                             email: decodedToken.email,
@@ -169,21 +201,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             analysisLimitResetAt: decodedToken.analysisLimitResetAt || null,
                             credits: decodedToken.credits || 0,
                             role: decodedToken.role || 'user', // Restore role from token
-                         };
-                         setUser(userFromToken);
-                     } else {
-                         localStorage.removeItem('authToken');
-                     }
-                 } catch (e) {
-                     console.error("Could not decode stored token", e);
-                     localStorage.removeItem('authToken');
-                 }
+                        };
+                        setUser(userFromToken);
+                    } else {
+                        localStorage.removeItem('authToken');
+                    }
+                } catch (e) {
+                    console.error("Could not decode stored token", e);
+                    localStorage.removeItem('authToken');
+                }
             }
             setIsLoading(false);
         };
         validateToken();
     }, []);
-    
+
     const logout = () => {
         setUser(null);
         localStorage.removeItem('authToken');
