@@ -31,6 +31,7 @@ interface AuthContextType {
     featureAccess: FeatureAccess;
     analysisStatus: AnalysisStatus;
     refreshUser: () => Promise<void>;
+    incrementAnalysisCount: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -180,6 +181,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, [user]);
 
+    const incrementAnalysisCount = useCallback(() => {
+        if (!user) return;
+        setUser(prev => {
+            if (!prev) return prev;
+            return { ...prev, analysisCount: (prev.analysisCount || 0) + 1 };
+        });
+    }, [user]);
+
     // This effect runs on initial load to check for an existing session
     useEffect(() => {
         setClientIdForDebugging(GOOGLE_CLIENT_ID || 'Not Found in environment variables');
@@ -248,6 +257,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         featureAccess,
         analysisStatus,
         refreshUser,
+        incrementAnalysisCount,
     };
 
     return (
