@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
 import { Property, Strategy } from '../types';
-import { calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../contexts/PropertyContext';
+import { calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics, calculateBrrrrMetrics } from '../contexts/PropertyContext';
 import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
 import apiClient from '../services/apiClient';
 import { AdjustTab } from './AdjustTab';
@@ -72,6 +72,27 @@ const PropertyDetail = () => {
         if (!id) return;
         const foundProperty = properties.find(p => p.id === id);
         if (foundProperty) {
+            // Initialize BRRRR if missing (for existing properties)
+            if (!foundProperty.brrrrAnalysis) {
+                const inputs = {
+                    purchasePrice: foundProperty.financials.purchasePrice,
+                    rehabCost: foundProperty.financials.rehabCost,
+                    rehabDurationMonths: 6,
+                    arv: foundProperty.financials.estimatedValue,
+                    initialLoanAmount: foundProperty.financials.purchasePrice * 0.8,
+                    initialLoanRate: 10,
+                    initialLoanClosingCosts: 2000,
+                    holdingCostsMonthly: 500,
+                    refinanceLoanLtv: 75,
+                    refinanceLoanRate: 7,
+                    refinanceClosingCosts: 3000,
+                    monthlyRentPostRefi: foundProperty.financials.monthlyRents.reduce((a: number, b: number) => a + b, 0),
+                    monthlyExpensesPostRefi: foundProperty.financials.monthlyTaxes + foundProperty.financials.monthlyInsurance + 200
+                };
+                const calculations = calculateBrrrrMetrics(inputs);
+                foundProperty.brrrrAnalysis = { inputs, calculations };
+            }
+
             setProperty(foundProperty);
             setEditedProperty(JSON.parse(JSON.stringify(foundProperty))); // Deep copy for editing
         }
@@ -105,12 +126,10 @@ const PropertyDetail = () => {
         }
     };
 
-    if (!property || !editedProperty) {
-        return <div className="p-8">Property not found or loading...</div>;
-    }
+    if (!editedProperty) return <div className="p-8 text-center">Loading property...</div>;
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 print-container">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Print-only header for a clean report title */}
             <div className="print-only text-center mb-4">
                 <h1 className="text-2xl font-bold">{editedProperty.address}</h1>
@@ -170,34 +189,10 @@ const PropertyDetail = () => {
                             Overview
                         </button>
                         <button
-                            onClick={() => setActiveTab('financials')}
-                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'financials' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                        >
-                            Financials
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('market')}
-                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'market' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                        >
-                            Market Analysis
-                        </button>
-                        <button
                             onClick={() => setActiveTab('comparables')}
                             className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'comparables' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                         >
                             Comparables
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('adjust')}
-                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'adjust' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                        >
-                            Adjust Assumptions
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('projections')}
-                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'projections' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                        >
-                            Projections
                         </button>
                     </nav>
                 </div>
