@@ -133,33 +133,7 @@ const PropertyDetail = () => {
                 </div>
             </header>
 
-            {/* SCREEN LAYOUT */}
-            <div className="flex flex-col lg:flex-row gap-8 property-detail-layout screen-only">
-                <div className="flex-grow space-y-8">
-                    <PropertyDetailsCard property={editedProperty} />
-                    <div className="no-print">
-                        <StrategySelector activeStrategy={activeStrategy} setActiveStrategy={setActiveStrategy} />
-                    </div>
-                    <FinancialAnalysisCard
-                        property={editedProperty}
-                        setProperty={setEditedProperty}
-                        activeStrategy={activeStrategy}
-                        onSave={handleSaveChanges}
-                        onReset={handleResetChanges}
-                        hasChanges={hasChanges}
-                        isLoading={isReevaluating}
-                        error={saveError}
-                    />
-                    {activeStrategy === 'Rental' && <InvestmentSummaryBreakdown property={editedProperty} />}
-                </div>
-                <div className="w-full lg:w-96 flex-shrink-0 space-y-8">
-                    <InvestmentRecommendationCard property={editedProperty} />
-                    <MarketAnalysisCard property={editedProperty} />
-                    <div className="no-print">
-                        <GoogleMapCard address={editedProperty.address} />
-                    </div>
-                </div>
-            </div>
+
 
             {/* PRINT LAYOUT */}
             <div className="print-only print-grid-layout">
