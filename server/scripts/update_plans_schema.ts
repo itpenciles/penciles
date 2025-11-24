@@ -3,10 +3,13 @@ import path from 'path';
 import process from 'process';
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-import { query } from '../db.js';
+// import { query } from '../db.js'; // Removed static import
 
 const run = async () => {
     try {
+        // Dynamic import to ensure dotenv loads first
+        const { query } = await import('../db.js');
+
         console.log('Adding feature columns to plans table...');
         await query(`
             ALTER TABLE plans 
