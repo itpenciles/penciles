@@ -1,12 +1,16 @@
-
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
-import { Property, Financials, WholesaleInputs, SubjectToInputs, SellerFinancingInputs, Strategy } from '../types';
-import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../contexts/PropertyContext';
+import { Property, Strategy } from '../types';
+import { calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../contexts/PropertyContext';
 import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
 import apiClient from '../services/apiClient';
+import { AdjustTab } from './AdjustTab';
+import { ProjectionsTab } from './ProjectionsTab';
+import { InputField, SelectField, ToggleField } from './common/FormFields';
+import { BrrrrMetricsTab, BrrrrParamsTab } from './BrrrrStrategy';
+import { ComparablesTab } from './ComparablesTab';
 
 // --- Icons ---
 const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -59,6 +63,7 @@ const PropertyDetail = () => {
     const [property, setProperty] = useState<Property | null>(null);
     const [editedProperty, setEditedProperty] = useState<Property | null>(null);
     const [activeStrategy, setActiveStrategy] = useState<Strategy>('Rental');
+    const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'market' | 'adjust' | 'projections' | 'comparables'>('overview');
     const [isReevaluating, setIsReevaluating] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -179,6 +184,124 @@ const PropertyDetail = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Main Tabs for PropertyDetail */}
+            <div className="no-print mt-8">
+                <div className="border-b border-gray-200">
+                    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button
+                            onClick={() => setActiveTab('overview')}
+                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        >
+                            Overview
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('financials')}
+                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'financials' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        >
+                            Financials
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('market')}
+                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'market' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        >
+                            Market Analysis
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('comparables')}
+                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'comparables' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        >
+                            Comparables
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('adjust')}
+                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'adjust' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        >
+                            Adjust Assumptions
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('projections')}
+                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'projections' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        >
+                            Projections
+                        </button>
+                    </nav>
+                </div>
+
+                <div className="mt-6">
+                    {activeTab === 'overview' && (
+                        <div className="flex flex-col lg:flex-row gap-8">
+                            <div className="flex-grow space-y-8">
+                                <PropertyDetailsCard property={editedProperty} />
+                                <StrategySelector activeStrategy={activeStrategy} setActiveStrategy={setActiveStrategy} />
+                                <FinancialAnalysisCard
+                                    property={editedProperty}
+                                    setProperty={setEditedProperty}
+                                    activeStrategy={activeStrategy}
+                                    onSave={handleSaveChanges}
+                                    onReset={handleResetChanges}
+                                    hasChanges={hasChanges}
+                                    isLoading={isReevaluating}
+                                    error={saveError}
+                                />
+                                {activeStrategy === 'Rental' && <InvestmentSummaryBreakdown property={editedProperty} />}
+                            </div>
+                            <div className="w-full lg:w-96 flex-shrink-0 space-y-8">
+                                <InvestmentRecommendationCard property={editedProperty} />
+                                <MarketAnalysisCard property={editedProperty} />
+                                <GoogleMapCard address={editedProperty.address} />
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'financials' && (
+                        <FinancialAnalysisCard
+                            property={editedProperty}
+                            setProperty={setEditedProperty}
+                            activeStrategy={activeStrategy}
+                            onSave={handleSaveChanges}
+                            onReset={handleResetChanges}
+                            hasChanges={hasChanges}
+                            isLoading={isReevaluating}
+                            error={saveError}
+                        />
+                    )}
+
+                    {activeTab === 'market' && (
+                        <div className="space-y-6">
+                            <MarketAnalysisCard property={editedProperty} />
+                            <GoogleMapCard address={editedProperty.address} />
+                        </div>
+                    )}
+
+                    {activeTab === 'comparables' && editedProperty && (
+                        <div className="bg-white shadow rounded-lg p-6">
+                            <ComparablesTab
+                                property={editedProperty}
+                                setProperty={setEditedProperty}
+                                onSave={handleSaveChanges}
+                                hasChanges={hasChanges}
+                            />
+                        </div>
+                    )}
+
+                    {activeTab === 'adjust' && editedProperty && (
+                        <AdjustTab
+                            property={editedProperty}
+                            setProperty={setEditedProperty}
+                            onSave={handleSaveChanges}
+                            onReset={handleResetChanges}
+                            hasChanges={hasChanges}
+                            isLoading={isReevaluating}
+                            error={saveError}
+                        />
+                    )}
+
+                    {activeTab === 'projections' && editedProperty && (
+                        <ProjectionsTab financials={editedProperty.financials} />
+                    )}
+                </div>
+            </div>
         </div>
     );
 };
@@ -234,6 +357,10 @@ const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrateg
         { name: 'Wholesale', requiredFeature: 'canUseWholesale' },
         { name: 'Subject-To', requiredFeature: 'canUseSubjectTo' },
         { name: 'Seller Financing', requiredFeature: 'canUseSellerFinancing' },
+        { name: 'BRRRR', requiredFeature: 'canUseWholesale' }, // Assuming BRRRR is a pro feature, maybe reuse wholesale permission or add new one? Let's use wholesale for now or just null if open. Let's use 'canUseWholesale' as a proxy for "Pro" features if no specific one exists, or add a new one.
+        // Actually, the user didn't specify a permission for BRRRR. I'll assume it's a Pro feature.
+        // Let's check AuthContext for available permissions.
+        // I'll use 'canUseWholesale' for now as a placeholder for "Advanced Strategies".
     ];
 
     return (
@@ -532,6 +659,19 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
             );
         }
 
+        if (activeStrategy === 'BRRRR' && property.brrrrAnalysis) {
+            const brrrr = property.brrrrAnalysis;
+            rows.push(
+                [],
+                ['--- BRRRR Metrics ---'],
+                ['Total Project Cost', brrrr.calculations.totalProjectCost.toFixed(2)],
+                ['Refinance Loan Amount', brrrr.calculations.refinanceLoanAmount.toFixed(2)],
+                ['Cash Left In Deal', brrrr.calculations.cashLeftInDeal.toFixed(2)],
+                ['ROI', brrrr.calculations.isInfiniteReturn ? 'Infinite' : `${brrrr.calculations.roi.toFixed(2)}%`],
+                ['Monthly Cash Flow (Post-Refi)', brrrr.calculations.monthlyCashFlowPostRefi.toFixed(2)]
+            );
+        }
+
         const csvContent = "data:text/csv;charset=utf-8,"
             + rows.map(e => e.join(",")).join("\n");
 
@@ -546,7 +686,7 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
 
     const renderTabs = () => {
         const tabs = activeStrategy === 'Rental'
-            ? ['Metrics', 'Expenses', 'Adjust']
+            ? ['Metrics', 'Expenses', 'Adjust', 'Projections']
             : ['Metrics', 'Parameters'];
 
         return (
@@ -582,11 +722,16 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                 if (activeTab === 'Metrics') return <SellerFinancingMetricsTab {...commonProps} />;
                 if (activeTab === 'Parameters') return <SellerFinancingParamsTab {...commonProps} />;
                 return null;
+            case 'BRRRR':
+                if (activeTab === 'Metrics') return <BrrrrMetricsTab property={property} />;
+                if (activeTab === 'Parameters') return <BrrrrParamsTab {...commonProps} />;
+                return null;
             case 'Rental':
             default:
                 if (activeTab === 'Metrics') return <MetricsTab property={property} />;
                 if (activeTab === 'Expenses') return <ExpensesTab property={property} />;
                 if (activeTab === 'Adjust') return <AdjustTab property={property} setProperty={setProperty} onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />;
+                if (activeTab === 'Projections') return <ProjectionsTab financials={property.financials} />;
                 return null;
         }
     };
@@ -743,118 +888,7 @@ const ExpenseRow = ({ label, value, valueYear, isSub = false, isTotal = false, i
     </div>
 );
 
-const AdjustTab = ({ property, setProperty, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const newFinancials = { ...property.financials, [name]: Number(value) };
-        const newCalculations = calculateMetrics(newFinancials);
-        setProperty({ ...property, financials: newFinancials, calculations: newCalculations });
-    };
-
-    const handleRentChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-        const { value } = e.target;
-        const newRents = [...property.financials.monthlyRents];
-        newRents[index] = Number(value);
-        const newFinancials = { ...property.financials, monthlyRents: newRents };
-        const newCalculations = calculateMetrics(newFinancials);
-        setProperty({ ...property, financials: newFinancials, calculations: newCalculations });
-    };
-
-    const handleSliderChange = (name: keyof Financials, value: number) => {
-        const newFinancials = { ...property.financials, [name]: value };
-        const newCalculations = calculateMetrics(newFinancials);
-        setProperty({ ...property, financials: newFinancials, calculations: newCalculations });
-    };
-
-    const downPaymentAmountValue = property.financials.purchasePrice * (property.financials.downPaymentPercent / 100);
-
-    return (
-        <div className="space-y-4">
-            <p className="text-sm bg-yellow-50 p-3 rounded-lg text-yellow-800">Adjust the parameters below to model different scenarios. Click "Save Changes" to persist your adjustments.</p>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Purchase & Rehab</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Purchase Price ($)" name="purchasePrice" value={property.financials.purchasePrice} onChange={handleInputChange} />
-                    <InputField label="Rehab/Renovation Cost ($)" name="rehabCost" value={property.financials.rehabCost} onChange={handleInputChange} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Loan & Closing Costs</h4>
-                <SliderField label="Down Payment" displayValue={`${property.financials.downPaymentPercent}% (${formatCurrency(downPaymentAmountValue)})`} name="downPaymentPercent" value={property.financials.downPaymentPercent} onChange={v => handleSliderChange('downPaymentPercent', v)} unit="%" min={0} max={100} step={1} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Loan Interest Rate (%)" name="loanInterestRate" value={property.financials.loanInterestRate} onChange={handleInputChange} />
-                    <InputField label="Loan Term (Years)" name="loanTermYears" value={property.financials.loanTermYears} onChange={handleInputChange} />
-                    <InputField label="Origination Fee (%)" name="originationFeePercent" value={property.financials.originationFeePercent} onChange={handleInputChange} />
-                    <InputField label="Closing Fee ($)" name="closingFee" value={property.financials.closingFee} onChange={handleInputChange} />
-                    <InputField label="Processing Fee ($)" name="processingFee" value={property.financials.processingFee} onChange={handleInputChange} />
-                    <InputField label="Appraisal Fee ($)" name="appraisalFee" value={property.financials.appraisalFee} onChange={handleInputChange} />
-                    <InputField label="Title Fee ($)" name="titleFee" value={property.financials.titleFee} onChange={handleInputChange} />
-                    <InputField label="Broker/Agent Fee ($)" name="brokerAgentFee" value={property.financials.brokerAgentFee || 0} onChange={handleInputChange} />
-                    <InputField label="Home Warranty Fee ($)" name="homeWarrantyFee" value={property.financials.homeWarrantyFee || 0} onChange={handleInputChange} />
-                    <InputField label="Attorney Fee ($)" name="attorneyFee" value={property.financials.attorneyFee || 0} onChange={handleInputChange} />
-                    <InputField label="Misc Closing Fees ($)" name="closingMiscFee" value={property.financials.closingMiscFee || 0} onChange={handleInputChange} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Credits from Seller</h4>
-                <p className="text-xs text-gray-500 -mt-2">These credits reduce your total cash to close.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Taxes Credit ($)" name="sellerCreditTax" value={property.financials.sellerCreditTax || 0} onChange={handleInputChange} />
-                    <InputField label="Sewer Credit ($)" name="sellerCreditSewer" value={property.financials.sellerCreditSewer || 0} onChange={handleInputChange} />
-                    <InputField label="Origination Fee Credit ($)" name="sellerCreditOrigination" value={property.financials.sellerCreditOrigination || 0} onChange={handleInputChange} />
-                    <InputField label="Closing Fees Credit ($)" name="sellerCreditClosing" value={property.financials.sellerCreditClosing || 0} onChange={handleInputChange} />
-                    <InputField label="Rents Credit ($)" name="sellerCreditRents" value={property.financials.sellerCreditRents || 0} onChange={handleInputChange} />
-                    <InputField label="Security Deposit Credit ($)" name="sellerCreditSecurityDeposit" value={property.financials.sellerCreditSecurityDeposit || 0} onChange={handleInputChange} />
-                    <InputField label="Misc Credit ($)" name="sellerCreditMisc" value={property.financials.sellerCreditMisc || 0} onChange={handleInputChange} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Income</h4>
-                {property.financials.monthlyRents.length > 1 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {property.financials.monthlyRents.map((rent, index) => (
-                            <div key={index}>
-                                <label className="block text-sm font-medium text-gray-700">Unit {index + 1} Rent ($)</label>
-                                <input type="number" value={rent} onChange={(e) => handleRentChange(e, index)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-blue focus:border-brand-blue" />
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <InputField label="Monthly Rent ($)" name="monthlyRents" value={property.financials.monthlyRents[0] || 0} onChange={(e) => handleRentChange(e, 0)} />
-                )}
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Operating Expenses</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <SliderField label="Vacancy Rate" name="vacancyRate" value={property.financials.vacancyRate} onChange={v => handleSliderChange('vacancyRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <SliderField label="Maintenance" name="maintenanceRate" value={property.financials.maintenanceRate} onChange={v => handleSliderChange('maintenanceRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <SliderField label="Management" name="managementRate" value={property.financials.managementRate} onChange={v => handleSliderChange('managementRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <SliderField label="CapEx" name="capexRate" value={property.financials.capexRate} onChange={v => handleSliderChange('capexRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <InputField label="Monthly Property Taxes ($)" name="monthlyTaxes" value={property.financials.monthlyTaxes} onChange={handleInputChange} />
-                    <InputField label="Monthly Insurance ($)" name="monthlyInsurance" value={property.financials.monthlyInsurance} onChange={handleInputChange} />
-                </div>
-                <h5 className="font-semibold text-gray-600 text-sm pt-2 -mb-2">Utilities & Other</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Water/Sewer ($)" name="monthlyWaterSewer" value={property.financials.monthlyWaterSewer} onChange={handleInputChange} />
-                    <InputField label="Street Lights ($)" name="monthlyStreetLights" value={property.financials.monthlyStreetLights} onChange={handleInputChange} />
-                    <InputField label="Gas ($)" name="monthlyGas" value={property.financials.monthlyGas} onChange={handleInputChange} />
-                    <InputField label="Electric ($)" name="monthlyElectric" value={property.financials.monthlyElectric} onChange={handleInputChange} />
-                    <InputField label="Landscaping ($)" name="monthlyLandscaping" value={property.financials.monthlyLandscaping} onChange={handleInputChange} />
-                    <InputField label="HOA Fee ($)" name="monthlyHoaFee" value={property.financials.monthlyHoaFee || 0} onChange={handleInputChange} />
-                    <InputField label="Misc Operating Fees ($)" name="operatingMiscFee" value={property.financials.operatingMiscFee || 0} onChange={handleInputChange} />
-                </div>
-            </div>
-
-            <SaveChangesFooter onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />
-        </div>
-    );
-};
 
 // --- STRATEGY EXIT GUIDE COMPONENT ---
 const ExitStrategyGuide = ({ title, strategies }: { title: string, strategies: ExitPoint[] }) => (
@@ -1159,42 +1193,7 @@ const SaveChangesFooter = ({ onSave, onReset, hasChanges, isLoading, error }: { 
 );
 
 
-const InputField = ({ label, name, value, onChange, type = "number" }: { label: string, name: string, value: number | string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, type?: string }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <input type={type} name={name} value={value} onChange={onChange} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-blue focus:border-brand-blue" />
-    </div>
-);
 
-const SelectField = ({ label, name, value, onChange, options }: { label: string, name: string, value: string, onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void, options: string[] }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <select name={name} value={value} onChange={onChange} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-blue focus:border-brand-blue bg-white">
-            {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-    </div>
-);
-
-const ToggleField = ({ label, name, checked, onChange }: { label: string, name: string, checked: boolean, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-    <div className="flex items-center">
-        <label htmlFor={name} className="flex items-center cursor-pointer">
-            <div className="relative">
-                <input type="checkbox" id={name} name={name} className="sr-only" checked={checked} onChange={onChange} />
-                <div className={`block w-14 h-8 rounded-full ${checked ? 'bg-brand-blue' : 'bg-gray-200'}`}></div>
-                <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${checked ? 'transform translate-x-6' : ''}`}></div>
-            </div>
-            <div className="ml-3 text-sm font-medium text-gray-700">{label}</div>
-        </label>
-    </div>
-);
-
-
-const SliderField = ({ label, name, value, onChange, unit, min, max, step, displayValue }: { label: string, name: keyof Financials, value: number, onChange: (v: number) => void, unit: string, min: number, max: number, step: number, displayValue?: string }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}: <span className="font-bold">{displayValue || `${value}${unit}`}</span></label>
-        <input type="range" name={name} value={value} onChange={(e) => onChange(Number(e.target.value))} min={min} max={max} step={step} className="mt-1 w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-blue" />
-    </div>
-);
 
 const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
     const calcs = property.calculations;

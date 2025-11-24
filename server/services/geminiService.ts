@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Property, Financials, Recommendation, Strategy } from '../../types';
-import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../utils/calculations.js';
+import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics, calculateBrrrrMetrics } from '../utils/calculations.js';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -264,6 +264,32 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 sellerFinancingAnalysis: {
                     inputs: { purchasePrice: 0, downPayment: 0, sellerLoanRate: 0, loanTerm: 0, balloonYears: 0, paymentType: 'Amortization', marketRent: totalMarketRent },
                     calculations: { monthlyPayment: 0, spreadVsMarketRent: 0, returnOnDp: 0 }
+                },
+                brrrrAnalysis: {
+                    inputs: {
+                        purchasePrice: initialFinancials.purchasePrice,
+                        rehabCost: 0,
+                        rehabDurationMonths: 6,
+                        arv: initialFinancials.estimatedValue,
+                        initialLoanAmount: initialFinancials.purchasePrice * 0.8,
+                        initialLoanRate: 10,
+                        initialLoanClosingCosts: 2000,
+                        refinanceLoanLtv: 75,
+                        refinanceLoanRate: 7,
+                        refinanceClosingCosts: 3000,
+                        holdingCostsMonthly: 500,
+                        monthlyRentPostRefi: totalMarketRent,
+                        monthlyExpensesPostRefi: totalMarketRent * 0.4
+                    },
+                    calculations: {
+                        totalProjectCost: 0,
+                        refinanceLoanAmount: 0,
+                        cashOutAmount: 0,
+                        cashLeftInDeal: 0,
+                        roi: 0,
+                        monthlyCashFlowPostRefi: 0,
+                        isInfiniteReturn: false
+                    }
                 }
             };
 
@@ -275,6 +301,9 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
             }
             if (newProperty.sellerFinancingAnalysis) {
                 newProperty.sellerFinancingAnalysis.calculations = calculateSellerFinancingMetrics(newProperty.sellerFinancingAnalysis.inputs);
+            }
+            if (newProperty.brrrrAnalysis) {
+                newProperty.brrrrAnalysis.calculations = calculateBrrrrMetrics(newProperty.brrrrAnalysis.inputs);
             }
 
             console.log(`Successfully analyzed property with model: ${model}`);
@@ -328,6 +357,7 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
         wholesaleAnalysis: property.wholesaleAnalysis,
         subjectToAnalysis: property.subjectToAnalysis,
         sellerFinancingAnalysis: property.sellerFinancingAnalysis,
+        brrrrAnalysis: property.brrrrAnalysis,
     };
     const dataString = JSON.stringify(dataToAnalyze, null, 2);
 
@@ -353,6 +383,13 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
 - **'Worth Pursuing'**: There is a strong positive 'spreadVsMarketRent' and a high 'returnOnDp' (return on down payment). The seller's financing terms (rate, term) are favorable.
 - **'Moderate Risk'**: The 'spreadVsMarketRent' is slim, or a large down payment is required, resulting in a mediocre return. The terms might include a near-term balloon payment.
 - **'High Risk'/'Avoid'**: The monthly payment to the seller is higher than the market rent, resulting in a negative spread.`;
+            break;
+        case 'BRRRR':
+            recommendationLogic = `
+- **Your recommendation must be based on the 'BRRRR' strategy.**
+- **'Worth Pursuing'**: High ROI (or Infinite Return), significant equity capture (ARV > Total Cost), and strong post-refi cash flow.
+- **'Moderate Risk'**: Positive cash flow but low ROI, or barely capturing equity (ARV ~= Total Cost).
+- **'High Risk'/'Avoid'**: Negative cash flow post-refi, or Total Cost > ARV (underwater).`;
             break;
         case 'Rental':
         default:

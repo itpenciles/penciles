@@ -1,4 +1,4 @@
-import { Financials, CalculatedMetrics, WholesaleInputs, WholesaleCalculations, SubjectToInputs, SubjectToCalculations, SellerFinancingInputs, SellerFinancingCalculations } from '../../types';
+import { Financials, CalculatedMetrics, WholesaleInputs, WholesaleCalculations, SubjectToInputs, SubjectToCalculations, SellerFinancingInputs, SellerFinancingCalculations, BrrrrInputs, BrrrrCalculations } from '../../types';
 
 // --- CALCULATIONS ---
 export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
@@ -99,4 +99,57 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
   const spreadVsMarketRent = marketRent - monthlyPayment;
   const returnOnDp = downPayment > 0 ? ((spreadVsMarketRent * 12) / downPayment) * 100 : 0;
   return { monthlyPayment, spreadVsMarketRent, returnOnDp };
+};
+
+export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations => {
+  const {
+    purchasePrice, rehabCost, rehabDurationMonths, arv,
+    initialLoanAmount, initialLoanRate, initialLoanClosingCosts,
+    refinanceLoanLtv, refinanceLoanRate, refinanceClosingCosts,
+    holdingCostsMonthly, monthlyRentPostRefi, monthlyExpensesPostRefi
+  } = inputs;
+
+  // 1. Total Project Cost
+  const totalHoldingCosts = holdingCostsMonthly * rehabDurationMonths;
+  // Interest on initial loan during rehab (simple interest approximation)
+  const initialLoanInterestMonthly = (initialLoanAmount * (initialLoanRate / 100)) / 12;
+  const totalInitialLoanInterest = initialLoanInterestMonthly * rehabDurationMonths;
+
+  const totalProjectCost = purchasePrice + rehabCost + initialLoanClosingCosts + totalHoldingCosts + totalInitialLoanInterest;
+
+  // 2. Refinance
+  const refinanceLoanAmount = arv * (refinanceLoanLtv / 100);
+
+  // 3. Cash Out / Cash Left
+  // Cash Left = Total Project Cost - (Refinance Loan Amount - Refinance Closing Costs)
+  const cashLeftInDeal = totalProjectCost - (refinanceLoanAmount - refinanceClosingCosts);
+
+  // 4. Post-Refi Cash Flow
+  const r = refinanceLoanRate / 100 / 12;
+  const n = 30 * 12; // Assume 30 year fixed for refi
+  const refiMonthlyPayment = refinanceLoanAmount * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+
+  const monthlyCashFlowPostRefi = monthlyRentPostRefi - monthlyExpensesPostRefi - refiMonthlyPayment;
+
+  // 5. ROI
+  const annualCashFlow = monthlyCashFlowPostRefi * 12;
+  let roi = 0;
+  let isInfiniteReturn = false;
+
+  if (cashLeftInDeal <= 0) {
+    roi = Infinity;
+    isInfiniteReturn = true;
+  } else {
+    roi = (annualCashFlow / cashLeftInDeal) * 100;
+  }
+
+  return {
+    totalProjectCost,
+    refinanceLoanAmount,
+    cashOutAmount: -cashLeftInDeal,
+    cashLeftInDeal,
+    roi,
+    monthlyCashFlowPostRefi,
+    isInfiniteReturn
+  };
 };

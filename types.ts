@@ -1,5 +1,5 @@
 
-export type Strategy = 'Rental' | 'Wholesale' | 'Subject-To' | 'Seller Financing';
+export type Strategy = 'Rental' | 'Wholesale' | 'Subject-To' | 'Seller Financing' | 'BRRRR';
 
 export interface Unit {
   bedrooms: number;
@@ -49,6 +49,11 @@ export interface Property {
     inputs: SellerFinancingInputs;
     calculations: SellerFinancingCalculations;
   };
+  brrrrAnalysis?: {
+    inputs: BrrrrInputs;
+    calculations: BrrrrCalculations;
+  };
+  comparables?: Comparable[];
 }
 
 export interface Financials {
@@ -182,6 +187,47 @@ export interface SellerFinancingCalculations {
   monthlyPayment: number;
   spreadVsMarketRent: number;
   returnOnDp: number;
+}
+
+export interface BrrrrInputs {
+  purchasePrice: number;
+  rehabCost: number;
+  rehabDurationMonths: number;
+  arv: number;
+  initialLoanAmount: number;
+  initialLoanRate: number;
+  initialLoanClosingCosts: number;
+  refinanceLoanLtv: number;
+  refinanceLoanRate: number;
+  refinanceClosingCosts: number;
+  holdingCostsMonthly: number; // Utilities, taxes, insurance during rehab
+  monthlyRentPostRefi: number;
+  monthlyExpensesPostRefi: number; // Taxes, insurance, maintenance, etc.
+}
+
+export interface Comparable {
+  id: string;
+  address: string;
+  salePrice: number;
+  saleDate: string;
+  bedrooms: number;
+  bathrooms: number;
+  sqft: number;
+  distanceMiles?: number;
+  notes?: string;
+  included: boolean;
+}
+
+export interface BrrrrCalculations {
+  totalProjectCost: number; // Purchase + Rehab + Initial Closing + Holding
+  refinanceLoanAmount: number;
+  cashOutAmount: number; // Refi Loan - Initial Loan (payoff) - Refi Closing Costs. Wait, usually it's Refi Loan - (Initial Loan + Holding + Rehab if self-funded).
+  // Let's simplify: Cash Out = Refi Loan - Payoff of Initial Loan.
+  // Cash Left In Deal = Total Project Cost - Refi Loan Amount.
+  cashLeftInDeal: number;
+  roi: number; // Annual Cash Flow / Cash Left In Deal
+  monthlyCashFlowPostRefi: number;
+  isInfiniteReturn: boolean;
 }
 
 
