@@ -72,89 +72,105 @@ const FAQPage = () => {
                 <p className="text-gray-600 mt-1">Pros and cons of different real estate investment approaches.</p>
             </header>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-8">
                 <StrategyCard
                     title="Rental (Buy & Hold)"
-                    description="The traditional strategy of purchasing a property to rent out for the long term. The goal is to generate monthly cash flow while benefiting from long-term appreciation and tax advantages."
+                    description="The most common real estate strategy where an investor purchases a property to rent out for the long term. The primary goal is to generate consistent monthly cash flow (rent > expenses) while simultaneously building wealth through two other powerful mechanisms: Loan Paydown (tenants pay your mortgage) and Appreciation (property value increases over time)."
+                    example="You buy a duplex for $200,000 with 20% down ($40,000). You rent both units for a total of $2,400/mo. Your mortgage, taxes, insurance, and repairs cost $1,800/mo. You make $600/mo in passive cash flow. Over 30 years, the tenants pay off the entire $160,000 loan, and the property value grows to $500,000. You turned your initial $40,000 into a $500,000 asset plus decades of monthly income."
                     pros={[
-                        "Passive income stream",
-                        "Tax benefits (depreciation, deductions)",
-                        "Principal paydown by tenants",
-                        "Long-term appreciation"
+                        "Passive income stream that grows with rent increases",
+                        "Tax benefits: Depreciation can offset income tax",
+                        "Principal paydown: Tenants buy the house for you",
+                        "Long-term appreciation: Hedge against inflation"
                     ]}
                     cons={[
-                        "Tenant management and vacancies",
-                        "Maintenance and repair costs",
-                        "Illiquid asset (hard to sell quickly)",
-                        "Slow wealth building in the beginning"
+                        "Tenant management: Dealing with repairs and vacancies",
+                        "Illiquid: Selling takes time and costs money (fees)",
+                        "Capital intensive: Requires down payment (20-25%)",
+                        "Slow wealth building in the early years"
                     ]}
                 />
 
                 <StrategyCard
                     title="Wholesale"
-                    description="Finding a discounted property and assigning the contract to another buyer (usually an investor) for a fee, without ever taking ownership of the property."
+                    description="Wholesaling is the business of finding off-market properties at a deep discount and 'assigning' the purchase contract to another investor for a fee. You act as a middleman. You are not buying the house; you are selling the *rights* to buy the house. It requires strong sales and marketing skills but very little capital."
+                    example="You find a distressed seller who needs to sell their house quickly for cash. The house is worth $150,000 fixed up, but needs work. You sign a contract to buy it for $100,000. You then find a flipper who wants the project. You 'assign' your contract to the flipper for a $10,000 fee. The flipper pays $110,000 total ($100k to seller, $10k to you). You walk away with $10,000 without ever owning the home or getting a loan."
                     pros={[
-                        "Little to no capital required",
-                        "Low financial risk",
-                        "Quick cash generation (days/weeks)",
-                        "No credit check needed"
+                        "Little to no capital required (often just $10 earnest money)",
+                        "No credit check or loans needed",
+                        "Quick cash generation (weeks instead of years)",
+                        "Low financial risk (you don't own the asset)"
                     ]}
                     cons={[
-                        "Active income (not passive)",
-                        "Requires constant marketing and hustle",
-                        "Dependent on finding buyers",
-                        "No long-term wealth accumulation or tax benefits"
+                        "Active job, not passive investment (no work = no pay)",
+                        "Requires constant marketing to find deals",
+                        "Dependent on finding a buyer before contract expires",
+                        "No long-term wealth accumulation (taxed as regular income)"
                     ]}
                 />
 
                 <StrategyCard
                     title="Subject-To"
-                    description="Buying a property 'subject to' the existing mortgage. The deed transfers to you, but the original loan stays in the seller's name and you make the payments."
+                    description="Buying a property 'subject to' the existing mortgage means the seller transfers the deed (ownership) to you, but the original loan stays in their name. You agree to make the monthly payments on their behalf. This allows you to acquire properties without getting a new loan or undergoing a credit check, often keeping the seller's low interest rate."
+                    example="A seller has a $200,000 mortgage at a 3% interest rate. They need to move for a job and can't sell traditionally because they have no equity (house worth $200,000). You agree to take over their payments. You pay them $5,000 moving money, they deed the house to you. You now own a $200,000 house with a 3% loan, even though current market rates are 7%. You rent it out for cash flow that wouldn't be possible with a new high-interest loan."
                     pros={[
-                        "No credit check or bank qualification",
-                        "No new loan origination fees",
-                        "Often secures low interest rates (from original loan)",
-                        "Little cash down required"
+                        "No credit check or bank qualification required",
+                        "No new loan closing costs or origination fees",
+                        "Keep the seller's low interest rate (huge cash flow booster)",
+                        "Little cash down required compared to traditional 20%"
                     ]}
                     cons={[
-                        "Due-on-sale clause risk (lender could call the loan)",
-                        "Seller dependency (if they stop paying other debts)",
-                        "Ethical considerations and complexity",
-                        "Insurance and title challenges"
+                        "Due-on-sale clause: Lender *could* call the loan due if they find out",
+                        "Seller dependency: If seller stops paying other debts, liens could attach",
+                        "Ethical responsibility: You must make payments or you ruin seller's credit",
+                        "Insurance and title complexity requires specialized closing"
                     ]}
                 />
 
                 <StrategyCard
                     title="Seller Financing"
-                    description="The seller acts as the lender. Instead of getting a bank loan, you make payments directly to the seller based on agreed terms."
+                    description="In this strategy, the seller acts as the bank. Instead of you getting a loan from a mortgage lender to pay the seller, you make monthly payments directly to the seller based on terms you agree upon. The seller holds a note (loan) secured by the property. This is common with sellers who own their property free and clear."
+                    example="You find a seller who owns a rental property outright. Banks won't lend to you because you just started a business. The seller agrees to sell to you for $150,000 with $15,000 down. You pay the remaining $135,000 directly to the seller in monthly installments at 5% interest for 5 years, with a balloon payment at the end. You get ownership immediately and bypass the bank entirely."
                     pros={[
-                        "Flexible terms (interest, down payment)",
-                        "No bank underwriting or red tape",
-                        "Faster closing process",
-                        "Good for properties banks won't finance"
+                        "Flexible terms: Negotiate interest, down payment, and duration",
+                        "No bank underwriting, income verification, or red tape",
+                        "Faster closing process (days instead of months)",
+                        "Enables purchase of properties banks won't finance (e.g., needing repairs)"
                     ]}
                     cons={[
-                        "Seller might demand higher interest rates",
-                        "Often requires a balloon payment (short term)",
-                        "Seller might foreclose aggressively if you miss payments",
-                        "Limited inventory (most sellers want cash)"
+                        "Seller often demands higher interest rate than banks",
+                        "Balloon payments: You often must refinance or sell in 3-5 years",
+                        "Seller might foreclose aggressively if you miss a payment",
+                        "Limited inventory: Most sellers want cash to buy their next home"
                     ]}
                 />
 
                 <StrategyCard
                     title="BRRRR (Buy, Rehab, Rent, Refinance, Repeat)"
-                    description="A strategy to acquire properties with little of your own money left in the deal. You buy a fixer-upper, renovate it, rent it out, and then refinance to pull your initial capital back out to use for the next deal."
+                    description="BRRRR is a supercharged method to build a portfolio without running out of cash. The goal is to recover all your initial capital through a refinance so you can use it again for the next property. It relies on forcing appreciation through renovation."
+                    example="1. Buy: You buy a run-down house for $100k using cash or a short-term loan.\n2. Rehab: You spend $40k fixing it up. Total All-In: $140k.\n3. Rent: You rent it out for $1,800/mo.\n4. Refinance: The house is now worth $200k (ARV). A bank gives you a new loan for 75% of value = $150k.\n5. Repeat: You use the $150k loan to pay off your $140k costs. You have $10k extra cash, you still own the house, and you have $0 of your own money left in the deal."
+                    extraDetails={
+                        <div className="bg-blue-50 p-4 rounded-lg mt-4 border border-blue-100">
+                            <h4 className="font-bold text-blue-900 mb-2">Why two phases of financing?</h4>
+                            <p className="text-sm text-blue-800 mb-2">
+                                <strong>Phase 1 (Purchase):</strong> Traditional banks (Fannie Mae/Freddie Mac) will NOT lend on a property that is in bad condition (e.g., missing kitchen, bad roof). Therefore, you must use <em>"Hard Money"</em>, <em>Private Money</em>, or <em>Cash</em> to buy and fix it. These loans are expensive (10-12% interest) and short-term (6-12 months).
+                            </p>
+                            <p className="text-sm text-blue-800">
+                                <strong>Phase 2 (Refinance):</strong> Once the property is fixed and rented ("stabilized"), it now qualifies for a traditional bank loan. This new loan has a low interest rate (e.g., 7%) and a long term (30 years). You use this cheap, long-term money to pay off the expensive, short-term money you used in Phase 1.
+                            </p>
+                        </div>
+                    }
                     pros={[
-                        "Infinite returns (if 100% capital is returned)",
-                        "Rapid portfolio growth",
-                        "Recycling the same capital multiple times",
-                        "Forces equity creation through rehab"
+                        "Infinite Returns: If you get all your cash back, your ROI is infinite",
+                        "Velocity of Money: Use the same $50k to buy 10 houses instead of 1",
+                        "Equity Creation: You force value appreciation immediately through rehab",
+                        "Portfolio Growth: Fastest way to scale a rental portfolio"
                     ]}
                     cons={[
-                        "High execution risk (rehab costs, appraisal)",
-                        "Requires short-term financing (hard money)",
-                        "Refinance risk (interest rates, LTV limits)",
-                        "Time-intensive and operationally complex"
+                        "Execution Risk: Rehabs often go over budget or take too long",
+                        "Appraisal Risk: If the house appraises low, you might leave cash trapped",
+                        "Refinance Risk: Interest rates could rise during your rehab",
+                        "Operationally Intensive: Managing contractors is difficult"
                     ]}
                 />
             </div>
@@ -192,12 +208,19 @@ const DefinitionCard = ({ title, icon: Icon, definition, formula, standard, note
     </div>
 );
 
-const StrategyCard = ({ title, description, pros, cons }: { title: string, description: string, pros: string[], cons: string[] }) => (
+const StrategyCard = ({ title, description, example, pros, cons, extraDetails }: { title: string, description: string, example: string, pros: string[], cons: string[], extraDetails?: React.ReactNode }) => (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
         <h3 className="text-xl font-bold text-gray-800 mb-3">{title}</h3>
-        <p className="text-gray-600 text-sm mb-6 leading-relaxed">{description}</p>
+        <p className="text-gray-600 text-sm mb-4 leading-relaxed">{description}</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-gray-50 p-4 rounded-lg mb-6 border-l-4 border-brand-blue">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Example Case</h4>
+            <p className="text-sm text-gray-700 whitespace-pre-line">{example}</p>
+        </div>
+
+        {extraDetails}
+
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${extraDetails ? 'mt-6' : ''}`}>
             <div className="bg-green-50 p-4 rounded-lg">
                 <h4 className="text-sm font-bold text-green-800 uppercase tracking-wide mb-3 flex items-center">
                     <span className="mr-2">👍</span> Pros
