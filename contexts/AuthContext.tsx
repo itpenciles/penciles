@@ -89,9 +89,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const tier = user.subscriptionTier;
 
             // Calculate feature access booleans
-            const canCompare = ['Starter', 'Pro', 'Team'].includes(tier);
-            const canUseAdvancedStrategies = ['Pro', 'Team'].includes(tier);
-            const canExportCsv = ['Pro', 'Team'].includes(tier);
+            // Calculate feature access booleans
+            // We now look up the plan object to see what features are enabled dynamically.
+            // This allows new plans (e.g. "Gold") to work correctly without code changes.
+            const plan = plans.find(p => p.key === tier);
+
+            const canCompare = plan ? plan.canCompare : false;
+            const canUseAdvancedStrategies = plan ? plan.canUseAdvancedStrategies : false;
+            const canExportCsv = plan ? plan.canExportCsv : false;
 
             setFeatureAccess({
                 canCompare,
@@ -106,7 +111,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             let limit: number | 'Unlimited' = 0;
 
             // Try to find in dynamic plans first
-            const plan = plans.find(p => p.key === tier);
+            // plan is already defined above
 
             if (plan) {
                 limit = plan.analysisLimit === -1 ? 'Unlimited' : plan.analysisLimit;

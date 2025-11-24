@@ -321,4 +321,7 @@ export interface Plan {
   analysisLimit: number; // -1 for unlimited
   features: string[];
   isPopular: boolean;
+  canCompare: boolean;
+  canExportCsv: boolean;
+  canUseAdvancedStrategies: boolean;
 }

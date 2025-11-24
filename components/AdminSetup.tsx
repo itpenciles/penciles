@@ -27,7 +27,7 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, onEdit, onDelete }) => (
                 <strong>Limit:</strong> {plan.analysisLimit === -1 ? 'Unlimited' : plan.analysisLimit} analyses
             </div>
             <p className="text-sm text-gray-500 h-10 overflow-hidden mb-4">{plan.description}</p>
-            
+
             <div className="border-t border-gray-100 pt-4 flex-1">
                 <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Features</h4>
                 <ul className="text-sm text-gray-600 space-y-1 max-h-40 overflow-y-auto">
@@ -89,7 +89,10 @@ const AdminSetup = () => {
             annualPrice: 0,
             analysisLimit: 0,
             features: [],
-            isPopular: false
+            isPopular: false,
+            canCompare: false,
+            canExportCsv: false,
+            canUseAdvancedStrategies: false
         });
     };
 
@@ -135,14 +138,17 @@ const AdminSetup = () => {
             annualPrice: Number(formData.annualPrice),
             analysisLimit: Number(formData.analysisLimit),
             features: (formData.features || []).filter(f => f.trim() !== ''), // Remove empty features
-            isPopular: !!formData.isPopular
+            isPopular: !!formData.isPopular,
+            canCompare: !!formData.canCompare,
+            canExportCsv: !!formData.canExportCsv,
+            canUseAdvancedStrategies: !!formData.canUseAdvancedStrategies
         };
 
         try {
             // FIX: The route is mounted at /api/plans, so client should request /plans/{key}
             const endpoint = `/plans/${formData.key}`;
             const method = 'PUT'; // We use PUT for upsert logic in backend
-            
+
             await apiClient.request(method, endpoint, payload);
             alert("Plan saved successfully.");
             setEditMode(null);
@@ -176,9 +182,9 @@ const AdminSetup = () => {
     return (
         <div className="p-8 bg-gray-50 min-h-screen">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Subscription Plans Setup</h1>
-            
+
             <div className="mb-8 flex justify-end">
-                 <button 
+                <button
                     onClick={handleAddNew}
                     className="bg-brand-blue text-white px-4 py-2 rounded-lg font-semibold shadow-sm hover:bg-blue-700"
                 >
@@ -193,78 +199,114 @@ const AdminSetup = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Plan Key (ID)</label>
-                            <input 
-                                type="text" 
-                                name="key" 
-                                value={formData.key || ''} 
-                                onChange={handleChange} 
+                            <input
+                                type="text"
+                                name="key"
+                                value={formData.key || ''}
+                                onChange={handleChange}
                                 disabled={editMode !== 'NEW'}
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded bg-gray-50"
                                 placeholder="e.g., PayAsYouGo"
                             />
                             <p className="text-xs text-gray-500">Unique identifier. No spaces recommended.</p>
                         </div>
-                         <div>
+                        <div>
                             <label className="block text-sm font-medium text-gray-700">Display Name</label>
-                            <input 
-                                type="text" 
-                                name="name" 
-                                value={formData.name || ''} 
-                                onChange={handleChange} 
+                            <input
+                                type="text"
+                                name="name"
+                                value={formData.name || ''}
+                                onChange={handleChange}
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Monthly Price ($)</label>
-                            <input 
-                                type="number" 
-                                name="monthlyPrice" 
-                                value={formData.monthlyPrice} 
-                                onChange={handleChange} 
+                            <input
+                                type="number"
+                                name="monthlyPrice"
+                                value={formData.monthlyPrice}
+                                onChange={handleChange}
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
                             />
                         </div>
-                         <div>
+                        <div>
                             <label className="block text-sm font-medium text-gray-700">Annual Price ($)</label>
-                            <input 
-                                type="number" 
-                                name="annualPrice" 
-                                value={formData.annualPrice} 
-                                onChange={handleChange} 
+                            <input
+                                type="number"
+                                name="annualPrice"
+                                value={formData.annualPrice}
+                                onChange={handleChange}
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
                             />
                         </div>
-                         <div>
+                        <div>
                             <label className="block text-sm font-medium text-gray-700">Analysis Limit (per month)</label>
-                            <input 
-                                type="number" 
-                                name="analysisLimit" 
-                                value={formData.analysisLimit} 
-                                onChange={handleChange} 
+                            <input
+                                type="number"
+                                name="analysisLimit"
+                                value={formData.analysisLimit}
+                                onChange={handleChange}
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
                             />
                             <p className="text-xs text-gray-500">Use -1 for Unlimited. Use 0 for Pay-As-You-Go.</p>
                         </div>
-                         <div className="flex items-center pt-6">
-                             <label className="flex items-center cursor-pointer">
-                                <input 
-                                    type="checkbox" 
-                                    name="isPopular" 
-                                    checked={formData.isPopular || false} 
-                                    onChange={handleChange} 
+                        <div className="flex items-center pt-6">
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="isPopular"
+                                    checked={formData.isPopular || false}
+                                    onChange={handleChange}
                                     className="h-4 w-4 text-brand-blue border-gray-300 rounded"
                                 />
                                 <span className="ml-2 text-sm text-gray-700">Mark as "Most Popular"</span>
                             </label>
                         </div>
                         <div className="md:col-span-2">
-                             <label className="block text-sm font-medium text-gray-700">Description</label>
-                             <textarea 
-                                name="description" 
-                                value={formData.description || ''} 
-                                onChange={handleChange} 
+                            <label className="block text-sm font-medium text-gray-700">Description</label>
+                            <textarea
+                                name="description"
+                                value={formData.description || ''}
+                                onChange={handleChange}
                                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded h-20"
-                             />
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mb-4 border-t border-gray-100 pt-4">
+                        <h4 className="text-sm font-bold text-gray-700 mb-3">Feature Access</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="canCompare"
+                                    checked={formData.canCompare || false}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-brand-blue border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm text-gray-700">Comparison Tool</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="canExportCsv"
+                                    checked={formData.canExportCsv || false}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-brand-blue border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm text-gray-700">Export Data (CSV/PDF)</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="canUseAdvancedStrategies"
+                                    checked={formData.canUseAdvancedStrategies || false}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-brand-blue border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm text-gray-700">Advanced Strategies</span>
+                            </label>
                         </div>
                     </div>
 
@@ -272,10 +314,10 @@ const AdminSetup = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">Features List</label>
                         {formData.features?.map((feat, idx) => (
                             <div key={idx} className="flex mb-2">
-                                <input 
-                                    type="text" 
-                                    value={feat} 
-                                    onChange={(e) => handleFeatureChange(e, idx)} 
+                                <input
+                                    type="text"
+                                    value={feat}
+                                    onChange={(e) => handleFeatureChange(e, idx)}
                                     className="flex-1 px-3 py-1 border border-gray-300 rounded mr-2"
                                 />
                                 <button onClick={() => removeFeature(idx)} className="text-red-500 hover:text-red-700 px-2">X</button>
@@ -311,7 +353,7 @@ const AdminSetup = () => {
                 <h3 className="font-bold text-gray-800 mb-2">Configuration Help</h3>
                 <p className="text-sm text-gray-600">
                     Use this page to configure subscription tiers. The backend logic for limits and pricing will automatically pull the values set here.
-                    <br/><br/>
+                    <br /><br />
                     <strong>Pay As You Go:</strong> To use the Pay As You Go logic, set the Key to "PayAsYouGo". The backend is hardcoded to look for this specific key to trigger credit deduction logic ($7 per report). Set the monthly price to 0.
                 </p>
             </div>
