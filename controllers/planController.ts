@@ -2,116 +2,117 @@
 import { query } from '../db.js';
 import { Plan } from '../../types';
 
-{
-    key: 'Free',
+const DEFAULT_PLANS: Plan[] = [
+    {
+        key: 'Free',
         name: 'Free',
-            description: 'For investors just getting started and wanting to try the platform.',
-                monthlyPrice: 0,
-                    annualPrice: 0,
-                        analysisLimit: 3,
-                            features: [
-                                '3 AI Property Analyses (Lifetime)',
-                                'Standard Rental Analysis',
-                                'Save Properties to Browser',
-                            ],
-                                isPopular: false,
-                                    canCompare: false,
-                                        canExportCsv: false,
-                                            canUseAdvancedStrategies: false
-},
-{
-    key: 'Starter',
+        description: 'For investors just getting started and wanting to try the platform.',
+        monthlyPrice: 0,
+        annualPrice: 0,
+        analysisLimit: 3,
+        features: [
+            '3 AI Property Analyses (Lifetime)',
+            'Standard Rental Analysis',
+            'Save Properties to Browser',
+        ],
+        isPopular: false,
+        canCompare: false,
+        canExportCsv: false,
+        canUseAdvancedStrategies: false
+    },
+    {
+        key: 'Starter',
         name: 'Starter',
-            description: 'For active investors analyzing a few deals a month.',
-                monthlyPrice: 9,
-                    annualPrice: 90,
-                        analysisLimit: 15,
-                            features: [
-                                '15 AI Property Analyses per Month',
-                                'Standard Rental Analysis',
-                                'Property Comparison Tool (up to 4)',
-                                'Save Properties to Browser',
-                                'Email Support',
-                            ],
-                                isPopular: false,
-                                    canCompare: true,
-                                        canExportCsv: false,
-                                            canUseAdvancedStrategies: false
-},
-{
-    key: 'Experienced',
+        description: 'For active investors analyzing a few deals a month.',
+        monthlyPrice: 9,
+        annualPrice: 90,
+        analysisLimit: 15,
+        features: [
+            '15 AI Property Analyses per Month',
+            'Standard Rental Analysis',
+            'Property Comparison Tool (up to 4)',
+            'Save Properties to Browser',
+            'Email Support',
+        ],
+        isPopular: false,
+        canCompare: true,
+        canExportCsv: false,
+        canUseAdvancedStrategies: false
+    },
+    {
+        key: 'Experienced',
         name: 'Experienced',
-            description: 'For growing investors analyzing weekly deals and building their portfolio.',
-                monthlyPrice: 19,
-                    annualPrice: 190,
-                        analysisLimit: 40,
-                            features: [
-                                '40 AI Property Analyses per Month',
-                                'Standard Rental Analysis',
-                                'Export Data to CSV & PDF',
-                                'Property Comparison Tool',
-                                'Email Support',
-                            ],
-                                isPopular: true,
-                                    canCompare: true,
-                                        canExportCsv: true,
-                                            canUseAdvancedStrategies: false
-},
-{
-    key: 'Pro',
+        description: 'For growing investors analyzing weekly deals and building their portfolio.',
+        monthlyPrice: 19,
+        annualPrice: 190,
+        analysisLimit: 40,
+        features: [
+            '40 AI Property Analyses per Month',
+            'Standard Rental Analysis',
+            'Export Data to CSV & PDF',
+            'Property Comparison Tool',
+            'Email Support',
+        ],
+        isPopular: true,
+        canCompare: true,
+        canExportCsv: true,
+        canUseAdvancedStrategies: false
+    },
+    {
+        key: 'Pro',
         name: 'Pro',
-            description: 'For serious investors and small teams who need advanced tools.',
-                monthlyPrice: 29,
-                    annualPrice: 290,
-                        analysisLimit: 100,
-                            features: [
-                                '100 AI Property Analyses per Month',
-                                'All Creative Finance Calculators',
-                                'Property Comparison Tool',
-                                'Save & Export Data',
-                                'Priority Email Support',
-                            ],
-                                isPopular: false,
-                                    canCompare: true,
-                                        canExportCsv: true,
-                                            canUseAdvancedStrategies: true
-},
-{
-    key: 'Team',
+        description: 'For serious investors and small teams who need advanced tools.',
+        monthlyPrice: 29,
+        annualPrice: 290,
+        analysisLimit: 100,
+        features: [
+            '100 AI Property Analyses per Month',
+            'All Creative Finance Calculators',
+            'Property Comparison Tool',
+            'Save & Export Data',
+            'Priority Email Support',
+        ],
+        isPopular: false,
+        canCompare: true,
+        canExportCsv: true,
+        canUseAdvancedStrategies: true
+    },
+    {
+        key: 'Team',
         name: 'Team',
-            description: 'For professional teams and brokerages needing high volume.',
-                monthlyPrice: 79,
-                    annualPrice: 790,
-                        analysisLimit: -1, // Unlimited
-                            features: [
-                                'Unlimited AI Property Analyses',
-                                'All Pro Features Included',
-                                'Multi-user Access (coming soon)',
-                                'Dedicated Support',
-                            ],
-                                isPopular: false,
-                                    canCompare: true,
-                                        canExportCsv: true,
-                                            canUseAdvancedStrategies: true
-},
-{
-    key: 'PayAsYouGo',
+        description: 'For professional teams and brokerages needing high volume.',
+        monthlyPrice: 79,
+        annualPrice: 790,
+        analysisLimit: -1, // Unlimited
+        features: [
+            'Unlimited AI Property Analyses',
+            'All Pro Features Included',
+            'Multi-user Access (coming soon)',
+            'Dedicated Support',
+        ],
+        isPopular: false,
+        canCompare: true,
+        canExportCsv: true,
+        canUseAdvancedStrategies: true
+    },
+    {
+        key: 'PayAsYouGo',
         name: 'Pay As You Go',
-            description: 'No monthly fees. Just pay for what you use.',
-                monthlyPrice: 0,
-                    annualPrice: 0,
-                        analysisLimit: 0,
-                            features: [
-                                '$7 per Analysis',
-                                'No Monthly Subscription',
-                                'Purchase Credits as Needed',
-                                'Full Pro Features Access'
-                            ],
-                                isPopular: false,
-                                    canCompare: true,
-                                        canExportCsv: true,
-                                            canUseAdvancedStrategies: true
-}
+        description: 'No monthly fees. Just pay for what you use.',
+        monthlyPrice: 0,
+        annualPrice: 0,
+        analysisLimit: 0,
+        features: [
+            '$7 per Analysis',
+            'No Monthly Subscription',
+            'Purchase Credits as Needed',
+            'Full Pro Features Access'
+        ],
+        isPopular: false,
+        canCompare: true,
+        canExportCsv: true,
+        canUseAdvancedStrategies: true
+    }
 ];
 
 export const getAllPlans = async (_req: any, res: any) => {
