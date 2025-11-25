@@ -147,7 +147,13 @@ const AdminSetup = () => {
             isPopular: !!formData.isPopular,
             canCompare: !!formData.canCompare,
             canExportCsv: !!formData.canExportCsv,
-            canUseAdvancedStrategies: !!formData.canUseAdvancedStrategies
+            canUseAdvancedStrategies: !!formData.canUseAdvancedStrategies,
+            canWholesale: !!formData.canWholesale,
+            canSubjectTo: !!formData.canSubjectTo,
+            canSellerFinance: !!formData.canSellerFinance,
+            canBrrrr: !!formData.canBrrrr,
+            canAccessComparables: !!formData.canAccessComparables,
+            canAccessProjections: !!formData.canAccessProjections
         };
 
         try {
