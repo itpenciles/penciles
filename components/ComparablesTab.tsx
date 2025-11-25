@@ -39,8 +39,7 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({ property, setPro
         setIsLoading(true);
         setError(null);
         try {
-            const response = await apiClient.post('/analyze', { inputType, value });
-            const data: Property = response.data;
+            const data = await apiClient.post('/analyze', { inputType, value });
 
             let distance = 0;
             // Calculate distance if both subject and comp have coordinates
