@@ -7,8 +7,10 @@ const ATTOM_BASE_URL = 'https://api.gateway.attomdata.com/propertyapi/v1.0.0';
 export const getComparables = async (req: Request, res: Response) => {
     try {
         if (!ATTOM_API_KEY) {
+            console.error('ATTOM_API_KEY is missing in environment variables.');
             return res.status(500).json({ message: 'ATTOM API key is not configured.' });
         }
+        console.log(`ATTOM_API_KEY is configured (Length: ${ATTOM_API_KEY.length})`);
 
         const {
             address,
@@ -182,8 +184,16 @@ export const getComparables = async (req: Request, res: Response) => {
         res.json({ comparables });
 
     } catch (error: any) {
-        console.error('ATTOM API Error:', error.response?.data || error.message);
-        res.status(500).json({ message: 'Failed to fetch market comps from ATTOM API.', details: error.message });
+        console.error('ATTOM API Error Details:');
+        console.error('Message:', error.message);
+        console.error('Status:', error.response?.status);
+        console.error('Data:', JSON.stringify(error.response?.data, null, 2));
+
+        const apiErrorMessage = error.response?.data?.status?.msg || error.response?.data?.message || error.message;
+        res.status(500).json({
+            message: `ATTOM API Error: ${apiErrorMessage}`,
+            details: error.response?.data
+        });
     }
 };
 
