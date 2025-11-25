@@ -42,11 +42,16 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({ property, setPro
             const data = await apiClient.post('/analyze', { inputType, value });
 
             let distance = 0;
-            // Calculate distance if both subject and comp have coordinates
-            if (property.coordinates && data.coordinates) {
+            // Helper to check if coordinates are valid (not 0,0)
+            const isValidCoordinate = (coord: { lat: number; lon: number } | undefined) => {
+                return coord && (coord.lat !== 0 || coord.lon !== 0);
+            };
+
+            // Calculate distance if both subject and comp have valid coordinates
+            if (isValidCoordinate(property.coordinates) && isValidCoordinate(data.coordinates)) {
                 distance = calculateDistance(
-                    property.coordinates.lat, property.coordinates.lon,
-                    data.coordinates.lat, data.coordinates.lon
+                    property.coordinates!.lat, property.coordinates!.lon,
+                    data.coordinates!.lat, data.coordinates!.lon
                 );
             }
 
