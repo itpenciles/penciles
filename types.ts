@@ -323,5 +323,11 @@ export interface Plan {
   isPopular: boolean;
   canCompare: boolean;
   canExportCsv: boolean;
-  canUseAdvancedStrategies: boolean;
+  canUseAdvancedStrategies: boolean; // Deprecated, kept for backward compatibility
+  canWholesale: boolean;
+  canSubjectTo: boolean;
+  canSellerFinance: boolean;
+  canBrrrr: boolean;
+  canAccessComparables: boolean;
+  canAccessProjections: boolean;
 }

@@ -18,7 +18,13 @@ const DEFAULT_PLANS: Plan[] = [
         isPopular: false,
         canCompare: false,
         canExportCsv: false,
-        canUseAdvancedStrategies: false
+        canUseAdvancedStrategies: false,
+        canWholesale: false,
+        canSubjectTo: false,
+        canSellerFinance: false,
+        canBrrrr: false,
+        canAccessComparables: false,
+        canAccessProjections: false
     },
     {
         key: 'Starter',
@@ -37,7 +43,13 @@ const DEFAULT_PLANS: Plan[] = [
         isPopular: false,
         canCompare: true,
         canExportCsv: false,
-        canUseAdvancedStrategies: false
+        canUseAdvancedStrategies: false,
+        canWholesale: false,
+        canSubjectTo: false,
+        canSellerFinance: false,
+        canBrrrr: false,
+        canAccessComparables: true, // Limited access
+        canAccessProjections: false
     },
     {
         key: 'Experienced',
@@ -56,7 +68,13 @@ const DEFAULT_PLANS: Plan[] = [
         isPopular: true,
         canCompare: true,
         canExportCsv: true,
-        canUseAdvancedStrategies: false
+        canUseAdvancedStrategies: false,
+        canWholesale: false,
+        canSubjectTo: false,
+        canSellerFinance: false,
+        canBrrrr: false,
+        canAccessComparables: true,
+        canAccessProjections: true
     },
     {
         key: 'Pro',
@@ -75,7 +93,13 @@ const DEFAULT_PLANS: Plan[] = [
         isPopular: false,
         canCompare: true,
         canExportCsv: true,
-        canUseAdvancedStrategies: true
+        canUseAdvancedStrategies: true,
+        canWholesale: true,
+        canSubjectTo: true,
+        canSellerFinance: true,
+        canBrrrr: true,
+        canAccessComparables: true,
+        canAccessProjections: true
     },
     {
         key: 'Team',
@@ -93,7 +117,13 @@ const DEFAULT_PLANS: Plan[] = [
         isPopular: false,
         canCompare: true,
         canExportCsv: true,
-        canUseAdvancedStrategies: true
+        canUseAdvancedStrategies: true,
+        canWholesale: true,
+        canSubjectTo: true,
+        canSellerFinance: true,
+        canBrrrr: true,
+        canAccessComparables: true,
+        canAccessProjections: true
     },
     {
         key: 'PayAsYouGo',
@@ -111,7 +141,13 @@ const DEFAULT_PLANS: Plan[] = [
         isPopular: false,
         canCompare: true,
         canExportCsv: true,
-        canUseAdvancedStrategies: true
+        canUseAdvancedStrategies: true,
+        canWholesale: true,
+        canSubjectTo: true,
+        canSellerFinance: true,
+        canBrrrr: true,
+        canAccessComparables: true,
+        canAccessProjections: true
     }
 ];
 
@@ -143,7 +179,7 @@ export const getAllPlans = async (_req: any, res: any) => {
         }
 
         // 3. Fetch all plans from DB to return to frontend
-        const result = await query('SELECT key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular, can_compare, can_export_csv, can_use_advanced_strategies FROM plans ORDER BY monthly_price ASC');
+        const result = await query('SELECT key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular, can_compare, can_export_csv, can_use_advanced_strategies, can_wholesale, can_subject_to, can_seller_finance, can_brrrr, can_access_comparables, can_access_projections FROM plans ORDER BY monthly_price ASC');
 
         const plans = result.rows.map((row: any) => ({
             key: row.key,
@@ -156,7 +192,13 @@ export const getAllPlans = async (_req: any, res: any) => {
             isPopular: row.is_popular,
             canCompare: row.can_compare,
             canExportCsv: row.can_export_csv,
-            canUseAdvancedStrategies: row.can_use_advanced_strategies
+            canUseAdvancedStrategies: row.can_use_advanced_strategies,
+            canWholesale: row.can_wholesale,
+            canSubjectTo: row.can_subject_to,
+            canSellerFinance: row.can_seller_finance,
+            canBrrrr: row.can_brrrr,
+            canAccessComparables: row.can_access_comparables,
+            canAccessProjections: row.can_access_projections
         }));
 
         return res.json(plans);
@@ -174,8 +216,8 @@ export const updatePlan = async (req: any, res: any) => {
 
     try {
         const queryStr = `
-            INSERT INTO plans (key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular, can_compare, can_export_csv, can_use_advanced_strategies)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            INSERT INTO plans (key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular, can_compare, can_export_csv, can_use_advanced_strategies, can_wholesale, can_subject_to, can_seller_finance, can_brrrr, can_access_comparables, can_access_projections)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             ON CONFLICT (key) DO UPDATE SET
                 name = EXCLUDED.name,
                 description = EXCLUDED.description,
@@ -186,7 +228,13 @@ export const updatePlan = async (req: any, res: any) => {
                 is_popular = EXCLUDED.is_popular,
                 can_compare = EXCLUDED.can_compare,
                 can_export_csv = EXCLUDED.can_export_csv,
-                can_use_advanced_strategies = EXCLUDED.can_use_advanced_strategies
+                can_use_advanced_strategies = EXCLUDED.can_use_advanced_strategies,
+                can_wholesale = EXCLUDED.can_wholesale,
+                can_subject_to = EXCLUDED.can_subject_to,
+                can_seller_finance = EXCLUDED.can_seller_finance,
+                can_brrrr = EXCLUDED.can_brrrr,
+                can_access_comparables = EXCLUDED.can_access_comparables,
+                can_access_projections = EXCLUDED.can_access_projections
             RETURNING *;
         `;
 
@@ -201,7 +249,13 @@ export const updatePlan = async (req: any, res: any) => {
             !!planData.isPopular,
             !!planData.canCompare,
             !!planData.canExportCsv,
-            !!planData.canUseAdvancedStrategies
+            !!planData.canUseAdvancedStrategies,
+            !!planData.canWholesale,
+            !!planData.canSubjectTo,
+            !!planData.canSellerFinance,
+            !!planData.canBrrrr,
+            !!planData.canAccessComparables,
+            !!planData.canAccessProjections
         ];
 
         const result = await query(queryStr, values);

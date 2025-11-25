@@ -9,7 +9,10 @@ interface FeatureAccess {
     canUseWholesale: boolean;
     canUseSubjectTo: boolean;
     canUseSellerFinancing: boolean;
+    canUseBrrrr: boolean;
     canExportCsv: boolean;
+    canAccessComparables: boolean;
+    canAccessProjections: boolean;
 }
 
 interface AnalysisStatus {
@@ -51,7 +54,10 @@ const initialFeatureAccess: FeatureAccess = {
     canUseWholesale: false,
     canUseSubjectTo: false,
     canUseSellerFinancing: false,
+    canUseBrrrr: false,
     canExportCsv: false,
+    canAccessComparables: false,
+    canAccessProjections: false,
 };
 
 const initialAnalysisStatus: AnalysisStatus = {
@@ -95,15 +101,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const plan = plans.find(p => p.key === tier);
 
             const canCompare = plan ? plan.canCompare : false;
-            const canUseAdvancedStrategies = plan ? plan.canUseAdvancedStrategies : false;
             const canExportCsv = plan ? plan.canExportCsv : false;
+
+            // Advanced strategies
+            const canUseWholesale = plan ? (plan.canWholesale ?? plan.canUseAdvancedStrategies) : false;
+            const canUseSubjectTo = plan ? (plan.canSubjectTo ?? plan.canUseAdvancedStrategies) : false;
+            const canUseSellerFinancing = plan ? (plan.canSellerFinance ?? plan.canUseAdvancedStrategies) : false;
+            const canUseBrrrr = plan ? (plan.canBrrrr ?? plan.canUseAdvancedStrategies) : false;
+
+            // New features
+            const canAccessComparables = plan ? (plan.canAccessComparables ?? false) : false;
+            const canAccessProjections = plan ? (plan.canAccessProjections ?? false) : false;
 
             setFeatureAccess({
                 canCompare,
-                canUseWholesale: canUseAdvancedStrategies,
-                canUseSubjectTo: canUseAdvancedStrategies,
-                canUseSellerFinancing: canUseAdvancedStrategies,
+                canUseWholesale,
+                canUseSubjectTo,
+                canUseSellerFinancing,
+                canUseBrrrr,
                 canExportCsv,
+                canAccessComparables,
+                canAccessProjections
             });
 
             // Calculate analysis status

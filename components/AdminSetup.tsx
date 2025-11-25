@@ -92,7 +92,13 @@ const AdminSetup = () => {
             isPopular: false,
             canCompare: false,
             canExportCsv: false,
-            canUseAdvancedStrategies: false
+            canUseAdvancedStrategies: false,
+            canWholesale: false,
+            canSubjectTo: false,
+            canSellerFinance: false,
+            canBrrrr: false,
+            canAccessComparables: false,
+            canAccessProjections: false
         });
     };
 
@@ -295,17 +301,73 @@ const AdminSetup = () => {
                                     onChange={handleChange}
                                     className="h-4 w-4 text-brand-blue border-gray-300 rounded"
                                 />
-                                <span className="ml-2 text-sm text-gray-700">Export Data (CSV/PDF)</span>
+                                <span className="ml-2 text-sm text-gray-700">Export CSV/PDF</span>
                             </label>
                             <label className="flex items-center cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    name="canUseAdvancedStrategies"
-                                    checked={formData.canUseAdvancedStrategies || false}
+                                    name="canAccessComparables"
+                                    checked={formData.canAccessComparables || false}
                                     onChange={handleChange}
                                     className="h-4 w-4 text-brand-blue border-gray-300 rounded"
                                 />
-                                <span className="ml-2 text-sm text-gray-700">Advanced Strategies</span>
+                                <span className="ml-2 text-sm text-gray-700">Comparables (Sales Comps)</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="canAccessProjections"
+                                    checked={formData.canAccessProjections || false}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-brand-blue border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm text-gray-700">Projections</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="mb-4 border-t border-gray-100 pt-4">
+                        <h4 className="text-sm font-bold text-gray-700 mb-3">Advanced Strategies</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="canWholesale"
+                                    checked={formData.canWholesale || false}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-brand-blue border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm text-gray-700">Wholesale</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="canSubjectTo"
+                                    checked={formData.canSubjectTo || false}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-brand-blue border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm text-gray-700">Subject-To</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="canSellerFinance"
+                                    checked={formData.canSellerFinance || false}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-brand-blue border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm text-gray-700">Seller Financing</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="canBrrrr"
+                                    checked={formData.canBrrrr || false}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-brand-blue border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm text-gray-700">BRRRR</span>
                             </label>
                         </div>
                     </div>

@@ -60,6 +60,7 @@ const PropertyDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { properties, updateProperty } = useProperties();
+    const { featureAccess } = useAuth();
     const [property, setProperty] = useState<Property | null>(null);
     const [editedProperty, setEditedProperty] = useState<Property | null>(null);
     const [activeStrategy, setActiveStrategy] = useState<Strategy>('Rental');
@@ -188,12 +189,14 @@ const PropertyDetail = () => {
                         >
                             Overview
                         </button>
-                        <button
-                            onClick={() => setActiveTab('comparables')}
-                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'comparables' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                        >
-                            Comparables
-                        </button>
+                        {featureAccess.canAccessComparables && (
+                            <button
+                                onClick={() => setActiveTab('comparables')}
+                                className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'comparables' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                            >
+                                Comparables
+                            </button>
+                        )}
                     </nav>
                 </div>
 
@@ -326,10 +329,7 @@ const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrateg
         { name: 'Wholesale', requiredFeature: 'canUseWholesale' },
         { name: 'Subject-To', requiredFeature: 'canUseSubjectTo' },
         { name: 'Seller Financing', requiredFeature: 'canUseSellerFinancing' },
-        { name: 'BRRRR', requiredFeature: 'canUseWholesale' }, // Assuming BRRRR is a pro feature, maybe reuse wholesale permission or add new one? Let's use wholesale for now or just null if open. Let's use 'canUseWholesale' as a proxy for "Pro" features if no specific one exists, or add a new one.
-        // Actually, the user didn't specify a permission for BRRRR. I'll assume it's a Pro feature.
-        // Let's check AuthContext for available permissions.
-        // I'll use 'canUseWholesale' for now as a placeholder for "Advanced Strategies".
+        { name: 'BRRRR', requiredFeature: 'canUseBrrrr' },
     ];
 
     return (
@@ -654,9 +654,14 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
     };
 
     const renderTabs = () => {
+        const { featureAccess } = useAuth();
         const tabs = activeStrategy === 'Rental'
-            ? ['Metrics', 'Expenses', 'Adjust', 'Projections']
+            ? ['Metrics', 'Expenses', 'Adjust']
             : ['Metrics', 'Parameters'];
+
+        if (activeStrategy === 'Rental' && featureAccess.canAccessProjections) {
+            tabs.push('Projections');
+        }
 
         return (
             <div className="flex border border-gray-200 rounded-lg p-0.5">
