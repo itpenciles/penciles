@@ -12,6 +12,7 @@ import analysisRoutes from './routes/analysisRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import planRoutes from './routes/planRoutes.js';
+import attomRoutes from './routes/attomRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -54,6 +55,7 @@ app.use('/api/properties', propertyRoutes);
 app.use('/api/analyze', analysisRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/plans', planRoutes);
+app.use('/api/attom', attomRoutes);
 
 // Simple root API endpoint for health checks
 app.get('/api', (_req, res) => {
