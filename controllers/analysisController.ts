@@ -33,7 +33,7 @@ export const analyzeProperty = async (req: any, res: any) => {
         return res.status(400).json({ message: 'inputType and value are required.' });
     }
 
-    if (!['url', 'address', 'coords', 'location'].includes(inputType)) {
+    if (!['url', 'address', 'coords', 'location', 'apn'].includes(inputType)) {
         return res.status(400).json({ message: 'Invalid inputType.' });
     }
 

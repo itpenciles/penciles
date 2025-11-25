@@ -11,6 +11,13 @@ const responseSchema = {
         address: { type: Type.STRING, description: 'Full property address, including city, state, and zip code.' },
         propertyType: { type: Type.STRING, description: 'e.g., Single-Family, Duplex, Quadplex, etc.' },
         imageUrl: { type: Type.STRING, description: 'A direct URL to a representative, high-quality image of the property.' },
+        coordinates: {
+            type: Type.OBJECT,
+            properties: {
+                lat: { type: Type.NUMBER, description: 'Latitude of the property.' },
+                lon: { type: Type.NUMBER, description: 'Longitude of the property.' }
+            }
+        },
         details: {
             type: Type.OBJECT,
             properties: {
@@ -19,6 +26,7 @@ const responseSchema = {
                 sqft: { type: Type.NUMBER, description: 'Total square footage.' },
                 yearBuilt: { type: Type.NUMBER, description: 'The year the property was built.' },
                 numberOfUnits: { type: Type.NUMBER, description: 'The total number of residential units in the property (e.g., 1 for Single-Family, 2 for Duplex).' },
+                lastSoldDate: { type: Type.STRING, description: 'The date the property was last sold (YYYY-MM-DD).' },
                 unitDetails: {
                     type: Type.ARRAY,
                     description: "Details for each individual unit in the property. The number of items in this array should match numberOfUnits.",
@@ -77,7 +85,7 @@ const responseSchema = {
     }
 };
 
-const buildPrompt = (inputType: 'url' | 'address' | 'coords' | 'location', value: string): string => {
+const buildPrompt = (inputType: 'url' | 'address' | 'coords' | 'location' | 'apn', value: string): string => {
     let inputDescription = '';
     switch (inputType) {
         case 'url':
@@ -92,6 +100,14 @@ const buildPrompt = (inputType: 'url' | 'address' | 'coords' | 'location', value
         case 'location':
             inputDescription = `for a typical investment property near my current location (GPS: ${value}). Find a representative property to analyze.`;
             break;
+        case 'apn':
+            try {
+                const apnData = JSON.parse(value);
+                inputDescription = `for the property with APN: ${apnData.apn}, County: ${apnData.county}, State: ${apnData.state}. Use your search tool to find the property address and details on Redfin, Zillow, or other public records using this APN information.`;
+            } catch (e) {
+                inputDescription = `for the property with APN data: ${value}`;
+            }
+            break;
     }
 
     const schemaString = JSON.stringify(responseSchema, null, 2);
@@ -101,7 +117,10 @@ const buildPrompt = (inputType: 'url' | 'address' | 'coords' | 'location', value
 Property to analyze: ${inputDescription}.
 
 **CRITICAL INSTRUCTIONS - ACCURACY IS PARAMOUNT:**
-1.  **Use your search tool to access the LIVE, real-time content of the provided URL or address.** Your analysis must be based on the information currently present on the page.
+1.  **Use your search tool to access the LIVE, real-time content.**
+    *   If a URL is provided, use it.
+    *   If an address is provided, search for it on Zillow, Redfin, or Realtor.com.
+    *   **If an APN is provided, you MUST search for "APN [number] [county] [state] Redfin" or "APN [number] [county] [state] Zillow" or similar queries to find the specific property address and listing details.**
 2.  **Determine Property Price (\`listPrice\`):**
     *   First, identify the property's current status (e.g., "For Sale", "Active", "Pending", "Contingent", "Sold").
     *   If the status is "For Sale", "Active", or a similar "for sale" status, you MUST use the current asking price as the \`listPrice\`.
@@ -140,7 +159,7 @@ Property to analyze: ${inputDescription}.
     *   The \`safetyScore\` MUST be a direct reflection of the data from the crime map. Do not use generic city-wide scores or other sources unless the primary one is unavailable.
 
 **General Instructions:**
-6.  Extract all other relevant data points from the page.
+6.  Extract all other relevant data points from the page, including **GPS Coordinates** and **Last Sold Date**.
 7.  Only after following the critical instructions above, if some secondary information is *still* missing (e.g., specific utility costs like water/sewer), you may provide a reasonable estimate based on the property's location, type, and size.
 8.  Identify the number of units. For multi-unit properties, provide rent estimates for each unit in the 'monthlyRents' array. Also provide a breakdown of each unit's bedrooms and bathrooms in the 'details.unitDetails' array. The 'marketAnalysis.areaAverageRents' array must also correspond to each unit, providing the market rent for a comparable unit (e.g., same bed/bath count). For single-family homes, all arrays ('monthlyRents', 'unitDetails', 'areaAverageRents') should contain a single element.
 9.  **Recommendation Logic (for a standard Rental strategy):** Your recommendation must be grounded in a balanced assessment of both financial metrics and **location quality**. Your analysis must be critical, objective, and hyper-aware of neighborhood safety.
@@ -160,7 +179,7 @@ ${schemaString}
 `;
 };
 
-export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | 'coords' | 'location', value: string): Promise<Omit<Property, 'id'>> => {
+export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | 'coords' | 'location' | 'apn', value: string): Promise<Omit<Property, 'id'>> => {
     const modelsToTry = ['gemini-2.5-flash', 'gemini-3-pro-preview'];
     let lastError: any = null;
     let rawResponseForDebugging = '';
@@ -237,6 +256,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 propertyType: data.propertyType,
                 imageUrl: data.imageUrl,
                 dateAnalyzed: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                coordinates: data.coordinates,
                 details: {
                     sqft: data.details.sqft,
                     yearBuilt: data.details.yearBuilt,
@@ -244,6 +264,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                     bedrooms: data.details.totalBedrooms,
                     bathrooms: data.details.totalBathrooms,
                     unitDetails: data.details.unitDetails || [{ bedrooms: data.details.totalBedrooms, bathrooms: data.details.totalBathrooms }],
+                    lastSoldDate: data.details.lastSoldDate,
                 },
                 financials: initialFinancials,
                 marketAnalysis: {

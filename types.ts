@@ -15,6 +15,11 @@ export interface Property {
   deletedAt?: string; // New field for Soft Delete audit trail
   createdAt?: string; // Reliable timestamp from backend DB
 
+  coordinates?: {
+    lat: number;
+    lon: number;
+  };
+
   details: {
     bedrooms: number;
     bathrooms: number;
@@ -22,6 +27,7 @@ export interface Property {
     yearBuilt: number;
     numberOfUnits: number;
     unitDetails: Unit[];
+    lastSoldDate?: string;
   };
 
   financials: Financials;
