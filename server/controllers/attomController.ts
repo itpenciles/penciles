@@ -41,8 +41,31 @@ export const getComparables = async (req: Request, res: Response) => {
         // However, standard /sales/comparables might need a propertyId.
         // Let's try to find the property first to get its ID.
 
+        // Parse address string
+        // Expected format: "123 Main St, City, ST 12345"
+        let address1 = '';
+        let address2 = '';
+
+        if (typeof address === 'string') {
+            const parts = address.split(',').map(p => p.trim());
+            if (parts.length >= 2) {
+                address1 = parts[0];
+                address2 = parts.slice(1).join(', ');
+            } else {
+                // Fallback or error
+                address1 = address;
+            }
+        } else if (typeof address === 'object') {
+            // Handle if it is already an object (legacy or future proof)
+            address1 = address.street || address.address1 || '';
+            address2 = `${address.city || ''}, ${address.state || ''} ${address.zip || ''}`.trim();
+            if (address2 === ',') address2 = '';
+        }
+
+        console.log(`Searching ATTOM for: ${address1} | ${address2}`);
+
         const addressSearchResponse = await axios.get(`${ATTOM_BASE_URL}/property/address`, {
-            params: { address1: address.street, address2: `${address.city}, ${address.state}` }, // Simplified address parsing
+            params: { address1, address2 },
             headers: { apikey: ATTOM_API_KEY }
         });
 
