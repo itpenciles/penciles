@@ -93,7 +93,13 @@ const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, compar
     }
 
     return (
-        <div className="rounded-xl overflow-hidden shadow-sm border border-gray-200">
+        <div className="rounded-xl overflow-hidden shadow-sm border border-gray-200 relative">
+            {!internalSubjectCoords && (
+                <div className="absolute top-2 left-2 z-10 bg-white px-3 py-1 rounded-md shadow-md text-xs font-medium text-gray-600 flex items-center">
+                    <div className="animate-spin h-3 w-3 border-2 border-brand-blue border-t-transparent rounded-full mr-2"></div>
+                    Locating Subject Property...
+                </div>
+            )}
             <GoogleMap
                 mapContainerStyle={containerStyle}
                 center={defaultCenter}
@@ -106,7 +112,7 @@ const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, compar
                     fullscreenControl: true,
                 }}
             >
-                {/* Subject Property - Red Marker */}
+                {/* Subject Property - Red Marker (Default) */}
                 {internalSubjectCoords && (
                     <Marker
                         position={internalSubjectCoords}
@@ -116,6 +122,7 @@ const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, compar
                             title: 'Subject Property',
                             details: subjectProperty.address
                         })}
+                        zIndex={1000} // Ensure it's on top
                     />
                 )}
 
@@ -140,7 +147,7 @@ const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, compar
                             onMouseOver={() => onHover && onHover(comp.id)}
                             onMouseOut={() => onHover && onHover(null)}
                             icon={{
-                                url: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png'
+                                url: 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png'
                             }}
                         />
                     )
