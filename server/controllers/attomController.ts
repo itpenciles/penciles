@@ -10,7 +10,7 @@ export const getComparables = async (req: Request, res: Response) => {
             console.error('ATTOM_API_KEY is missing in environment variables.');
             return res.status(500).json({ message: 'ATTOM API key is not configured.' });
         }
-        console.log(`ATTOM_API_KEY is configured (Length: ${ATTOM_API_KEY.length})`);
+        console.log(`ATTOM_API_KEY is configured. Starts with: ${ATTOM_API_KEY.substring(0, 4)}... (Length: ${ATTOM_API_KEY.length})`);
 
         const {
             address,
@@ -215,5 +215,5 @@ function getRecencyDate(recency: string): string {
     }
 
     const date = new Date(now.getTime() - (daysToSubtract * 24 * 60 * 60 * 1000));
-    return date.toISOString().split('T')[0]; // YYYY-MM-DD
+    return date.toISOString().split('T')[0].replace(/-/g, '/'); // YYYY/MM/DD
 }
