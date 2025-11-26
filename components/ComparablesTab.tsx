@@ -390,128 +390,129 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                         </div>
                     </div>
                 )}
+            </div>
 
-                {/* Manual Comps Section - Only shown if no market comps or error */}
-                {
-                    (marketComps.length === 0 || marketError) && (
-                        <div className="space-y-6">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-xl font-bold text-gray-800">Sale Comparable - manual</h2>
+            {/* Manual Comps Section - Only shown if no market comps or error */}
+            {
+                (marketComps.length === 0 || marketError) && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-gray-800">Sale Comparable - manual</h2>
+                            <button
+                                onClick={() => setIsAdding(!isAdding)}
+                                className="flex items-center space-x-2 text-brand-blue hover:text-blue-700 font-medium"
+                            >
+                                {isAdding ? (
+                                    <>
+                                        <XMarkIcon className="h-5 w-5" />
+                                        <span>Cancel</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <PlusIcon className="h-5 w-5" />
+                                        <span>Add Comparable</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {isAdding && (
+                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 animate-fade-in">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Comparable</h3>
+                                {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">{error}</div>}
+
+                                <PropertyInput
+                                    onAnalyze={handleCompAnalyze}
+                                    isLoading={isLoading}
+                                    isOverLimit={analysisStatus.isOverLimit}
+                                    remainingAnalyses={analysisStatus.limit === 'Unlimited' ? Infinity : Math.max(0, analysisStatus.limit - analysisStatus.count)}
+                                    analysisLimit={analysisStatus.limit}
+                                    embedded={true}
+                                    onBack={() => setIsAdding(false)}
+                                />
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                <p className="text-sm text-gray-500">Average Sale Price</p>
+                                <p className="text-2xl font-bold text-gray-900">${avgPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                <p className="text-sm text-gray-500">Avg Price / SqFt</p>
+                                <p className="text-2xl font-bold text-gray-900">${avgSqFtPrice.toFixed(2)}</p>
+                            </div>
+                            <div className="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-100">
+                                <p className="text-sm text-blue-600">Indicated Value (based on SqFt)</p>
+                                <p className="text-2xl font-bold text-blue-900">${indicatedValue.toLocaleString()}</p>
                                 <button
-                                    onClick={() => setIsAdding(!isAdding)}
-                                    className="flex items-center space-x-2 text-brand-blue hover:text-blue-700 font-medium"
+                                    onClick={handleApplyValuation}
+                                    className="mt-2 text-xs font-bold text-blue-700 hover:underline flex items-center"
                                 >
-                                    {isAdding ? (
-                                        <>
-                                            <XMarkIcon className="h-5 w-5" />
-                                            <span>Cancel</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <PlusIcon className="h-5 w-5" />
-                                            <span>Add Comparable</span>
-                                        </>
-                                    )}
+                                    Apply to Analysis <CheckIcon className="h-3 w-3 ml-1" />
                                 </button>
                             </div>
-
-                            {isAdding && (
-                                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 animate-fade-in">
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Comparable</h3>
-                                    {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">{error}</div>}
-
-                                    <PropertyInput
-                                        onAnalyze={handleCompAnalyze}
-                                        isLoading={isLoading}
-                                        isOverLimit={analysisStatus.isOverLimit}
-                                        remainingAnalyses={analysisStatus.limit === 'Unlimited' ? Infinity : Math.max(0, analysisStatus.limit - analysisStatus.count)}
-                                        analysisLimit={analysisStatus.limit}
-                                        embedded={true}
-                                        onBack={() => setIsAdding(false)}
-                                    />
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                    <p className="text-sm text-gray-500">Average Sale Price</p>
-                                    <p className="text-2xl font-bold text-gray-900">${avgPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                                </div>
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                    <p className="text-sm text-gray-500">Avg Price / SqFt</p>
-                                    <p className="text-2xl font-bold text-gray-900">${avgSqFtPrice.toFixed(2)}</p>
-                                </div>
-                                <div className="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-100">
-                                    <p className="text-sm text-blue-600">Indicated Value (based on SqFt)</p>
-                                    <p className="text-2xl font-bold text-blue-900">${indicatedValue.toLocaleString()}</p>
-                                    <button
-                                        onClick={handleApplyValuation}
-                                        className="mt-2 text-xs font-bold text-blue-700 hover:underline flex items-center"
-                                    >
-                                        Apply to Analysis <CheckIcon className="h-3 w-3 ml-1" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Include</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Price</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distance</th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {property.comparables?.map((comp) => (
-                                            <tr key={comp.id} className={!comp.included ? 'opacity-50 bg-gray-50' : ''}>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={comp.included}
-                                                        onChange={() => handleToggleInclude(comp.id)}
-                                                        className="h-4 w-4 text-brand-blue focus:ring-brand-blue border-gray-300 rounded"
-                                                    />
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{comp.address}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${comp.salePrice.toLocaleString()}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{comp.saleDate}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {comp.bedrooms}bd / {comp.bathrooms}ba / {comp.sqft}sqft
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{comp.distanceMiles} mi</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button onClick={() => handleDeleteComp(comp.id)} className="text-red-600 hover:text-red-900">
-                                                        <TrashIcon className="h-5 w-5" />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {(!property.comparables || property.comparables.length === 0) && (
-                                            <tr>
-                                                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                                                    No comparables added yet. Use the "Add Comparable" button to find comps.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div className="flex justify-end mt-4">
-                                {hasChanges && (
-                                    <button onClick={() => onSave(property)} className="px-4 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700">
-                                        Save Changes
-                                    </button>
-                                )}
-                            </div>
                         </div>
-                    )
-                }
-            </div>
-            );
+
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Include</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Price</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distance</th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {property.comparables?.map((comp) => (
+                                        <tr key={comp.id} className={!comp.included ? 'opacity-50 bg-gray-50' : ''}>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={comp.included}
+                                                    onChange={() => handleToggleInclude(comp.id)}
+                                                    className="h-4 w-4 text-brand-blue focus:ring-brand-blue border-gray-300 rounded"
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{comp.address}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${comp.salePrice.toLocaleString()}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{comp.saleDate}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {comp.bedrooms}bd / {comp.bathrooms}ba / {comp.sqft}sqft
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{comp.distanceMiles} mi</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button onClick={() => handleDeleteComp(comp.id)} className="text-red-600 hover:text-red-900">
+                                                    <TrashIcon className="h-5 w-5" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {(!property.comparables || property.comparables.length === 0) && (
+                                        <tr>
+                                            <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                                No comparables added yet. Use the "Add Comparable" button to find comps.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="flex justify-end mt-4">
+                            {hasChanges && (
+                                <button onClick={() => onSave(property)} className="px-4 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700">
+                                    Save Changes
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )
+            }
+        </div>
+    );
 };
