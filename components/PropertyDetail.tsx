@@ -127,13 +127,14 @@ const PropertyDetail = () => {
         return JSON.stringify(property) !== JSON.stringify(editedProperty);
     }, [property, editedProperty]);
 
-    const handleSaveChanges = async () => {
-        if (!editedProperty || !id) return;
+    const handleSaveChanges = async (propertyToSave?: Property) => {
+        const prop = propertyToSave || editedProperty;
+        if (!prop || !id) return;
         setIsReevaluating(true);
         setSaveError(null);
         try {
             // The backend will handle the re-evaluation and save the updated property
-            await updateProperty(id, { ...editedProperty, recommendation: { ...editedProperty.recommendation, strategyAnalyzed: activeStrategy } });
+            await updateProperty(id, { ...prop, recommendation: { ...prop.recommendation, strategyAnalyzed: activeStrategy } });
             alert("Changes Saved & Re-evaluated!");
         } catch (e: any) {
             console.error("Update failed", e);
