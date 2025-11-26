@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
+import { getStateName } from '../utils/usStates';
 
 const ATTOM_API_KEY = process.env.ATTOM_API_KEY;
 // Using V2 Sales Comparables endpoint
@@ -60,7 +61,7 @@ export const getComparables = async (req: Request, res: Response) => {
         // We assume Country is US
         const encodedAddress1 = encodeURIComponent(address1);
         const encodedCity = encodeURIComponent(city);
-        const encodedState = encodeURIComponent(state);
+        const encodedState = encodeURIComponent(getStateName(state)); // Use full state name
         const encodedZip = encodeURIComponent(zip);
 
         const url = `${ATTOM_BASE_URL}/address/${encodedAddress1}/${encodedCity}/US/${encodedState}/${encodedZip}`;
@@ -98,6 +99,21 @@ export const getComparables = async (req: Request, res: Response) => {
             if (sqft === 'Same') params.sqFeetRange = 100;
             else if (sqft === '+-10%') params.sqFeetRange = 300;
             else if (sqft === '+-20%') params.sqFeetRange = 600;
+        }
+
+        if (req.body.yearBuilt) {
+            // User's successful request used yearBuiltRange=10
+            // If we have a target year, we can use yearBuiltRange if we assume the subject matches that year.
+            // However, minYearBuilt/maxYearBuilt is safer if we want absolute bounds.
+            // But given the user's success with yearBuiltRange, let's try to align.
+            // Actually, let's stick to min/max for now but ensure we aren't sending invalid values.
+            // The user's URL used yearBuiltRange=10.
+            // Let's try to use minYearBuilt/maxYearBuilt as it is more explicit for "filtering".
+            const year = parseInt(req.body.yearBuilt);
+            if (!isNaN(year)) {
+                params.minYearBuilt = year - 10;
+                params.maxYearBuilt = year + 10;
+            }
         }
 
         // Execute Request
@@ -149,6 +165,7 @@ export const getComparables = async (req: Request, res: Response) => {
 
         const apiErrorMessage =
             error.response?.data?.RESPONSE_GROUP?.PRODUCT?.STATUS?.['@_Description'] ||
+            error.response?.data?.Response?.status?.msg ||
             error.response?.data?.status?.msg ||
             error.response?.data?.message ||
             error.message;
