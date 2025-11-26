@@ -69,6 +69,7 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
     const handleSearchMarketComps = async () => {
         setIsSearchingMarket(true);
         setMarketError(null);
+        setMarketComps([]); // Clear previous results
         try {
             const response = await apiClient.post('/attom/comparables', {
                 address: property.address,
