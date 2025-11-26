@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
-import { getStateName } from '../utils/usStates';
+import { getStateName } from '../utils/usStates.js';
 
 const ATTOM_API_KEY = process.env.ATTOM_API_KEY;
 // Using V2 Sales Comparables endpoint
