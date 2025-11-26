@@ -144,7 +144,9 @@ export const getComparables = async (req: Request, res: Response) => {
                     bathrooms: parseFloat(structure['@TotalBathroomCount'] || '0'),
                     sqft: parseInt(structure['@GrossLivingAreaSquareFeetCount'] || '0'),
                     distanceMiles: parseFloat(comp['@DistanceFromSubjectPropertyMilesCount'] || '0'),
-                    yearBuilt: parseInt(structure.STRUCTURE_ANALYSIS?.['@PropertyStructureBuiltYear'] || '0')
+                    yearBuilt: parseInt(structure.STRUCTURE_ANALYSIS?.['@PropertyStructureBuiltYear'] || '0'),
+                    latitude: parseFloat(comp['@LatitudeNumber'] || '0'),
+                    longitude: parseFloat(comp['@LongitudeNumber'] || '0')
                 };
             });
 
