@@ -72,12 +72,13 @@ export const getComparables = async (req: Request, res: Response) => {
         const params: any = {
             searchType: 'Radius',
             miles: distance || 1,
-            minComps: 0,
+            minComps: 1,
             maxComps: 20,
-            include0SalesAmounts: 'false',
+            include0SalesAmounts: 'true',
             distressed: 'IncludeDistressed',
             ownerOccupied: 'Both',
             saleDateRange: getRecencyMonths(recency),
+            lotSizeRange: 2000, // Match user's successful request
         };
 
         // Map Filters to Ranges
@@ -102,18 +103,10 @@ export const getComparables = async (req: Request, res: Response) => {
         }
 
         if (req.body.yearBuilt) {
-            // User's successful request used yearBuiltRange=10
-            // If we have a target year, we can use yearBuiltRange if we assume the subject matches that year.
-            // However, minYearBuilt/maxYearBuilt is safer if we want absolute bounds.
-            // But given the user's success with yearBuiltRange, let's try to align.
-            // Actually, let's stick to min/max for now but ensure we aren't sending invalid values.
-            // The user's URL used yearBuiltRange=10.
-            // Let's try to use minYearBuilt/maxYearBuilt as it is more explicit for "filtering".
-            const year = parseInt(req.body.yearBuilt);
-            if (!isNaN(year)) {
-                params.minYearBuilt = year - 10;
-                params.maxYearBuilt = year + 10;
-            }
+            // User's successful request used yearBuiltRange=10.
+            // We will use this exact parameter to match their success.
+            // This assumes the API uses the subject property's year built as the center.
+            params.yearBuiltRange = 10;
         }
 
         // Execute Request
