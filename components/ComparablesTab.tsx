@@ -198,7 +198,6 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                             onChange={(e) => handleFilterChange('distance', Number(e.target.value))}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm"
                         >
-                            <option value={0.5}>0.5 miles</option>
                             <option value={1}>1 mile</option>
                             <option value={2}>2 miles</option>
                             <option value={5}>5 miles</option>
