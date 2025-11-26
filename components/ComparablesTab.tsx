@@ -15,30 +15,29 @@ interface ComparablesTabProps {
     setProperty: (property: Property) => void;
     onSave: (updatedProperty: Property) => Promise<void>;
     hasChanges: boolean;
+    marketComps: AttomComparable[];
+    setMarketComps: (comps: AttomComparable[]) => void;
+    attomFilters: AttomFilters;
+    setAttomFilters: React.Dispatch<React.SetStateAction<AttomFilters>>;
 }
 
-export const ComparablesTab: React.FC<ComparablesTabProps> = ({ property, setProperty, onSave, hasChanges }) => {
+export const ComparablesTab: React.FC<ComparablesTabProps> = ({
+    property,
+    setProperty,
+    onSave,
+    hasChanges,
+    marketComps,
+    setMarketComps,
+    attomFilters,
+    setAttomFilters
+}) => {
     const [isAdding, setIsAdding] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { analysisStatus } = useAuth();
 
-    const [marketComps, setMarketComps] = useState<AttomComparable[]>([]);
     const [isSearchingMarket, setIsSearchingMarket] = useState(false);
     const [marketError, setMarketError] = useState<string | null>(null);
-    const [attomFilters, setAttomFilters] = useState<AttomFilters>({
-        distance: 1,
-        recency: '6 months',
-        sqft: '+-20%',
-        bedrooms: 'Same',
-        bathrooms: 'Same',
-        condition: 'As Is',
-        yearBuilt: property.details.yearBuilt?.toString() || '',
-        lotSize: '',
-        propertyType: property.propertyType,
-        garage: 'Any',
-        buildType: 'Any'
-    });
 
     const handleSearchMarketComps = async () => {
         setIsSearchingMarket(true);

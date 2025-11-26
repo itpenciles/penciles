@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
-import { Property, Strategy } from '../types';
+import { Property, Strategy, AttomComparable, AttomFilters } from '../types';
 import { calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics, calculateBrrrrMetrics } from '../contexts/PropertyContext';
 import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
 import apiClient from '../services/apiClient';
@@ -68,6 +68,22 @@ const PropertyDetail = () => {
     const [isReevaluating, setIsReevaluating] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
+    // Lifted state for ComparablesTab
+    const [marketComps, setMarketComps] = useState<AttomComparable[]>([]);
+    const [attomFilters, setAttomFilters] = useState<AttomFilters>({
+        distance: 1,
+        recency: '6 months',
+        sqft: '+-20%',
+        bedrooms: 'Same',
+        bathrooms: 'Same',
+        condition: 'As Is',
+        yearBuilt: '', // Will be initialized when property loads
+        lotSize: '',
+        propertyType: 'Single Family', // Default
+        garage: 'Any',
+        buildType: 'Any'
+    });
+
 
     useEffect(() => {
         if (!id) return;
@@ -96,6 +112,13 @@ const PropertyDetail = () => {
 
             setProperty(foundProperty);
             setEditedProperty(JSON.parse(JSON.stringify(foundProperty))); // Deep copy for editing
+
+            // Initialize filters with property details if not already set (or reset on new property load)
+            setAttomFilters(prev => ({
+                ...prev,
+                yearBuilt: foundProperty.details.yearBuilt?.toString() || '',
+                propertyType: foundProperty.propertyType
+            }));
         }
     }, [id, properties]);
 
@@ -253,6 +276,10 @@ const PropertyDetail = () => {
                                 setProperty={setEditedProperty}
                                 onSave={handleSaveChanges}
                                 hasChanges={hasChanges}
+                                marketComps={marketComps}
+                                setMarketComps={setMarketComps}
+                                attomFilters={attomFilters}
+                                setAttomFilters={setAttomFilters}
                             />
                         </div>
                     )}

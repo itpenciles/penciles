@@ -147,7 +147,11 @@ export const getComparables = async (req: Request, res: Response) => {
         console.error('Status:', error.response?.status);
         console.error('Data:', JSON.stringify(error.response?.data, null, 2));
 
-        const apiErrorMessage = error.response?.data?.status?.msg || error.response?.data?.message || error.message;
+        const apiErrorMessage =
+            error.response?.data?.RESPONSE_GROUP?.PRODUCT?.STATUS?.['@_Description'] ||
+            error.response?.data?.status?.msg ||
+            error.response?.data?.message ||
+            error.message;
         res.status(500).json({
             message: `ATTOM API Error: ${apiErrorMessage}`,
             details: error.response?.data
