@@ -31,22 +31,39 @@ const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, compar
         title: string;
         details: string;
     } | null>(null);
+    const [internalSubjectCoords, setInternalSubjectCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-    // Debug logging for subject property
+    // Effect to handle subject property coordinates (use provided or geocode)
     React.useEffect(() => {
-        console.log('ComparablesMap - Subject Property:', subjectProperty);
-        console.log('ComparablesMap - Coordinates:', subjectProperty.coordinates);
-    }, [subjectProperty]);
+        if (subjectProperty.coordinates) {
+            setInternalSubjectCoords({
+                lat: subjectProperty.coordinates.lat,
+                lng: subjectProperty.coordinates.lon
+            });
+        } else if (isLoaded && subjectProperty.address) {
+            // Fallback: Geocode the address
+            const geocoder = new window.google.maps.Geocoder();
+            geocoder.geocode({ address: subjectProperty.address }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
+                if (status === 'OK' && results && results[0]) {
+                    const location = results[0].geometry.location;
+                    console.log('Geocoded subject property:', location.toJSON());
+                    setInternalSubjectCoords({
+                        lat: location.lat(),
+                        lng: location.lng()
+                    });
+                } else {
+                    console.error('Geocode failed for subject property:', status);
+                }
+            });
+        }
+    }, [subjectProperty, isLoaded]);
 
     const onLoad = useCallback((map: google.maps.Map) => {
         const bounds = new window.google.maps.LatLngBounds();
 
         // Add subject property to bounds
-        if (subjectProperty.coordinates) {
-            bounds.extend({
-                lat: subjectProperty.coordinates.lat,
-                lng: subjectProperty.coordinates.lon
-            });
+        if (internalSubjectCoords) {
+            bounds.extend(internalSubjectCoords);
         }
 
         // Add comparables to bounds
@@ -60,12 +77,12 @@ const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, compar
         });
 
         // Only fit bounds if we have points
-        if (subjectProperty.coordinates || comparables.length > 0) {
+        if (internalSubjectCoords || comparables.length > 0) {
             map.fitBounds(bounds);
         }
 
         setMap(map);
-    }, [subjectProperty, comparables]);
+    }, [internalSubjectCoords, comparables]);
 
     const onUnmount = useCallback(() => {
         setMap(null);
@@ -90,18 +107,12 @@ const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, compar
                 }}
             >
                 {/* Subject Property - Red Marker */}
-                {subjectProperty.coordinates && (
+                {internalSubjectCoords && (
                     <Marker
-                        position={{
-                            lat: subjectProperty.coordinates.lat,
-                            lng: subjectProperty.coordinates.lon
-                        }}
+                        position={internalSubjectCoords}
                         onClick={() => setSelectedMarker({
                             id: 'subject',
-                            position: {
-                                lat: subjectProperty.coordinates!.lat,
-                                lng: subjectProperty.coordinates!.lon
-                            },
+                            position: internalSubjectCoords,
                             title: 'Subject Property',
                             details: subjectProperty.address
                         })}
