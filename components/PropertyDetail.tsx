@@ -69,7 +69,7 @@ const PropertyDetail = () => {
     const [saveError, setSaveError] = useState<string | null>(null);
 
     // Lifted state for ComparablesTab
-    const [marketComps, setMarketComps] = useState<AttomComparable[]>([]);
+    // marketComps is now part of the property object (property.marketComparables)
     const [attomFilters, setAttomFilters] = useState<AttomFilters>({
         distance: 1,
         recency: '6 months',
@@ -276,8 +276,8 @@ const PropertyDetail = () => {
                                 setProperty={setEditedProperty}
                                 onSave={handleSaveChanges}
                                 hasChanges={hasChanges}
-                                marketComps={marketComps}
-                                setMarketComps={setMarketComps}
+                                marketComps={editedProperty.marketComparables || []}
+                                setMarketComps={(comps) => setEditedProperty({ ...editedProperty, marketComparables: comps })}
                                 attomFilters={attomFilters}
                                 setAttomFilters={setAttomFilters}
                             />

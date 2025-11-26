@@ -77,11 +77,14 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                 address: property.address,
                 ...attomFilters
             });
-            setMarketComps(response.comparables);
+            const newComps = response.comparables;
+            setMarketComps(newComps);
 
-            // If market comps found, we might want to auto-select them or just show them.
-            // For now, let's just show them.
-            // If no comps found, the manual section will show.
+            // Persist the fetched comps to the property immediately
+            const updatedProperty = { ...property, marketComparables: newComps };
+            setProperty(updatedProperty);
+            await onSave(updatedProperty);
+
         } catch (e: any) {
             setMarketError(e.response?.data?.message || e.message || 'Failed to fetch market comps.');
         } finally {
