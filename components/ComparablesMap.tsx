@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import { Property, AttomComparable } from '../types';
 
 const containerStyle = {
@@ -15,15 +15,28 @@ const defaultCenter = {
 interface ComparablesMapProps {
     subjectProperty: Property;
     comparables: AttomComparable[];
+    onHover?: (id: string | null) => void;
 }
 
-const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, comparables }) => {
+const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, comparables, onHover }) => {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
     });
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
+    const [selectedMarker, setSelectedMarker] = useState<{
+        id: string;
+        position: { lat: number; lng: number };
+        title: string;
+        details: string;
+    } | null>(null);
+
+    // Debug logging for subject property
+    React.useEffect(() => {
+        console.log('ComparablesMap - Subject Property:', subjectProperty);
+        console.log('ComparablesMap - Coordinates:', subjectProperty.coordinates);
+    }, [subjectProperty]);
 
     const onLoad = useCallback((map: google.maps.Map) => {
         const bounds = new window.google.maps.LatLngBounds();
@@ -83,10 +96,15 @@ const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, compar
                             lat: subjectProperty.coordinates.lat,
                             lng: subjectProperty.coordinates.lon
                         }}
-                        title="Subject Property"
-                        icon={{
-                            url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
-                        }}
+                        onClick={() => setSelectedMarker({
+                            id: 'subject',
+                            position: {
+                                lat: subjectProperty.coordinates!.lat,
+                                lng: subjectProperty.coordinates!.lon
+                            },
+                            title: 'Subject Property',
+                            details: subjectProperty.address
+                        })}
                     />
                 )}
 
@@ -99,13 +117,36 @@ const ComparablesMap: React.FC<ComparablesMapProps> = ({ subjectProperty, compar
                                 lat: comp.latitude,
                                 lng: comp.longitude
                             }}
-                            title={`${comp.address} - $${comp.salePrice.toLocaleString()}`}
+                            onClick={() => setSelectedMarker({
+                                id: comp.id,
+                                position: {
+                                    lat: comp.latitude!,
+                                    lng: comp.longitude!
+                                },
+                                title: comp.address,
+                                details: `Price: $${comp.salePrice.toLocaleString()} | ${comp.bedrooms}bd/${comp.bathrooms}ba | ${comp.sqft} sqft`
+                            })}
+                            onMouseOver={() => onHover && onHover(comp.id)}
+                            onMouseOut={() => onHover && onHover(null)}
                             icon={{
                                 url: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png'
                             }}
                         />
                     )
                 ))}
+
+                {/* Info Window */}
+                {selectedMarker && (
+                    <InfoWindow
+                        position={selectedMarker.position}
+                        onCloseClick={() => setSelectedMarker(null)}
+                    >
+                        <div className="p-2 max-w-xs">
+                            <h3 className="font-bold text-gray-900 mb-1">{selectedMarker.title}</h3>
+                            <p className="text-sm text-gray-600">{selectedMarker.details}</p>
+                        </div>
+                    </InfoWindow>
+                )}
             </GoogleMap>
         </div>
     );

@@ -39,6 +39,7 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
 
     const [isSearchingMarket, setIsSearchingMarket] = useState(false);
     const [marketError, setMarketError] = useState<string | null>(null);
+    const [hoveredCompId, setHoveredCompId] = useState<string | null>(null);
 
     // Sorting State
     const [sortConfig, setSortConfig] = useState<{ key: 'salePrice' | 'saleDate' | 'distanceMiles'; direction: 'asc' | 'desc' } | null>(null);
@@ -344,6 +345,7 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                         <ComparablesMap
                             subjectProperty={property}
                             comparables={marketComps}
+                            onHover={setHoveredCompId}
                         />
 
                         <div className="overflow-x-auto border border-gray-200 rounded-xl shadow-sm">
@@ -375,7 +377,10 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {sortedMarketComps.map((comp) => (
-                                        <tr key={comp.id}>
+                                        <tr
+                                            key={comp.id}
+                                            className={`transition-colors duration-200 ${hoveredCompId === comp.id ? 'bg-blue-50 border-l-4 border-brand-blue' : 'hover:bg-gray-50'}`}
+                                        >
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{comp.address}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${comp.salePrice?.toLocaleString()}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{comp.saleDate}</td>
