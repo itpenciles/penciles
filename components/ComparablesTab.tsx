@@ -39,6 +39,33 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
     const [isSearchingMarket, setIsSearchingMarket] = useState(false);
     const [marketError, setMarketError] = useState<string | null>(null);
 
+    // Sorting State
+    const [sortConfig, setSortConfig] = useState<{ key: 'salePrice' | 'saleDate' | 'distanceMiles'; direction: 'asc' | 'desc' } | null>(null);
+
+    const handleSort = (key: 'salePrice' | 'saleDate' | 'distanceMiles') => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedMarketComps = React.useMemo(() => {
+        let sortableItems = [...marketComps];
+        if (sortConfig !== null) {
+            sortableItems.sort((a, b) => {
+                if (a[sortConfig.key] < b[sortConfig.key]) {
+                    return sortConfig.direction === 'asc' ? -1 : 1;
+                }
+                if (a[sortConfig.key] > b[sortConfig.key]) {
+                    return sortConfig.direction === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [marketComps, sortConfig]);
+
     const handleSearchMarketComps = async () => {
         setIsSearchingMarket(true);
         setMarketError(null);
@@ -317,14 +344,29 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Price</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th
+                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        onClick={() => handleSort('salePrice')}
+                                    >
+                                        Sale Price {sortConfig?.key === 'salePrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </th>
+                                    <th
+                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        onClick={() => handleSort('saleDate')}
+                                    >
+                                        Date {sortConfig?.key === 'saleDate' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distance</th>
+                                    <th
+                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        onClick={() => handleSort('distanceMiles')}
+                                    >
+                                        Distance {sortConfig?.key === 'distanceMiles' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {marketComps.map((comp) => (
+                                {sortedMarketComps.map((comp) => (
                                     <tr key={comp.id}>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{comp.address}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${comp.salePrice?.toLocaleString()}</td>

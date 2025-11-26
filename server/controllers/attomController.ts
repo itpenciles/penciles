@@ -71,7 +71,7 @@ export const getComparables = async (req: Request, res: Response) => {
         const params: any = {
             searchType: 'Radius',
             miles: distance || 1,
-            minComps: 1,
+            minComps: 0,
             maxComps: 20,
             include0SalesAmounts: 'false',
             distressed: 'IncludeDistressed',
