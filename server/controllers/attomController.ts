@@ -102,7 +102,7 @@ export const getComparables = async (req: Request, res: Response) => {
             page: 1,
             pagesize: 20, // Limit results
             radius: distance || 1, // Default 1 mile
-            minSaleDate: getRecencyDate(recency),
+            startSaleSearchDate: getRecencyDate(recency),
         };
 
         // We need lat/lon for radius search.
