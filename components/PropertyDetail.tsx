@@ -127,7 +127,7 @@ const PropertyDetail = () => {
         return JSON.stringify(property) !== JSON.stringify(editedProperty);
     }, [property, editedProperty]);
 
-    const handleSaveChanges = async (propertyToSave?: Property) => {
+    const handleSaveChanges = async (propertyToSave?: Property, skipReevaluation = false) => {
         const prop = propertyToSave || editedProperty;
         if (!prop || !id) return;
 
@@ -138,8 +138,13 @@ const PropertyDetail = () => {
         setSaveError(null);
         try {
             // The backend will handle the re-evaluation and save the updated property
-            await updateProperty(id, { ...prop, recommendation: { ...prop.recommendation, strategyAnalyzed: activeStrategy } });
-            alert("Changes Saved & Re-evaluated!");
+            // We pass skipReevaluation if we just want to save data without triggering AI
+            await updateProperty(id, {
+                ...prop,
+                recommendation: { ...prop.recommendation, strategyAnalyzed: activeStrategy },
+                skipReevaluation: skipReevaluation // Pass the flag to the backend
+            } as any); // Cast to any to avoid TS error since Property type doesn't have this flag
+            alert("Changes Saved!");
         } catch (e: any) {
             console.error("Update failed", e);
             setSaveError(e.response?.data?.message || e.message || "Failed to save changes. Please try again.");

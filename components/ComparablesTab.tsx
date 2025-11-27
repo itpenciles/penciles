@@ -14,7 +14,7 @@ const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://w
 interface ComparablesTabProps {
     property: Property;
     setProperty: (property: Property) => void;
-    onSave: (updatedProperty: Property) => Promise<void>;
+    onSave: (updatedProperty: Property, skipReevaluation?: boolean) => Promise<void>;
     hasChanges: boolean;
     marketComps: AttomComparable[];
     setMarketComps: (comps: AttomComparable[]) => void;
@@ -83,7 +83,7 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
             // Persist the fetched comps to the property immediately
             const updatedProperty = { ...property, marketComparables: newComps };
             setProperty(updatedProperty);
-            await onSave(updatedProperty);
+            await onSave(updatedProperty, true); // Skip re-evaluation
 
         } catch (e: any) {
             setMarketError(e.response?.data?.message || e.message || 'Failed to fetch market comps.');
@@ -330,7 +330,7 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                     </div>
                 </div>
 
-                <div className="flex justify-end space-x-2">
+                <div className="flex justify-end space-x-2 mb-6">
                     <button
                         onClick={handleSearchMarketComps}
                         disabled={isSearchingMarket}
@@ -344,7 +344,7 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                                 console.log('Manual Save triggered. Comps:', marketComps);
                                 const updatedProperty = { ...property, marketComparables: marketComps };
                                 setProperty(updatedProperty);
-                                await onSave(updatedProperty);
+                                await onSave(updatedProperty, true); // Skip re-evaluation
                             }}
                             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
                         >
