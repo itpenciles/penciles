@@ -130,6 +130,10 @@ const PropertyDetail = () => {
     const handleSaveChanges = async (propertyToSave?: Property) => {
         const prop = propertyToSave || editedProperty;
         if (!prop || !id) return;
+
+        console.log('[PropertyDetail] Saving property:', prop.id);
+        console.log('[PropertyDetail] Market Comps to save:', prop.marketComparables?.length);
+
         setIsReevaluating(true);
         setSaveError(null);
         try {

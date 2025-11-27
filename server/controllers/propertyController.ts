@@ -10,7 +10,7 @@ export const getProperties = async (req: any, res: any) => {
         // Fetch ALL properties. The frontend will handle filtering Active vs Deleted.
         // We fetch 'created_at' to allow precise frontend filtering for monthly cycles.
         const result = await query(
-            'SELECT id, property_data, created_at FROM properties WHERE user_id = $1 ORDER BY created_at DESC', 
+            'SELECT id, property_data, created_at FROM properties WHERE user_id = $1 ORDER BY created_at DESC',
             [userId]
         );
         // The property object is stored in property_data, and we also need the db id and timestamp
@@ -60,13 +60,16 @@ export const updateProperty = async (req: any, res: any) => {
     // Remove the id from the JSONB object if it exists to avoid duplication
     const { id: propertyId, ...dataToStore } = propertyData;
 
+    console.log(`[UpdateProperty] Updating property ${id} for user ${userId}`);
+    console.log(`[UpdateProperty] Market Comparables count: ${propertyData.marketComparables?.length || 0}`);
+
     try {
         // Guard clause: Ensure recommendation object exists before accessing strategy
         const strategyToAnalyze = propertyData.recommendation?.strategyAnalyzed || 'Rental';
 
         // Step 1: Get a fresh AI recommendation based on the user's changes.
         const newRecommendation = await reevaluatePropertyWithGemini(
-            propertyData, 
+            propertyData,
             strategyToAnalyze
         );
 
@@ -85,7 +88,7 @@ export const updateProperty = async (req: any, res: any) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Property not found or user not authorized.' });
         }
-        
+
         // Step 4: Return the complete, re-evaluated property to the frontend.
         const updatedProperty = {
             ...result.rows[0].property_data,

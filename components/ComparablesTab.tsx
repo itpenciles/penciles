@@ -330,7 +330,7 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                     </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end space-x-2">
                     <button
                         onClick={handleSearchMarketComps}
                         disabled={isSearchingMarket}
@@ -338,6 +338,19 @@ export const ComparablesTab: React.FC<ComparablesTabProps> = ({
                     >
                         {isSearchingMarket ? 'Searching...' : 'Search Market Comps'}
                     </button>
+                    {marketComps.length > 0 && (
+                        <button
+                            onClick={async () => {
+                                console.log('Manual Save triggered. Comps:', marketComps);
+                                const updatedProperty = { ...property, marketComparables: marketComps };
+                                setProperty(updatedProperty);
+                                await onSave(updatedProperty);
+                            }}
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
+                        >
+                            Save Results
+                        </button>
+                    )}
                 </div>
 
                 {marketError && <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">{marketError}</div>}
