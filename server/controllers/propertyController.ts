@@ -64,20 +64,39 @@ export const updateProperty = async (req: any, res: any) => {
     console.log(`[UpdateProperty] Market Comparables count: ${propertyData.marketComparables?.length || 0}`);
 
     try {
-        // Guard clause: Ensure recommendation object exists before accessing strategy
-        const strategyToAnalyze = propertyData.recommendation?.strategyAnalyzed || 'Rental';
+        // Check for skipReevaluation flag (passed from frontend when just saving comps)
+        const skipReevaluation = (req.body as any).skipReevaluation === true;
 
-        // Step 1: Get a fresh AI recommendation based on the user's changes.
-        const newRecommendation = await reevaluatePropertyWithGemini(
-            propertyData,
-            strategyToAnalyze
-        );
+        let updatedDataToStore = { ...dataToStore };
 
-        // Step 2: Merge the new recommendation into the property data.
-        const updatedDataToStore = {
-            ...dataToStore,
-            recommendation: newRecommendation,
-        };
+        if (!skipReevaluation) {
+            try {
+                // Guard clause: Ensure recommendation object exists before accessing strategy
+                const strategyToAnalyze = propertyData.recommendation?.strategyAnalyzed || 'Rental';
+
+                // Step 1: Get a fresh AI recommendation based on the user's changes.
+                const newRecommendation = await reevaluatePropertyWithGemini(
+                    propertyData,
+                    strategyToAnalyze
+                );
+
+                // Step 2: Merge the new recommendation into the property data.
+                updatedDataToStore = {
+                    ...updatedDataToStore,
+                    recommendation: newRecommendation,
+                };
+            } catch (aiError: any) {
+                console.warn('[UpdateProperty] AI Re-evaluation failed, saving changes anyway:', aiError.message);
+                // If AI fails, we still want to save the user's manual edits (like comps),
+                // so we proceed with the original data but maybe add a warning note?
+                // For now, just proceeding ensures data isn't lost.
+            }
+        } else {
+            console.log('[UpdateProperty] Skipping AI re-evaluation as requested.');
+        }
+
+        // Remove the flag before saving to DB
+        delete (updatedDataToStore as any).skipReevaluation;
 
         // Step 3: Save the fully updated object to the database.
         const result = await query(
