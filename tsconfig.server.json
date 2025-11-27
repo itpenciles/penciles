@@ -10,6 +10,13 @@
     "declaration": false,
     "allowImportingTsExtensions": false
   },
-  "include": ["server/**/*.ts"],
-  "exclude": ["node_modules", "src", "vite.config.ts"]
+  "include": [
+    "server/**/*.ts",
+    "types.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "src",
+    "vite.config.ts"
+  ]
 }

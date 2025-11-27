@@ -1,65 +1,43 @@
-# Walkthrough: Projections, BRRRR, and Sales Comps
+# Market Comps Feature Walkthrough
 
-This walkthrough details the new features added to the Property Analyzer: Long-Term Projections, BRRRR Calculator, and Manual Sales Comparables.
+I have successfully implemented the "Market Comps" feature using the ATTOM API. This new section allows you to find sales comparables based on specific criteria, providing a more automated and data-driven approach compared to the manual entry method.
 
-## 1. Long-Term Projections
+## Changes Implemented
 
-A new **"Projections"** tab has been added to the Property Detail view.
+### Backend
+- **New Controller**: Created `attomController.ts` to handle API requests to ATTOM.
+- **New Route**: Added `/api/attom/comparables` endpoint.
+- **Logic**: Implemented logic to map user filters (distance, recency, sqft, beds/baths, etc.) to ATTOM API parameters.
+    - **SqFt**: Supports "+-10%", "+-20%", and "Same" (approx +-5%).
+    - **Beds/Baths**: Supports "Same" (exact match) and "+-1" (range).
+    - **Recency**: Calculates date range based on selection (e.g., "Last 2 weeks", "6 months").
 
-### Features
--   **30-Year Forecast**: Visualizes Equity Buildup, Loan Paydown, and Cash Flow over 30 years.
--   **Interactive Charts**: Uses `recharts` to display:
-    -   Equity vs. Loan Balance (Area Chart)
-    -   Annual Cash Flow & NOI (Bar/Line Chart)
--   **Adjustable Assumptions**: Users can modify:
-    -   Appreciation Rate (Default: 3%)
-    -   Rent Growth Rate (Default: 3%)
-    -   Expense Inflation Rate (Default: 2%)
--   **Detailed Table**: A tabular view of the data for every 5th year.
+### Frontend
+- **Market Comps Section**: Added a new section in the "Comparables" tab.
+- **Filters**: Implemented a comprehensive set of filters:
+    - Distance (0.5, 1, 2, 5 miles)
+    - Recency (This week to YTD)
+    - SqFt Range (+-10%, +-20%, Same)
+    - Bedrooms/Bathrooms (Same, +-1)
+    - Condition, Year Built, Lot Size, Property Type, Garage, Build Type
+- **Conditional Rendering**: The existing "Sales Comparable" section has been renamed to "Sale Comparable - manual" and is only displayed if:
+    - No market comps are found.
+    - An error occurs with the API.
+    - Or initially before a search is run (if list is empty).
 
-### Verification
--   Navigate to any property.
--   Click the "Projections" tab.
--   Adjust the sliders and observe the charts updating in real-time.
+## Verification Results
 
-## 2. BRRRR Calculator
+### Automated Checks
+- **Linting**: Verified no lint errors in the new and modified files.
+- **Type Safety**: Updated `types.ts` to include `AttomComparable` and `AttomFilters` interfaces, ensuring type safety across frontend and backend.
 
-A dedicated **BRRRR** (Buy, Rehab, Rent, Refinance, Repeat) strategy has been added.
+### Manual Verification Steps
+1.  **Add API Key**: Ensure `ATTOM_API_KEY` is set in your `.env` file.
+2.  **Navigate**: Go to the "Comparables" tab for a property.
+3.  **Search**: Select your desired filters in the "Market Comps" section and click "Search Market Comps".
+4.  **View Results**: Verify that comparables from ATTOM are displayed in the table.
+5.  **Fallback**: If no results are found, verify that the "Sale Comparable - manual" section appears below.
 
-### Features
--   **Strategy Selector**: "BRRRR" is now a selectable strategy.
--   **Two-Phase Analysis**:
-    -   **Phase 1 (Buy & Rehab)**: Inputs for Purchase Price, Rehab Cost, Rehab Duration, and Initial Loan (Hard Money/Bridge).
-    -   **Phase 2 (Refinance)**: Inputs for ARV, Refinance LTV, Refinance Rate, and Post-Refi Expenses.
--   **Key Metrics**:
-    -   **Cash Left in Deal**: Calculates how much capital is trapped after refinancing.
-    -   **ROI (Infinite Return)**: Detects if you have pulled out all your cash (Infinite Return).
-    -   **Post-Refi Cash Flow**: Monthly cash flow after the refinance loan is in place.
-
-### Verification
--   Select "BRRRR" from the strategy dropdown.
--   Go to the "Parameters" tab to input your loan and rehab details.
--   View the "Metrics" tab to see your Cash Left in Deal and ROI.
-
-## 3. Manual Sales Comparables
-
-A new **"Comparables"** tab allows for manual entry and tracking of sales comps.
-
-### Features
--   **Add Comps**: Manually enter address, price, date, sqft, beds/baths, and distance.
--   **Valuation Analysis**:
-    -   Calculates **Average Price** of selected comps.
-    -   Calculates **Weighted Average Price per SqFt**.
-    -   **Indicated Value**: Estimates the subject property's value based on its SqFt and the comps' Avg $/SqFt.
--   **Apply to ARV**: One-click button to update the property's Estimated Value / ARV with the Indicated Value.
-
-### Verification
--   Click the "Comparables" tab.
--   Click "Add Comp" and enter a few test comparables.
--   Check the "Indicated Value" calculation.
--   Click "Apply" to update the property's ARV.
-
-## Technical Changes
--   **Refactoring**: `AdjustTab` and form fields were extracted to separate files for better maintainability.
--   **Type Safety**: Enhanced `types.ts` to support new strategies and data structures.
--   **Backend Support**: Updated `geminiService.ts` and `calculations.ts` to handle BRRRR logic server-side.
+## Next Steps
+- **API Key**: Please add your ATTOM API key to the `.env` file if you haven't already.
+- **Testing**: Test the search with various addresses to ensure the ATTOM API returns data as expected.

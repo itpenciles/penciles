@@ -60,6 +60,7 @@ export interface Property {
     calculations: BrrrrCalculations;
   };
   comparables?: Comparable[];
+  marketComparables?: AttomComparable[];
 }
 
 export interface Financials {
@@ -236,6 +237,36 @@ export interface BrrrrCalculations {
   isInfiniteReturn: boolean;
 }
 
+
+export interface AttomComparable {
+  id: string;
+  address: string;
+  salePrice: number;
+  saleDate: string;
+  bedrooms: number;
+  bathrooms: number;
+  sqft: number;
+  distanceMiles: number;
+  yearBuilt?: number;
+  lotSize?: number;
+  propertyType?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface AttomFilters {
+  distance: number;
+  recency: string;
+  sqft: string;
+  bedrooms: string;
+  bathrooms: string;
+  condition: string;
+  yearBuilt: string;
+  lotSize: string;
+  propertyType: string;
+  garage: string;
+  buildType: string;
+}
 
 export type PropertyAction =
   | { type: 'ADD_PROPERTY'; payload: Property }
