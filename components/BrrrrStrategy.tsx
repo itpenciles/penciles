@@ -1,7 +1,7 @@
 import React from 'react';
 import { Property } from '../types';
 import { calculateBrrrrMetrics } from '../contexts/PropertyContext';
-import { InputField } from './common/FormFields';
+import { InputField, ToggleField } from './common/FormFields';
 
 const formatCurrency = (amount: number, precision = 0) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: precision, maximumFractionDigits: precision }).format(amount);
 
@@ -55,18 +55,7 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
                         <span className="text-gray-600">Purchase Price</span>
                         <span className="font-semibold">{formatCurrency(brrrr.inputs.purchasePrice)}</span>
                     </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-600">Rehab Cost</span>
-                        <span className="font-semibold">{formatCurrency(brrrr.inputs.rehabCost)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-600">Initial Closing Costs</span>
-                        <span className="font-semibold">{formatCurrency(brrrr.inputs.initialLoanClosingCosts)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-600">Holding Costs (Total)</span>
-                        <span className="font-semibold">{formatCurrency(totalProjectCost - brrrr.inputs.purchasePrice - brrrr.inputs.rehabCost - brrrr.inputs.initialLoanClosingCosts)}</span>
-                    </div>
+                    {/* Add more detailed breakdown here if needed */}
                     <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
                         <span className="text-gray-800">Total All-In Cost</span>
                         <span className="text-gray-900">{formatCurrency(totalProjectCost)}</span>
@@ -82,7 +71,7 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
                         <span className="font-semibold">{formatCurrency(brrrr.inputs.arv)}</span>
                     </div>
                     <div className="flex justify-between">
-                        <span className="text-gray-600">New Loan Amount ({brrrr.inputs.refinanceLoanLtv}% LTV)</span>
+                        <span className="text-gray-600">New Loan Amount</span>
                         <span className="font-semibold">{formatCurrency(refinanceLoanAmount)}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
@@ -99,9 +88,16 @@ export const BrrrrParamsTab = ({ property, setProperty, onSave, onReset, hasChan
     const brrrr = property.brrrrAnalysis;
     if (!brrrr) return <div>BRRRR Analysis not available.</div>;
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const newInputs = { ...brrrr.inputs, [name]: Number(value) };
+    // Helper to update nested state
+    const updateNested = (path: string[], value: any) => {
+        const newInputs = { ...brrrr.inputs };
+        let current: any = newInputs;
+        for (let i = 0; i < path.length - 1; i++) {
+            if (!current[path[i]]) current[path[i]] = {};
+            current = current[path[i]];
+        }
+        current[path[path.length - 1]] = value;
+
         const newCalculations = calculateBrrrrMetrics(newInputs);
         setProperty({
             ...property,
@@ -109,42 +105,144 @@ export const BrrrrParamsTab = ({ property, setProperty, onSave, onReset, hasChan
         });
     };
 
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        const val = type === 'number' ? Number(value) : value;
+        // Name is expected to be dot notation e.g. "purchaseCosts.points"
+        updateNested(name.split('.'), val);
+    };
+
+    const handleToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, checked } = e.target;
+        updateNested(name.split('.'), checked);
+    };
+
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             <p className="text-sm bg-blue-50 p-3 rounded-lg text-blue-800">
-                Adjust the BRRRR parameters below. The goal is to recover as much capital as possible during the refinance step.
+                Adjust the detailed BRRRR parameters below.
             </p>
 
+            {/* Phase 1: Buy */}
             <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Phase 1: Buy & Rehab</h4>
+                <h4 className="font-semibold text-gray-700 border-b pb-2">Phase 1: Buy</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Purchase Price ($)" name="purchasePrice" value={brrrr.inputs.purchasePrice} onChange={handleInputChange} />
-                    <InputField label="Rehab Cost ($)" name="rehabCost" value={brrrr.inputs.rehabCost} onChange={handleInputChange} />
-                    <InputField label="Rehab Duration (Months)" name="rehabDurationMonths" value={brrrr.inputs.rehabDurationMonths} onChange={handleInputChange} />
-                    <InputField label="After Repair Value (ARV) ($)" name="arv" value={brrrr.inputs.arv} onChange={handleInputChange} />
+                    <InputField label="Purchase Price ($)" name="purchasePrice" value={brrrr.inputs.purchasePrice} onChange={handleChange} />
+                    <InputField label="After Repair Value (ARV) ($)" name="arv" value={brrrr.inputs.arv} onChange={handleChange} />
+                </div>
+
+                <h5 className="font-medium text-gray-600 mt-4">Purchase Closing Costs</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="Points/Origination ($)" name="purchaseCosts.points" value={brrrr.inputs.purchaseCosts?.points} onChange={handleChange} />
+                    <InputField label="Prepaid Hazard Ins ($)" name="purchaseCosts.prepaidHazardInsurance" value={brrrr.inputs.purchaseCosts?.prepaidHazardInsurance} onChange={handleChange} />
+                    <InputField label="Prepaid Flood Ins ($)" name="purchaseCosts.prepaidFloodInsurance" value={brrrr.inputs.purchaseCosts?.prepaidFloodInsurance} onChange={handleChange} />
+                    <InputField label="Prepaid Prop Tax ($)" name="purchaseCosts.prepaidPropertyTax" value={brrrr.inputs.purchaseCosts?.prepaidPropertyTax} onChange={handleChange} />
+                    <InputField label="Annual Assessments ($)" name="purchaseCosts.annualAssessments" value={brrrr.inputs.purchaseCosts?.annualAssessments} onChange={handleChange} />
+                    <InputField label="Title & Escrow ($)" name="purchaseCosts.titleEscrowFees" value={brrrr.inputs.purchaseCosts?.titleEscrowFees} onChange={handleChange} />
+                    <InputField label="Attorney Fees ($)" name="purchaseCosts.attorneyFees" value={brrrr.inputs.purchaseCosts?.attorneyFees} onChange={handleChange} />
+                    <InputField label="Inspection Cost ($)" name="purchaseCosts.inspectionCost" value={brrrr.inputs.purchaseCosts?.inspectionCost} onChange={handleChange} />
+                    <InputField label="Recording Fees ($)" name="purchaseCosts.recordingFees" value={brrrr.inputs.purchaseCosts?.recordingFees} onChange={handleChange} />
+                    <InputField label="Appraisal Fees ($)" name="purchaseCosts.appraisalFees" value={brrrr.inputs.purchaseCosts?.appraisalFees} onChange={handleChange} />
+                    <InputField label="Broker/Realtor Fees ($)" name="purchaseCosts.brokerFees" value={brrrr.inputs.purchaseCosts?.brokerFees} onChange={handleChange} />
+                    <InputField label="Other Fees ($)" name="purchaseCosts.otherFees" value={brrrr.inputs.purchaseCosts?.otherFees} onChange={handleChange} />
                 </div>
             </div>
 
+            {/* Phase 1: Rehab */}
             <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Phase 1: Financing (Hard Money/Bridge)</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Initial Loan Amount ($)" name="initialLoanAmount" value={brrrr.inputs.initialLoanAmount} onChange={handleInputChange} />
-                    <InputField label="Interest Rate (%)" name="initialLoanRate" value={brrrr.inputs.initialLoanRate} onChange={handleInputChange} />
-                    <InputField label="Closing Costs (Buy) ($)" name="initialLoanClosingCosts" value={brrrr.inputs.initialLoanClosingCosts} onChange={handleInputChange} />
-                    <InputField label="Monthly Holding Costs ($)" name="holdingCostsMonthly" value={brrrr.inputs.holdingCostsMonthly} onChange={handleInputChange} />
+                <h4 className="font-semibold text-gray-700 border-b pb-2">Phase 1: Rehab (Estimated Repair Costs)</h4>
+
+                <h5 className="font-medium text-gray-600 mt-2">Exterior</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="Roof" name="rehabCosts.exterior.roof" value={brrrr.inputs.rehabCosts?.exterior?.roof} onChange={handleChange} />
+                    <InputField label="Gutters/Soffit" name="rehabCosts.exterior.gutters" value={brrrr.inputs.rehabCosts?.exterior?.gutters} onChange={handleChange} />
+                    <InputField label="Garage" name="rehabCosts.exterior.garage" value={brrrr.inputs.rehabCosts?.exterior?.garage} onChange={handleChange} />
+                    <InputField label="Siding" name="rehabCosts.exterior.siding" value={brrrr.inputs.rehabCosts?.exterior?.siding} onChange={handleChange} />
+                    <InputField label="Landscaping" name="rehabCosts.exterior.landscaping" value={brrrr.inputs.rehabCosts?.exterior?.landscaping} onChange={handleChange} />
+                    <InputField label="Ext. Painting" name="rehabCosts.exterior.painting" value={brrrr.inputs.rehabCosts?.exterior?.painting} onChange={handleChange} />
+                    <InputField label="Septic" name="rehabCosts.exterior.septic" value={brrrr.inputs.rehabCosts?.exterior?.septic} onChange={handleChange} />
+                    <InputField label="Decks/Porches" name="rehabCosts.exterior.decks" value={brrrr.inputs.rehabCosts?.exterior?.decks} onChange={handleChange} />
+                    <InputField label="Foundation" name="rehabCosts.exterior.foundation" value={brrrr.inputs.rehabCosts?.exterior?.foundation} onChange={handleChange} />
+                    <InputField label="Electrical Meter" name="rehabCosts.exterior.electrical" value={brrrr.inputs.rehabCosts?.exterior?.electrical} onChange={handleChange} />
+                    <InputField label="Other Ext." name="rehabCosts.exterior.other" value={brrrr.inputs.rehabCosts?.exterior?.other} onChange={handleChange} />
+                </div>
+
+                <h5 className="font-medium text-gray-600 mt-4">Interior</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="Demo" name="rehabCosts.interior.demo" value={brrrr.inputs.rehabCosts?.interior?.demo} onChange={handleChange} />
+                    <InputField label="Sheetrock" name="rehabCosts.interior.sheetrock" value={brrrr.inputs.rehabCosts?.interior?.sheetrock} onChange={handleChange} />
+                    <InputField label="Plumbing" name="rehabCosts.interior.plumbing" value={brrrr.inputs.rehabCosts?.interior?.plumbing} onChange={handleChange} />
+                    <InputField label="Carpentry" name="rehabCosts.interior.carpentry" value={brrrr.inputs.rehabCosts?.interior?.carpentry} onChange={handleChange} />
+                    <InputField label="Windows" name="rehabCosts.interior.windows" value={brrrr.inputs.rehabCosts?.interior?.windows} onChange={handleChange} />
+                    <InputField label="Doors" name="rehabCosts.interior.doors" value={brrrr.inputs.rehabCosts?.interior?.doors} onChange={handleChange} />
+                    <InputField label="Electrical" name="rehabCosts.interior.electrical" value={brrrr.inputs.rehabCosts?.interior?.electrical} onChange={handleChange} />
+                    <InputField label="Int. Painting" name="rehabCosts.interior.painting" value={brrrr.inputs.rehabCosts?.interior?.painting} onChange={handleChange} />
+                    <InputField label="HVAC" name="rehabCosts.interior.hvac" value={brrrr.inputs.rehabCosts?.interior?.hvac} onChange={handleChange} />
+                    <InputField label="Cabinets/Counter" name="rehabCosts.interior.cabinets" value={brrrr.inputs.rehabCosts?.interior?.cabinets} onChange={handleChange} />
+                    <InputField label="Framing" name="rehabCosts.interior.framing" value={brrrr.inputs.rehabCosts?.interior?.framing} onChange={handleChange} />
+                    <InputField label="Flooring" name="rehabCosts.interior.flooring" value={brrrr.inputs.rehabCosts?.interior?.flooring} onChange={handleChange} />
+                    <InputField label="Basement" name="rehabCosts.interior.basement" value={brrrr.inputs.rehabCosts?.interior?.basement} onChange={handleChange} />
+                    <InputField label="Other Int." name="rehabCosts.interior.other" value={brrrr.inputs.rehabCosts?.interior?.other} onChange={handleChange} />
+                </div>
+
+                <h5 className="font-medium text-gray-600 mt-4">General</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="Permits" name="rehabCosts.general.permits" value={brrrr.inputs.rehabCosts?.general?.permits} onChange={handleChange} />
+                    <InputField label="Termites" name="rehabCosts.general.termites" value={brrrr.inputs.rehabCosts?.general?.termites} onChange={handleChange} />
+                    <InputField label="Mold" name="rehabCosts.general.mold" value={brrrr.inputs.rehabCosts?.general?.mold} onChange={handleChange} />
+                    <InputField label="Misc" name="rehabCosts.general.misc" value={brrrr.inputs.rehabCosts?.general?.misc} onChange={handleChange} />
                 </div>
             </div>
 
+            {/* Phase 1: Financing */}
             <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Phase 2: Refinance (Rent & Refi)</h4>
+                <h4 className="font-semibold text-gray-700 border-b pb-2">Phase 1: Financing (Hard Money/Bridge)</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Refinance LTV (%)" name="refinanceLoanLtv" value={brrrr.inputs.refinanceLoanLtv} onChange={handleInputChange} />
-                    <InputField label="Refinance Rate (%)" name="refinanceLoanRate" value={brrrr.inputs.refinanceLoanRate} onChange={handleInputChange} />
-                    <InputField label="Refinance Closing Costs ($)" name="refinanceClosingCosts" value={brrrr.inputs.refinanceClosingCosts} onChange={handleInputChange} />
+                    <ToggleField label="Is All Cash?" name="financing.isCash" checked={!!brrrr.inputs.financing?.isCash} onChange={handleToggle} />
+                    {!brrrr.inputs.financing?.isCash && (
+                        <>
+                            <InputField label="Loan Amount ($)" name="financing.loanAmount" value={brrrr.inputs.financing?.loanAmount} onChange={handleChange} />
+                            <InputField label="Interest Rate (%)" name="financing.interestRate" value={brrrr.inputs.financing?.interestRate} onChange={handleChange} />
+                            <InputField label="Points Charged (%)" name="financing.points" value={brrrr.inputs.financing?.points} onChange={handleChange} />
+                            <ToggleField label="Interest Only?" name="financing.interestOnly" checked={!!brrrr.inputs.financing?.interestOnly} onChange={handleToggle} />
+                        </>
+                    )}
+                    <InputField label="Other Lender Charges ($)" name="financing.otherCharges" value={brrrr.inputs.financing?.otherCharges} onChange={handleChange} />
+                    <ToggleField label="Wrap Fees into Loan?" name="financing.wrapFeesIntoLoan" checked={!!brrrr.inputs.financing?.wrapFeesIntoLoan} onChange={handleToggle} />
+                    <InputField label="Rehab Timeline (Months)" name="financing.rehabTimelineMonths" value={brrrr.inputs.financing?.rehabTimelineMonths} onChange={handleChange} />
+                    <InputField label="Refinance Timeline (Months)" name="financing.refinanceTimelineMonths" value={brrrr.inputs.financing?.refinanceTimelineMonths} onChange={handleChange} />
+                    <InputField label="Monthly Holding Costs ($)" name="holdingCostsMonthly" value={brrrr.inputs.holdingCostsMonthly} onChange={handleChange} />
                 </div>
+            </div>
+
+            {/* Phase 2: Refinance */}
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 border-b pb-2">Phase 2: Refinance</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Monthly Rent (Post-Refi) ($)" name="monthlyRentPostRefi" value={brrrr.inputs.monthlyRentPostRefi} onChange={handleInputChange} />
-                    <InputField label="Monthly Expenses (Post-Refi) ($)" name="monthlyExpensesPostRefi" value={brrrr.inputs.monthlyExpensesPostRefi} onChange={handleInputChange} />
+                    <InputField label="Refinance LTV (%)" name="refinance.loanLtv" value={brrrr.inputs.refinance?.loanLtv} onChange={handleChange} />
+                    <InputField label="Refinance Rate (%)" name="refinance.interestRate" value={brrrr.inputs.refinance?.interestRate} onChange={handleChange} />
+                    <InputField label="Refinance Closing Costs ($)" name="refinance.closingCosts" value={brrrr.inputs.refinance?.closingCosts} onChange={handleChange} />
+                </div>
+            </div>
+
+            {/* Income & Expenses */}
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 border-b pb-2">Income & Expenses (Post-Refi)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Monthly Rent ($)" name="monthlyRent" value={brrrr.inputs.monthlyRent} onChange={handleChange} />
+                    <InputField label="Other Monthly Income ($)" name="expenses.otherMonthlyIncome" value={brrrr.inputs.expenses?.otherMonthlyIncome} onChange={handleChange} />
+                    <InputField label="Vacancy Rate (%)" name="expenses.vacancyRate" value={brrrr.inputs.expenses?.vacancyRate} onChange={handleChange} />
+                </div>
+                <h5 className="font-medium text-gray-600 mt-4">Operating Expenses (Monthly)</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="Taxes" name="expenses.monthlyTaxes" value={brrrr.inputs.expenses?.monthlyTaxes} onChange={handleChange} />
+                    <InputField label="Insurance" name="expenses.monthlyInsurance" value={brrrr.inputs.expenses?.monthlyInsurance} onChange={handleChange} />
+                    <InputField label="HOA" name="expenses.monthlyHoa" value={brrrr.inputs.expenses?.monthlyHoa} onChange={handleChange} />
+                    <InputField label="Utilities" name="expenses.monthlyUtilities" value={brrrr.inputs.expenses?.monthlyUtilities} onChange={handleChange} />
+                    <InputField label="Landscaping" name="expenses.monthlyLandscaping" value={brrrr.inputs.expenses?.monthlyLandscaping} onChange={handleChange} />
+                    <InputField label="Maintenance" name="expenses.monthlyMaintenance" value={brrrr.inputs.expenses?.monthlyMaintenance} onChange={handleChange} />
+                    <InputField label="CapEx" name="expenses.monthlyCapEx" value={brrrr.inputs.expenses?.monthlyCapEx} onChange={handleChange} />
+                    <InputField label="Management" name="expenses.monthlyManagement" value={brrrr.inputs.expenses?.monthlyManagement} onChange={handleChange} />
                 </div>
             </div>
 

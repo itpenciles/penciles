@@ -109,33 +109,85 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
 
 export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations => {
   const {
-    purchasePrice, rehabCost, rehabDurationMonths, arv,
-    initialLoanAmount, initialLoanRate, initialLoanClosingCosts,
-    refinanceLoanLtv, refinanceLoanRate, refinanceClosingCosts,
-    holdingCostsMonthly, monthlyRentPostRefi, monthlyExpensesPostRefi
+    purchasePrice, arv,
+    purchaseCosts, rehabCosts, financing, refinance, expenses,
+    monthlyRent, holdingCostsMonthly
   } = inputs;
 
-  // 1. Total Project Cost
-  const totalHoldingCosts = holdingCostsMonthly * rehabDurationMonths;
-  // Interest on initial loan during rehab (simple interest approximation)
-  const initialLoanInterestMonthly = (initialLoanAmount * (initialLoanRate / 100)) / 12;
-  const totalInitialLoanInterest = initialLoanInterestMonthly * rehabDurationMonths;
+  // Helper to sum object values
+  const sumValues = (obj: any) => Object.values(obj || {}).reduce((a: any, b: any) => (Number(a) || 0) + (Number(b) || 0), 0) as number;
 
-  const totalProjectCost = purchasePrice + rehabCost + initialLoanClosingCosts + totalHoldingCosts + totalInitialLoanInterest;
+  // 1. Calculate Total Costs
+  const totalPurchaseClosingCosts = sumValues(purchaseCosts);
+
+  const totalExteriorRehab = sumValues(rehabCosts?.exterior);
+  const totalInteriorRehab = sumValues(rehabCosts?.interior);
+  const totalGeneralRehab = sumValues(rehabCosts?.general);
+  const totalRehabCost = totalExteriorRehab + totalInteriorRehab + totalGeneralRehab;
+
+  const rehabDurationMonths = financing?.rehabTimelineMonths || 0;
+  const totalHoldingCosts = (holdingCostsMonthly || 0) * rehabDurationMonths;
+
+  // Financing Costs (Phase 1)
+  let initialLoanAmount = 0;
+  let totalInitialLoanInterest = 0;
+  let initialLoanPointsAmount = 0;
+  let otherLenderCharges = financing?.otherCharges || 0;
+
+  if (!financing?.isCash) {
+    initialLoanAmount = financing?.loanAmount || 0;
+    const rate = financing?.interestRate || 0;
+
+    // Interest during rehab
+    if (financing?.interestOnly) {
+      const monthlyInterest = (initialLoanAmount * (rate / 100)) / 12;
+      totalInitialLoanInterest = monthlyInterest * rehabDurationMonths;
+    } else {
+      // Simple approximation for amortized loan interest during rehab if not interest only
+      // For simplicity, we'll assume interest-only payments during rehab is standard for hard money
+      const monthlyInterest = (initialLoanAmount * (rate / 100)) / 12;
+      totalInitialLoanInterest = monthlyInterest * rehabDurationMonths;
+    }
+
+    initialLoanPointsAmount = initialLoanAmount * ((financing?.points || 0) / 100);
+  }
+
+  // If fees are wrapped, they are added to the loan balance (increasing payoff) but not paid out of pocket initially.
+  // However, for "Total Project Cost", they are a cost.
+  // If wrapped, they don't increase "Cash In" but they increase "Loan Payoff".
+  // Let's assume Total Project Cost tracks the *value* consumed.
+
+  const totalFinancingCosts = initialLoanPointsAmount + otherLenderCharges + totalInitialLoanInterest;
+
+  const totalProjectCost = purchasePrice + totalRehabCost + totalPurchaseClosingCosts + totalHoldingCosts + totalFinancingCosts;
 
   // 2. Refinance
-  const refinanceLoanAmount = arv * (refinanceLoanLtv / 100);
+  const refinanceLoanAmount = arv * ((refinance?.loanLtv || 75) / 100);
+  const refiClosingCosts = refinance?.closingCosts || 0;
 
   // 3. Cash Out / Cash Left
-  // Cash Left = Total Project Cost - (Refinance Loan Amount - Refinance Closing Costs)
-  const cashLeftInDeal = totalProjectCost - (refinanceLoanAmount - refinanceClosingCosts);
+  // Payoff amount = Initial Loan Balance. 
+  // If fees were wrapped, the loan balance might be higher. 
+  // For simplicity, we'll assume the Initial Loan Amount entered *includes* any wrapped fees if the user set it that way,
+  // or we just subtract the principal. 
+  // Let's stick to: Cash Left = Total Project Cost - (Refi Loan - Refi Closing Costs).
+  // This represents the net cash remaining in the deal after all expenses and the refi cash-out.
+  const cashLeftInDeal = totalProjectCost - (refinanceLoanAmount - refiClosingCosts);
 
   // 4. Post-Refi Cash Flow
-  const r = refinanceLoanRate / 100 / 12;
-  const n = 30 * 12; // Assume 30 year fixed for refi
-  const refiMonthlyPayment = refinanceLoanAmount * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  const r = (refinance?.interestRate || 0) / 100 / 12;
+  const n = 30 * 12; // Assume 30 year fixed
+  let refiMonthlyPayment = 0;
+  if (r > 0) {
+    refiMonthlyPayment = refinanceLoanAmount * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  }
 
-  const monthlyCashFlowPostRefi = monthlyRentPostRefi - monthlyExpensesPostRefi - refiMonthlyPayment;
+  // Operating Expenses
+  const totalMonthlyExpenses = sumValues(expenses);
+  const vacancyLoss = monthlyRent * ((expenses?.vacancyRate || 0) / 100);
+  const effectiveIncome = monthlyRent + (expenses?.otherMonthlyIncome || 0) - vacancyLoss;
+
+  const monthlyCashFlowPostRefi = effectiveIncome - totalMonthlyExpenses - refiMonthlyPayment;
 
   // 5. ROI
   const annualCashFlow = monthlyCashFlowPostRefi * 12;
