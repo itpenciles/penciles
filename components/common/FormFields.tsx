@@ -1,5 +1,4 @@
 import React from 'react';
-import { Financials } from '../../types';
 
 export const InputField = ({ label, name, value, onChange, type = "number" }: { label: string, name: string, value: number | string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, type?: string }) => (
     <div>
@@ -30,7 +29,7 @@ export const ToggleField = ({ label, name, checked, onChange }: { label: string,
     </div>
 );
 
-export const SliderField = ({ label, name, value, onChange, unit, min, max, step, displayValue }: { label: string, name: keyof Financials, value: number, onChange: (v: number) => void, unit: string, min: number, max: number, step: number, displayValue?: string }) => (
+export const SliderField = ({ label, name, value, onChange, unit, min, max, step, displayValue }: { label: string, name: string, value: number, onChange: (v: number) => void, unit: string, min: number, max: number, step: number, displayValue?: string }) => (
     <div>
         <label className="block text-sm font-medium text-gray-700">{label}: <span className="font-bold">{displayValue || `${value}${unit}`}</span></label>
         <input type="range" name={name} value={value} onChange={(e) => onChange(Number(e.target.value))} min={min} max={max} step={step} className="mt-1 w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-blue" />

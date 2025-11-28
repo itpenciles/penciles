@@ -183,9 +183,27 @@ export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations =>
   }
 
   // Operating Expenses
-  const totalMonthlyExpenses = sumValues(expenses);
-  const vacancyLoss = monthlyRent * ((expenses?.vacancyRate || 0) / 100);
-  const effectiveIncome = monthlyRent + (expenses?.otherMonthlyIncome || 0) - vacancyLoss;
+  const {
+    monthlyTaxes, monthlyInsurance, monthlyHoa,
+    monthlyWaterSewer, monthlyStreetLights, monthlyGas, monthlyElectric, monthlyLandscaping, monthlyMiscFees,
+    vacancyRate, maintenanceRate, capexRate, managementRate,
+    otherMonthlyIncome
+  } = expenses || {};
+
+  const grossMonthlyIncome = monthlyRent + (otherMonthlyIncome || 0);
+
+  const vacancyLoss = monthlyRent * ((vacancyRate || 0) / 100);
+  const effectiveIncome = grossMonthlyIncome - vacancyLoss;
+
+  const maintenanceCost = monthlyRent * ((maintenanceRate || 0) / 100);
+  const capexCost = monthlyRent * ((capexRate || 0) / 100);
+  const managementCost = monthlyRent * ((managementRate || 0) / 100);
+
+  const totalFixedExpenses = (monthlyTaxes || 0) + (monthlyInsurance || 0) + (monthlyHoa || 0) +
+    (monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) +
+    (monthlyElectric || 0) + (monthlyLandscaping || 0) + (monthlyMiscFees || 0);
+
+  const totalMonthlyExpenses = totalFixedExpenses + maintenanceCost + capexCost + managementCost;
 
   const monthlyCashFlowPostRefi = effectiveIncome - totalMonthlyExpenses - refiMonthlyPayment;
 
