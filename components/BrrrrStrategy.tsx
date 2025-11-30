@@ -209,10 +209,10 @@ export const BrrrrParamsTab = ({ property, setProperty, onSave, onReset, hasChan
                             <InputField label="Interest Rate (%)" name="financing.interestRate" value={brrrr.inputs.financing?.interestRate} onChange={handleChange} />
                             <InputField label="Points Charged (%)" name="financing.points" value={brrrr.inputs.financing?.points} onChange={handleChange} />
                             <ToggleField label="Interest Only?" name="financing.interestOnly" checked={!!brrrr.inputs.financing?.interestOnly} onChange={handleToggle} />
+                            <InputField label="Other Lender Charges ($)" name="financing.otherCharges" value={brrrr.inputs.financing?.otherCharges} onChange={handleChange} />
+                            <ToggleField label="Wrap Fees into Loan?" name="financing.wrapFeesIntoLoan" checked={!!brrrr.inputs.financing?.wrapFeesIntoLoan} onChange={handleToggle} />
                         </>
                     )}
-                    <InputField label="Other Lender Charges ($)" name="financing.otherCharges" value={brrrr.inputs.financing?.otherCharges} onChange={handleChange} />
-                    <ToggleField label="Wrap Fees into Loan?" name="financing.wrapFeesIntoLoan" checked={!!brrrr.inputs.financing?.wrapFeesIntoLoan} onChange={handleToggle} />
                     <InputField label="Rehab Timeline (Months)" name="financing.rehabTimelineMonths" value={brrrr.inputs.financing?.rehabTimelineMonths} onChange={handleChange} />
                     <InputField label="Refinance Timeline (Months)" name="financing.refinanceTimelineMonths" value={brrrr.inputs.financing?.refinanceTimelineMonths} onChange={handleChange} />
                     <InputField label="Monthly Holding Costs ($)" name="holdingCostsMonthly" value={brrrr.inputs.holdingCostsMonthly} onChange={handleChange} />
