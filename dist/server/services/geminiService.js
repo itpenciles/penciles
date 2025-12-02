@@ -1,10 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Property, Financials, Recommendation, Strategy } from '../../types';
 import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics, calculateBrrrrMetrics } from '../utils/calculations.js';
-
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-
 const responseSchema = {
     type: Type.OBJECT,
     properties: {
@@ -84,8 +80,7 @@ const responseSchema = {
         }
     }
 };
-
-const buildPrompt = (inputType: 'url' | 'address' | 'coords' | 'location' | 'apn', value: string): string => {
+const buildPrompt = (inputType, value) => {
     let inputDescription = '';
     switch (inputType) {
         case 'url':
@@ -104,14 +99,13 @@ const buildPrompt = (inputType: 'url' | 'address' | 'coords' | 'location' | 'apn
             try {
                 const apnData = JSON.parse(value);
                 inputDescription = `for the property with APN: ${apnData.apn}, County: ${apnData.county}, State: ${apnData.state}. Use your search tool to find the property address and details on Redfin, Zillow, or other public records using this APN information.`;
-            } catch (e) {
+            }
+            catch (e) {
                 inputDescription = `for the property with APN data: ${value}`;
             }
             break;
     }
-
     const schemaString = JSON.stringify(responseSchema, null, 2);
-
     return `You are a world-class senior real estate investment analyst. Your task is to analyze a real estate property and provide a detailed investment report in JSON format. Your highest priority is accuracy based on the provided source.
     
 Property to analyze: ${inputDescription}.
@@ -178,12 +172,10 @@ JSON Schema:
 ${schemaString}
 `;
 };
-
-export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | 'coords' | 'location' | 'apn', value: string): Promise<Omit<Property, 'id'>> => {
+export const analyzePropertyWithGemini = async (inputType, value) => {
     const modelsToTry = ['gemini-2.5-flash', 'gemini-3-pro-preview'];
-    let lastError: any = null;
+    let lastError = null;
     let rawResponseForDebugging = '';
-
     for (const model of modelsToTry) {
         try {
             console.log(`Attempting analysis with model: ${model}`);
@@ -196,9 +188,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                     temperature: 0.2,
                 },
             });
-
             rawResponseForDebugging = (response.text ?? '').trim();
-
             let jsonString = rawResponseForDebugging;
             if (jsonString.startsWith("```json")) {
                 jsonString = jsonString.substring(7);
@@ -206,10 +196,8 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
             if (jsonString.endsWith("```")) {
                 jsonString = jsonString.slice(0, -3);
             }
-
             const data = JSON.parse(jsonString);
-
-            const initialFinancials: Financials = {
+            const initialFinancials = {
                 listPrice: data.financials.listPrice,
                 estimatedValue: data.financials.estimatedValue,
                 monthlyRents: data.financials.monthlyRents,
@@ -248,10 +236,8 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 sellerCreditSecurityDeposit: 0,
                 sellerCreditMisc: 0,
             };
-
-            const totalMarketRent = data.financials.monthlyRents.reduce((a: number, b: number) => a + b, 0);
-
-            const newProperty: Omit<Property, 'id'> = {
+            const totalMarketRent = data.financials.monthlyRents.reduce((a, b) => a + b, 0);
+            const newProperty = {
                 address: data.address,
                 propertyType: data.propertyType,
                 imageUrl: data.imageUrl,
@@ -344,7 +330,6 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                     }
                 }
             };
-
             if (newProperty.wholesaleAnalysis) {
                 newProperty.wholesaleAnalysis.calculations = calculateWholesaleMetrics(newProperty.wholesaleAnalysis.inputs);
             }
@@ -357,35 +342,30 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
             if (newProperty.brrrrAnalysis) {
                 newProperty.brrrrAnalysis.calculations = calculateBrrrrMetrics(newProperty.brrrrAnalysis.inputs);
             }
-
             console.log(`Successfully analyzed property with model: ${model}`);
             return newProperty;
-
-        } catch (error) {
+        }
+        catch (error) {
             console.warn(`Analysis with model '${model}' failed. Trying next model...`, error);
             lastError = error;
         }
     }
-
     console.error("All models failed to analyze the property.", lastError);
     console.error("Raw response that caused the final error:", rawResponseForDebugging);
-
     let finalErrorMessage = "Failed to analyze property. All available AI models may be temporarily unavailable or the input was invalid.";
-
     if (lastError instanceof SyntaxError) {
         finalErrorMessage = "Failed to analyze property. The AI returned an invalid data format. This can happen with complex URLs. Please try a different property listing.";
-    } else if (lastError && lastError.message) {
+    }
+    else if (lastError && lastError.message) {
         if (lastError.message.includes('API key not valid')) {
             finalErrorMessage = "Failed to analyze property. Your API key is invalid. Please check your configuration.";
-        } else if (lastError.message.toLowerCase().includes('rate limit')) {
+        }
+        else if (lastError.message.toLowerCase().includes('rate limit')) {
             finalErrorMessage = "Failed to analyze property due to high request volume. Please wait a moment and try again.";
         }
     }
-
     throw new Error(finalErrorMessage);
 };
-
-
 const recommendationOnlySchema = {
     type: Type.OBJECT,
     properties: {
@@ -396,8 +376,7 @@ const recommendationOnlySchema = {
         strategyAnalyzed: { type: Type.STRING, description: 'The investment strategy that was analyzed. This should match the strategy provided in the prompt instructions.' }
     }
 };
-
-const buildReevaluationPrompt = (property: Property, strategy: Strategy): string => {
+const buildReevaluationPrompt = (property, strategy) => {
     const dataToAnalyze = {
         address: property.address,
         propertyType: property.propertyType,
@@ -412,7 +391,6 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
         brrrrAnalysis: property.brrrrAnalysis,
     };
     const dataString = JSON.stringify(dataToAnalyze, null, 2);
-
     let recommendationLogic = '';
     switch (strategy) {
         case 'Wholesale':
@@ -457,8 +435,6 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
     - **'Avoid'**: Properties that are fundamentally unsound due to severe negative cash flow, an exorbitant price, OR being in a very poor location.`;
             break;
     }
-
-
     return `You are a world-class senior real estate investment analyst. Your task is to re-evaluate a real estate property based on user-adjusted inputs and provide an updated investment recommendation in JSON format for the specified investment strategy.
     
 Strategy to Analyze: "${strategy}"
@@ -477,14 +453,11 @@ JSON Schema:
 ${JSON.stringify(recommendationOnlySchema, null, 2)}
 `;
 };
-
-
-export const reevaluatePropertyWithGemini = async (property: Property, strategy: Strategy): Promise<Recommendation> => {
+export const reevaluatePropertyWithGemini = async (property, strategy) => {
     console.log(`Re-evaluating property with Gemini for strategy: ${strategy}`, property);
     const modelsToTry = ['gemini-2.5-flash', 'gemini-3-pro-preview'];
-    let lastError: any = null;
+    let lastError = null;
     let rawResponseForDebugging = '';
-
     for (const model of modelsToTry) {
         try {
             console.log(`Attempting re-evaluation with model: ${model}`);
@@ -498,37 +471,34 @@ export const reevaluatePropertyWithGemini = async (property: Property, strategy:
                     responseSchema: recommendationOnlySchema
                 },
             });
-
             rawResponseForDebugging = (response.text ?? '').trim();
             const data = JSON.parse(rawResponseForDebugging);
-
             if (data.level && data.summary && Array.isArray(data.keyFactors)) {
                 console.log(`Successfully re-evaluated property with model: ${model}`);
-                return data as Recommendation;
-            } else {
+                return data;
+            }
+            else {
                 throw new Error("Parsed JSON does not match the expected Recommendation structure.");
             }
-
-        } catch (error) {
+        }
+        catch (error) {
             console.warn(`Re-evaluation with model '${model}' failed. Trying next model...`, error);
             lastError = error;
         }
     }
-
     console.error("All models failed to re-evaluate the property.", lastError);
     console.error("Raw response that caused the final error:", rawResponseForDebugging);
-
     let finalErrorMessage = "Failed to re-evaluate property. All available AI models may be temporarily unavailable.";
-
     if (lastError instanceof SyntaxError) {
         finalErrorMessage = "Failed to re-evaluate property. The AI returned an invalid data format.";
-    } else if (lastError && lastError.message) {
+    }
+    else if (lastError && lastError.message) {
         if (lastError.message.includes('API key not valid')) {
             finalErrorMessage = "Failed to re-evaluate property. Your API key is invalid. Please check your configuration.";
-        } else if (lastError.message.toLowerCase().includes('rate limit')) {
+        }
+        else if (lastError.message.toLowerCase().includes('rate limit')) {
             finalErrorMessage = "Failed to re-evaluate property due to high request volume. Please wait a moment and try again.";
         }
     }
-
     throw new Error(finalErrorMessage);
 };
