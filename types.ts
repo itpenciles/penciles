@@ -196,20 +196,108 @@ export interface SellerFinancingCalculations {
   returnOnDp: number;
 }
 
+export interface BrrrrPurchaseCosts {
+  points: number;
+  prepaidHazardInsurance: number;
+  prepaidFloodInsurance: number;
+  prepaidPropertyTax: number;
+  annualAssessments: number;
+  titleEscrowFees: number;
+  attorneyFees: number;
+  inspectionCost: number;
+  recordingFees: number;
+  appraisalFees: number;
+  brokerFees: number;
+  otherFees: number;
+}
+
+export interface BrrrrRehabCosts {
+  exterior: {
+    roof: number;
+    gutters: number;
+    garage: number;
+    siding: number;
+    landscaping: number;
+    painting: number;
+    septic: number;
+    decks: number;
+    foundation: number;
+    electrical: number;
+    other: number;
+  };
+  interior: {
+    demo: number;
+    sheetrock: number;
+    plumbing: number;
+    carpentry: number;
+    windows: number;
+    doors: number;
+    electrical: number;
+    painting: number;
+    hvac: number;
+    cabinets: number;
+    framing: number;
+    flooring: number;
+    basement: number;
+    other: number;
+  };
+  general: {
+    permits: number;
+    termites: number;
+    mold: number;
+    misc: number;
+  };
+}
+
+export interface BrrrrFinancing {
+  isCash: boolean;
+  points: number;
+  otherCharges: number;
+  wrapFeesIntoLoan: boolean;
+  interestOnly: boolean;
+  includePmi: boolean;
+  pmiAmount: number;
+  refinanceTimelineMonths: number;
+  rehabTimelineMonths: number;
+  loanAmount: number;
+  interestRate: number;
+}
+
+export interface BrrrrRefinance {
+  loanLtv: number;
+  interestRate: number;
+  closingCosts: number;
+}
+
+export interface BrrrrOperatingExpenses {
+  monthlyTaxes: number;
+  monthlyInsurance: number;
+  monthlyHoa: number;
+  monthlyWaterSewer: number;
+  monthlyStreetLights: number;
+  monthlyGas: number;
+  monthlyElectric: number;
+  monthlyLandscaping: number;
+  monthlyMiscFees: number;
+
+  vacancyRate: number; // %
+  maintenanceRate: number; // %
+  capexRate: number; // %
+  managementRate: number; // %
+
+  otherMonthlyIncome: number;
+}
+
 export interface BrrrrInputs {
   purchasePrice: number;
-  rehabCost: number;
-  rehabDurationMonths: number;
   arv: number;
-  initialLoanAmount: number;
-  initialLoanRate: number;
-  initialLoanClosingCosts: number;
-  refinanceLoanLtv: number;
-  refinanceLoanRate: number;
-  refinanceClosingCosts: number;
-  holdingCostsMonthly: number; // Utilities, taxes, insurance during rehab
-  monthlyRentPostRefi: number;
-  monthlyExpensesPostRefi: number; // Taxes, insurance, maintenance, etc.
+  purchaseCosts: BrrrrPurchaseCosts;
+  rehabCosts: BrrrrRehabCosts;
+  financing: BrrrrFinancing;
+  refinance: BrrrrRefinance;
+  expenses: BrrrrOperatingExpenses;
+  monthlyRent: number;
+  holdingCostsMonthly: number; // Keep for backward compat or general holding
 }
 
 export interface Comparable {
@@ -227,7 +315,14 @@ export interface Comparable {
 
 export interface BrrrrCalculations {
   totalProjectCost: number; // Purchase + Rehab + Initial Closing + Holding
+  totalRehabCost: number;
+  totalPurchaseClosingCosts: number;
+  totalHoldingCosts: number;
+  totalFinancingCosts: number;
+
   refinanceLoanAmount: number;
+  refiClosingCosts: number;
+  netRefiProceeds: number; // Refi Loan - Refi Closing Costs
   cashOutAmount: number; // Refi Loan - Initial Loan (payoff) - Refi Closing Costs. Wait, usually it's Refi Loan - (Initial Loan + Holding + Rehab if self-funded).
   // Let's simplify: Cash Out = Refi Loan - Payoff of Initial Loan.
   // Cash Left In Deal = Total Project Cost - Refi Loan Amount.

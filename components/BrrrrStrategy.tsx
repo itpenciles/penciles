@@ -30,7 +30,7 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
     if (!brrrr) return <div>BRRRR Analysis not available.</div>;
 
     const { calculations } = brrrr;
-    const { totalProjectCost, refinanceLoanAmount, cashOutAmount, cashLeftInDeal, roi, monthlyCashFlowPostRefi, isInfiniteReturn } = calculations;
+    const { totalProjectCost, totalRehabCost, totalPurchaseClosingCosts, totalHoldingCosts, totalFinancingCosts, refinanceLoanAmount, refiClosingCosts, netRefiProceeds, cashOutAmount, cashLeftInDeal, roi, monthlyCashFlowPostRefi, isInfiniteReturn } = calculations;
 
     return (
         <div className="space-y-6">
@@ -69,7 +69,22 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
                         <span className="text-gray-600">Purchase Price</span>
                         <span className="font-semibold">{formatCurrency(brrrr.inputs.purchasePrice)}</span>
                     </div>
-                    {/* Add more detailed breakdown here if needed */}
+                    <div className="flex justify-between">
+                        <span className="text-gray-600">Rehab Cost</span>
+                        <span className="font-semibold">{formatCurrency(totalRehabCost)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-600">Purchase Closing Costs</span>
+                        <span className="font-semibold">{formatCurrency(totalPurchaseClosingCosts)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-600">Holding Costs</span>
+                        <span className="font-semibold">{formatCurrency(totalHoldingCosts)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-600">Financing Costs</span>
+                        <span className="font-semibold">{formatCurrency(totalFinancingCosts)}</span>
+                    </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
                         <span className="text-gray-800">Total All-In Cost</span>
                         <span className="text-gray-900">{formatCurrency(totalProjectCost)}</span>
@@ -87,6 +102,14 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
                     <div className="flex justify-between">
                         <span className="text-gray-600">New Loan Amount</span>
                         <span className="font-semibold">{formatCurrency(refinanceLoanAmount)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-600">Refinance Closing Costs</span>
+                        <span className="font-semibold">-{formatCurrency(refiClosingCosts)}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-dashed border-gray-300 pt-1">
+                        <span className="text-gray-600">Net Proceeds</span>
+                        <span className="font-semibold">{formatCurrency(netRefiProceeds)}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
                         <span className="text-gray-800">Cash Out / (Left In)</span>

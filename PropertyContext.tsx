@@ -221,7 +221,13 @@ export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations =>
 
   return {
     totalProjectCost,
+    totalRehabCost,
+    totalPurchaseClosingCosts,
+    totalHoldingCosts,
+    totalFinancingCosts,
     refinanceLoanAmount,
+    refiClosingCosts,
+    netRefiProceeds: refinanceLoanAmount - refiClosingCosts,
     cashOutAmount: -cashLeftInDeal,
     cashLeftInDeal,
     roi,
