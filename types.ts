@@ -331,6 +331,29 @@ export interface BrrrrCalculations {
   monthlyCashFlowPostRefi: number;
   monthlyRevenue: number;
   monthlyExpenses: number;
+
+  breakdown: {
+    revenue: {
+      grossRent: number;
+      otherIncome: number;
+      vacancyLoss: number;
+      effectiveIncome: number;
+    };
+    expenses: {
+      propertyTaxes: number;
+      insurance: number;
+      hoa: number;
+      utilities: number;
+      repairsMaintenance: number;
+      capex: number;
+      management: number;
+      debtService: number;
+      misc: number;
+      totalOperatingExpenses: number;
+      totalExpenses: number;
+    };
+  };
+
   isInfiniteReturn: boolean;
 }
 
@@ -464,4 +487,4 @@ export interface Plan {
   canBrrrr: boolean;
   canAccessComparables: boolean;
   canAccessProjections: boolean;
-}
+}// Force update

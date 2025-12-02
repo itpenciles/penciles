@@ -217,6 +217,27 @@ export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations =>
     monthlyCashFlowPostRefi,
     monthlyRevenue: effectiveIncome,
     monthlyExpenses: totalMonthlyExpenses + refiMonthlyPayment,
+    breakdown: {
+      revenue: {
+        grossRent: monthlyRent,
+        otherIncome: otherMonthlyIncome || 0,
+        vacancyLoss: vacancyLoss,
+        effectiveIncome: effectiveIncome
+      },
+      expenses: {
+        propertyTaxes: monthlyTaxes || 0,
+        insurance: monthlyInsurance || 0,
+        hoa: monthlyHoa || 0,
+        utilities: (monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) + (monthlyElectric || 0) + (monthlyLandscaping || 0),
+        repairsMaintenance: maintenanceCost,
+        capex: capexCost,
+        management: managementCost,
+        debtService: refiMonthlyPayment,
+        misc: monthlyMiscFees || 0,
+        totalOperatingExpenses: totalMonthlyExpenses,
+        totalExpenses: totalMonthlyExpenses + refiMonthlyPayment
+      }
+    },
     isInfiniteReturn
-  };
+  } as any;
 };

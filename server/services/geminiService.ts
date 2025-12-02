@@ -342,8 +342,12 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                         monthlyCashFlowPostRefi: 0,
                         monthlyRevenue: 0,
                         monthlyExpenses: 0,
+                        breakdown: {
+                            revenue: { grossRent: 0, otherIncome: 0, vacancyLoss: 0, effectiveIncome: 0 },
+                            expenses: { propertyTaxes: 0, insurance: 0, hoa: 0, utilities: 0, repairsMaintenance: 0, capex: 0, management: 0, debtService: 0, misc: 0, totalOperatingExpenses: 0, totalExpenses: 0 }
+                        },
                         isInfiniteReturn: false
-                    }
+                    } as any
                 }
             };
 
