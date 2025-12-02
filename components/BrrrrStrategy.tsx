@@ -29,7 +29,9 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
     const brrrr = property.brrrrAnalysis;
     if (!brrrr) return <div>BRRRR Analysis not available.</div>;
 
-    const { calculations } = brrrr;
+    // Calculate metrics on the fly to ensure we have the latest breakdown fields
+    // even if the saved property data is from an older version.
+    const calculations = calculateBrrrrMetrics(brrrr.inputs);
     const { totalProjectCost, totalRehabCost, totalPurchaseClosingCosts, totalHoldingCosts, totalFinancingCosts, refinanceLoanAmount, refiClosingCosts, netRefiProceeds, cashOutAmount, cashLeftInDeal, roi, monthlyCashFlowPostRefi, isInfiniteReturn } = calculations;
 
     return (

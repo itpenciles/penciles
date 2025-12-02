@@ -103,33 +103,92 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
 
 export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations => {
   const {
-    purchasePrice, rehabCost, rehabDurationMonths, arv,
-    initialLoanAmount, initialLoanRate, initialLoanClosingCosts,
-    refinanceLoanLtv, refinanceLoanRate, refinanceClosingCosts,
-    holdingCostsMonthly, monthlyRentPostRefi, monthlyExpensesPostRefi
+    purchasePrice, arv,
+    purchaseCosts, rehabCosts, financing, refinance, expenses,
+    monthlyRent, holdingCostsMonthly
   } = inputs;
 
-  // 1. Total Project Cost
-  const totalHoldingCosts = holdingCostsMonthly * rehabDurationMonths;
-  // Interest on initial loan during rehab (simple interest approximation)
-  const initialLoanInterestMonthly = (initialLoanAmount * (initialLoanRate / 100)) / 12;
-  const totalInitialLoanInterest = initialLoanInterestMonthly * rehabDurationMonths;
+  // Helper to sum object values
+  const sumValues = (obj: any) => Object.values(obj || {}).reduce((a: any, b: any) => (Number(a) || 0) + (Number(b) || 0), 0) as number;
 
-  const totalProjectCost = purchasePrice + rehabCost + initialLoanClosingCosts + totalHoldingCosts + totalInitialLoanInterest;
+  // 1. Calculate Total Costs
+  const totalPurchaseClosingCosts = sumValues(purchaseCosts);
+
+  const totalExteriorRehab = sumValues(rehabCosts?.exterior);
+  const totalInteriorRehab = sumValues(rehabCosts?.interior);
+  const totalGeneralRehab = sumValues(rehabCosts?.general);
+  const totalRehabCost = totalExteriorRehab + totalInteriorRehab + totalGeneralRehab;
+
+  const rehabDurationMonths = financing?.rehabTimelineMonths || 0;
+  const totalHoldingCosts = (holdingCostsMonthly || 0) * rehabDurationMonths;
+
+  // Financing Costs (Phase 1)
+  let initialLoanAmount = 0;
+  let totalInitialLoanInterest = 0;
+  let initialLoanPointsAmount = 0;
+  let otherLenderCharges = financing?.otherCharges || 0;
+
+  if (!financing?.isCash) {
+    initialLoanAmount = financing?.loanAmount || 0;
+    const rate = financing?.interestRate || 0;
+
+    // Interest during rehab
+    if (financing?.interestOnly) {
+      const monthlyInterest = (initialLoanAmount * (rate / 100)) / 12;
+      totalInitialLoanInterest = monthlyInterest * rehabDurationMonths;
+    } else {
+      // Simple approximation for amortized loan interest during rehab if not interest only
+      const monthlyInterest = (initialLoanAmount * (rate / 100)) / 12;
+      totalInitialLoanInterest = monthlyInterest * rehabDurationMonths;
+    }
+
+    initialLoanPointsAmount = initialLoanAmount * ((financing?.points || 0) / 100);
+  }
+
+  const totalFinancingCosts = initialLoanPointsAmount + otherLenderCharges + totalInitialLoanInterest;
+
+  const totalProjectCost = purchasePrice + totalRehabCost + totalPurchaseClosingCosts + totalHoldingCosts + totalFinancingCosts;
 
   // 2. Refinance
-  const refinanceLoanAmount = arv * (refinanceLoanLtv / 100);
+  const refinanceLoanAmount = arv * ((refinance?.loanLtv || 75) / 100);
+  const refiClosingCosts = refinance?.closingCosts || 0;
 
   // 3. Cash Out / Cash Left
-  // Cash Left = Total Project Cost - (Refinance Loan Amount - Refinance Closing Costs)
-  const cashLeftInDeal = totalProjectCost - (refinanceLoanAmount - refinanceClosingCosts);
+  // Cash Left = Total Project Cost - (Refi Loan - Refi Costs)
+  const cashLeftInDeal = totalProjectCost - (refinanceLoanAmount - refiClosingCosts);
 
   // 4. Post-Refi Cash Flow
-  const r = refinanceLoanRate / 100 / 12;
-  const n = 30 * 12; // Assume 30 year fixed for refi
-  const refiMonthlyPayment = refinanceLoanAmount * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  const r = (refinance?.interestRate || 0) / 100 / 12;
+  const n = 30 * 12; // Assume 30 year fixed
+  let refiMonthlyPayment = 0;
+  if (r > 0) {
+    refiMonthlyPayment = refinanceLoanAmount * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  }
 
-  const monthlyCashFlowPostRefi = monthlyRentPostRefi - monthlyExpensesPostRefi - refiMonthlyPayment;
+  // Operating Expenses
+  const {
+    monthlyTaxes, monthlyInsurance, monthlyHoa,
+    monthlyWaterSewer, monthlyStreetLights, monthlyGas, monthlyElectric, monthlyLandscaping, monthlyMiscFees,
+    vacancyRate, maintenanceRate, capexRate, managementRate,
+    otherMonthlyIncome
+  } = expenses || {};
+
+  const grossMonthlyIncome = monthlyRent + (otherMonthlyIncome || 0);
+
+  const vacancyLoss = monthlyRent * ((vacancyRate || 0) / 100);
+  const effectiveIncome = grossMonthlyIncome - vacancyLoss;
+
+  const maintenanceCost = monthlyRent * ((maintenanceRate || 0) / 100);
+  const capexCost = monthlyRent * ((capexRate || 0) / 100);
+  const managementCost = monthlyRent * ((managementRate || 0) / 100);
+
+  const totalFixedExpenses = (monthlyTaxes || 0) + (monthlyInsurance || 0) + (monthlyHoa || 0) +
+    (monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) +
+    (monthlyElectric || 0) + (monthlyLandscaping || 0) + (monthlyMiscFees || 0);
+
+  const totalMonthlyExpenses = totalFixedExpenses + maintenanceCost + capexCost + managementCost;
+
+  const monthlyCashFlowPostRefi = effectiveIncome - totalMonthlyExpenses - refiMonthlyPayment;
 
   // 5. ROI
   const annualCashFlow = monthlyCashFlowPostRefi * 12;
@@ -145,7 +204,13 @@ export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations =>
 
   return {
     totalProjectCost,
+    totalRehabCost,
+    totalPurchaseClosingCosts,
+    totalHoldingCosts,
+    totalFinancingCosts,
     refinanceLoanAmount,
+    refiClosingCosts,
+    netRefiProceeds: refinanceLoanAmount - refiClosingCosts,
     cashOutAmount: -cashLeftInDeal,
     cashLeftInDeal,
     roi,
