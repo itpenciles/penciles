@@ -15,6 +15,16 @@ interface BrrrrProps {
     error: string | null;
 }
 
+const InfoTooltip = ({ children, text }: { children: React.ReactNode; text: string }) => (
+    <div className="relative group flex flex-col items-center">
+        {children}
+        <div className="absolute bottom-full mb-2 w-48 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none text-center">
+            {text}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+        </div>
+    </div>
+);
+
 export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
     const brrrr = property.brrrrAnalysis;
     if (!brrrr) return <div>BRRRR Analysis not available.</div>;
@@ -27,9 +37,13 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className={`p-4 rounded-lg border ${isInfiniteReturn || roi > 15 ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
                     <p className="text-sm text-gray-500">ROI (Cash on Cash)</p>
-                    <p className={`text-2xl font-bold ${isInfiniteReturn || roi > 15 ? 'text-green-700' : 'text-yellow-700'}`}>
-                        {isInfiniteReturn ? '∞ Infinite' : `${roi.toFixed(1)}%`}
-                    </p>
+                    <div className={`text-2xl font-bold ${isInfiniteReturn || roi > 15 ? 'text-green-700' : 'text-yellow-700'}`}>
+                        {isInfiniteReturn ? (
+                            <InfoTooltip text="Infinite Return: You have $0 (or less) of your own cash left in the deal!">
+                                <span className="cursor-help underline decoration-dotted">∞ Infinite</span>
+                            </InfoTooltip>
+                        ) : `${roi.toFixed(1)}%`}
+                    </div>
                     <p className="text-xs text-gray-500">Annual Return on Cash Left</p>
                 </div>
                 <div className={`p-4 rounded-lg border ${cashLeftInDeal <= 0 ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
