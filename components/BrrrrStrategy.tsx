@@ -32,7 +32,7 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
     // Calculate metrics on the fly to ensure we have the latest breakdown fields
     // even if the saved property data is from an older version.
     const calculations = calculateBrrrrMetrics(brrrr.inputs);
-    const { totalProjectCost, totalRehabCost, totalPurchaseClosingCosts, totalHoldingCosts, totalFinancingCosts, refinanceLoanAmount, refiClosingCosts, netRefiProceeds, cashOutAmount, cashLeftInDeal, roi, monthlyCashFlowPostRefi, isInfiniteReturn } = calculations;
+    const { totalProjectCost, totalRehabCost, totalPurchaseClosingCosts, totalHoldingCosts, totalFinancingCosts, refinanceLoanAmount, refiClosingCosts, netRefiProceeds, cashOutAmount, cashLeftInDeal, roi, monthlyCashFlowPostRefi, monthlyRevenue, monthlyExpenses, isInfiniteReturn } = calculations;
 
     return (
         <div className="space-y-6">
@@ -116,6 +116,24 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
                     <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
                         <span className="text-gray-800">Cash Out / (Left In)</span>
                         <span className={`${cashOutAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(cashOutAmount)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <h3 className="font-bold text-gray-800 mb-4">Cash Flow Breakdown</h3>
+                <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-gray-600">Monthly Revenue (Net)</span>
+                        <span className="font-semibold text-green-600">{formatCurrency(monthlyRevenue)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-600">Monthly Expenses (Inc. Debt)</span>
+                        <span className="font-semibold text-red-600">-{formatCurrency(monthlyExpenses)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
+                        <span className="text-gray-800">Monthly Cash Flow</span>
+                        <span className={`${monthlyCashFlowPostRefi >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(monthlyCashFlowPostRefi)}</span>
                     </div>
                 </div>
             </div>

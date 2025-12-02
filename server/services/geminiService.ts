@@ -340,6 +340,8 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                         cashLeftInDeal: 0,
                         roi: 0,
                         monthlyCashFlowPostRefi: 0,
+                        monthlyRevenue: 0,
+                        monthlyExpenses: 0,
                         isInfiniteReturn: false
                     }
                 }
