@@ -32,7 +32,7 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
     // Calculate metrics on the fly to ensure we have the latest breakdown fields
     // even if the saved property data is from an older version.
     const calculations = calculateBrrrrMetrics(brrrr.inputs);
-    const { totalProjectCost, totalRehabCost, totalPurchaseClosingCosts, totalHoldingCosts, totalFinancingCosts, refinanceLoanAmount, refiClosingCosts, netRefiProceeds, cashOutAmount, cashLeftInDeal, roi, monthlyCashFlowPostRefi, monthlyRevenue, monthlyExpenses, isInfiniteReturn } = calculations;
+    const { totalProjectCost, totalRehabCost, totalPurchaseClosingCosts, totalHoldingCosts, totalFinancingCosts, refinanceLoanAmount, refiClosingCosts, netRefiProceeds, cashOutAmount, cashLeftInDeal, roi, monthlyCashFlowPostRefi, breakdown, isInfiniteReturn } = calculations;
 
     return (
         <div className="space-y-6">
@@ -118,26 +118,92 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
                         <span className={`${cashOutAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(cashOutAmount)}</span>
                     </div>
                 </div>
+
+
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="font-bold text-gray-800 mb-4">Cash Flow Breakdown</h3>
-                <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                        <span className="text-gray-600">Monthly Revenue (Net)</span>
-                        <span className="font-semibold text-green-600">{formatCurrency(monthlyRevenue)}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Revenue Breakdown */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 h-full">
+                    <h3 className="font-bold text-gray-800 mb-4 border-b pb-2">Monthly Revenue</h3>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Gross Rent</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.revenue.grossRent || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Other Income</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.revenue.otherIncome || 0)}</span>
+                        </div>
+                        <div className="flex justify-between text-red-600">
+                            <span className="text-gray-600">Vacancy Loss</span>
+                            <span className="font-semibold">-{formatCurrency(breakdown?.revenue.vacancyLoss || 0)}</span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
+                            <span className="text-gray-800">Effective Income</span>
+                            <span className="text-green-600">{formatCurrency(breakdown?.revenue.effectiveIncome || 0)}</span>
+                        </div>
                     </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-600">Monthly Expenses (Inc. Debt)</span>
-                        <span className="font-semibold text-red-600">-{formatCurrency(monthlyExpenses)}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
-                        <span className="text-gray-800">Monthly Cash Flow</span>
-                        <span className={`${monthlyCashFlowPostRefi >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(monthlyCashFlowPostRefi)}</span>
+                </div>
+
+                {/* Expense Breakdown */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 h-full">
+                    <h3 className="font-bold text-gray-800 mb-4 border-b pb-2">Monthly Expenses</h3>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Property Taxes</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.expenses.propertyTaxes || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Insurance</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.expenses.insurance || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">HOA Fees</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.expenses.hoa || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Utilities</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.expenses.utilities || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Repairs & Maint.</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.expenses.repairsMaintenance || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">CapEx</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.expenses.capex || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Management</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.expenses.management || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Misc Fees</span>
+                            <span className="font-semibold">{formatCurrency(breakdown?.expenses.misc || 0)}</span>
+                        </div>
+                        <div className="flex justify-between bg-red-50 p-1 rounded">
+                            <span className="text-red-800 font-medium">Debt Service (P&I)</span>
+                            <span className="font-bold text-red-800">{formatCurrency(breakdown?.expenses.debtService || 0)}</span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
+                            <span className="text-gray-800">Total Expenses</span>
+                            <span className="text-red-600">{formatCurrency(breakdown?.expenses.totalExpenses || 0)}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex justify-between items-center">
+                <div>
+                    <h3 className="font-bold text-gray-800">Net Monthly Cash Flow</h3>
+                    <p className="text-xs text-gray-500">Effective Income - Total Expenses</p>
+                </div>
+                <div className={`text-2xl font-bold ${monthlyCashFlowPostRefi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(monthlyCashFlowPostRefi)}
+                </div>
+            </div>
+        </div >
     );
 };
 
