@@ -388,7 +388,7 @@ const buildReevaluationPrompt = (property, strategy) => {
         address: property.address,
         propertyType: property.propertyType,
         details: property.details,
-        financials: property.financials, // Contains shared inputs like taxes/insurance
+        // financials: property.financials, // REMOVED: This was confusing the AI for non-Rental strategies
         marketAnalysis: property.marketAnalysis,
     };
     let strategySpecificData = {};
@@ -409,7 +409,11 @@ const buildReevaluationPrompt = (property, strategy) => {
             break;
         case 'Rental':
         default:
-            strategySpecificData = { rentalCalculations: property.calculations };
+            // For Rental, we DO need the base financials
+            strategySpecificData = {
+                financials: property.financials,
+                rentalCalculations: property.calculations
+            };
             break;
     }
     const dataToAnalyze = {
