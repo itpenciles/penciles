@@ -404,19 +404,42 @@ const recommendationOnlySchema = {
 };
 
 const buildReevaluationPrompt = (property: Property, strategy: Strategy): string => {
-    const dataToAnalyze = {
+    // Base data common to all strategies
+    const baseData = {
         address: property.address,
         propertyType: property.propertyType,
         details: property.details,
-        financials: property.financials,
+        financials: property.financials, // Contains shared inputs like taxes/insurance
         marketAnalysis: property.marketAnalysis,
-        // Include all analysis data for context
-        rentalCalculations: property.calculations,
-        wholesaleAnalysis: property.wholesaleAnalysis,
-        subjectToAnalysis: property.subjectToAnalysis,
-        sellerFinancingAnalysis: property.sellerFinancingAnalysis,
-        brrrrAnalysis: property.brrrrAnalysis,
     };
+
+    let strategySpecificData = {};
+
+    // ONLY include the analysis data relevant to the selected strategy to prevent AI confusion
+    switch (strategy) {
+        case 'Wholesale':
+            strategySpecificData = { wholesaleAnalysis: property.wholesaleAnalysis };
+            break;
+        case 'Subject-To':
+            strategySpecificData = { subjectToAnalysis: property.subjectToAnalysis };
+            break;
+        case 'Seller Financing':
+            strategySpecificData = { sellerFinancingAnalysis: property.sellerFinancingAnalysis };
+            break;
+        case 'BRRRR':
+            strategySpecificData = { brrrrAnalysis: property.brrrrAnalysis };
+            break;
+        case 'Rental':
+        default:
+            strategySpecificData = { rentalCalculations: property.calculations };
+            break;
+    }
+
+    const dataToAnalyze = {
+        ...baseData,
+        ...strategySpecificData
+    };
+
     const dataString = JSON.stringify(dataToAnalyze, null, 2);
 
     let recommendationLogic = '';
