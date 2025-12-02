@@ -215,6 +215,8 @@ export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations =>
     cashLeftInDeal,
     roi,
     monthlyCashFlowPostRefi,
+    monthlyRevenue: effectiveIncome,
+    monthlyExpenses: totalMonthlyExpenses + refiMonthlyPayment,
     isInfiniteReturn
   };
 };

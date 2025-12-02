@@ -329,6 +329,8 @@ export interface BrrrrCalculations {
   cashLeftInDeal: number;
   roi: number; // Annual Cash Flow / Cash Left In Deal
   monthlyCashFlowPostRefi: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
   isInfiniteReturn: boolean;
 }
 
