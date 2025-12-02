@@ -414,6 +414,7 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
     };
 
     let strategySpecificData = {};
+    console.log(`[GeminiService] Filtering data for strategy: ${strategy}`);
 
     // ONLY include the analysis data relevant to the selected strategy to prevent AI confusion
     switch (strategy) {

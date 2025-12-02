@@ -392,6 +392,7 @@ const buildReevaluationPrompt = (property, strategy) => {
         marketAnalysis: property.marketAnalysis,
     };
     let strategySpecificData = {};
+    console.log(`[GeminiService] Filtering data for strategy: ${strategy}`);
     // ONLY include the analysis data relevant to the selected strategy to prevent AI confusion
     switch (strategy) {
         case 'Wholesale':
