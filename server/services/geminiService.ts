@@ -465,35 +465,43 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
     }
 
 
-    return `You are a world-class senior real estate investment analyst. Your task is to re-evaluate a real estate property based on user-adjusted inputs and provide an updated investment recommendation in JSON format for the specified investment strategy.
-    
-Strategy to Analyze: "${strategy}"
+    return `You are a world-class senior real estate investment analyst. Your task is to re-evaluate a real estate investment opportunity based SPECIFICALLY on the '${strategy}' strategy.
 
-Property Data (with user adjustments): 
-${dataString}
-    
-Instructions:
-1.  **Analyze the provided data based on the "${strategy}" strategy.** Pay close attention to the user-adjusted inputs and the resulting calculations for that specific strategy. Do not use external search tools; base your entire analysis on the data given.
-2.  **Recommendation Logic:** Your new recommendation must be strictly grounded in a balanced assessment of the provided financial metrics **and the property's location quality (safetyScore)** for the chosen strategy. Your analysis must be critical and objective.
+    **CRITICAL INSTRUCTION:**
+    You must ONLY use the data relevant to the '${strategy}' strategy.
+    - If Strategy is 'BRRRR', look ONLY at the 'brrrrAnalysis' object for your financial metrics (ROI, Cash Flow Post-Refi, Cash Left In Deal). DO NOT cite the standard 'rentalCalculations'.
+    - If Strategy is 'Wholesale', look ONLY at 'wholesaleAnalysis'.
+    - If Strategy is 'Subject-To', look ONLY at 'subjectToAnalysis'.
+    - If Strategy is 'Seller Financing', look ONLY at 'sellerFinancingAnalysis'.
+    - If Strategy is 'Rental', use 'rentalCalculations'.
+
+    **Input Data:**
+    ${dataString}
+
+    **Analysis Logic for '${strategy}':**
     ${recommendationLogic}
-    **Crucially, do not just look at one metric in isolation. A great financial deal in a terrible area is a bad deal. Your recommendation must reflect this reality.**
-3.  Your final output MUST be a single, valid JSON object that strictly adheres to the schema provided below. Do not include any other text, markdown formatting, or explanations before or after the JSON object. Ensure the 'strategyAnalyzed' field is set to "${strategy}".
-    
-JSON Schema:
-${JSON.stringify(recommendationOnlySchema, null, 2)}
-`;
+
+    **Output Format:**
+    Return a valid JSON object matching this schema:
+    {
+        "level": "Worth Pursuing" | "Moderate Risk" | "High Risk" | "Avoid",
+        "summary": "One sentence summary focusing on the ${strategy} outcome.",
+        "keyFactors": ["Factor 1", "Factor 2", "Factor 3"],
+        "additionalNotes": "Short paragraph providing context."
+    }
+    `;
 };
 
 
 export const reevaluatePropertyWithGemini = async (property: Property, strategy: Strategy): Promise<Recommendation> => {
-    console.log(`Re-evaluating property with Gemini for strategy: ${strategy}`, property);
+    console.log(`Re - evaluating property with Gemini for strategy: ${strategy} `, property);
     const modelsToTry = ['gemini-2.5-flash', 'gemini-3-pro-preview'];
     let lastError: any = null;
     let rawResponseForDebugging = '';
 
     for (const model of modelsToTry) {
         try {
-            console.log(`Attempting re-evaluation with model: ${model}`);
+            console.log(`Attempting re - evaluation with model: ${model} `);
             const prompt = buildReevaluationPrompt(property, strategy);
             const response = await ai.models.generateContent({
                 model,
@@ -509,14 +517,14 @@ export const reevaluatePropertyWithGemini = async (property: Property, strategy:
             const data = JSON.parse(rawResponseForDebugging);
 
             if (data.level && data.summary && Array.isArray(data.keyFactors)) {
-                console.log(`Successfully re-evaluated property with model: ${model}`);
+                console.log(`Successfully re - evaluated property with model: ${model} `);
                 return data as Recommendation;
             } else {
                 throw new Error("Parsed JSON does not match the expected Recommendation structure.");
             }
 
         } catch (error) {
-            console.warn(`Re-evaluation with model '${model}' failed. Trying next model...`, error);
+            console.warn(`Re - evaluation with model '${model}' failed.Trying next model...`, error);
             lastError = error;
         }
     }
