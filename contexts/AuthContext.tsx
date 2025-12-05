@@ -246,6 +246,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             role: decodedToken.role || 'user', // Restore role from token
                         };
                         setUser(userFromToken);
+
+                        // Fetch fresh data from server to ensure analysis count is in sync
+                        // This triggers the backend 'smart sync' logic we added to getUserProfile
+                        try {
+                            const res = await apiClient.get('/user/profile');
+                            setUser(prev => prev ? { ...prev, ...res } : res);
+                        } catch (refreshError) {
+                            console.error("Background profile refresh failed:", refreshError);
+                        }
+
                     } else {
                         localStorage.removeItem('authToken');
                     }
