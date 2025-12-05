@@ -909,7 +909,9 @@ const ExpensesTab = ({ property }: { property: Property }) => {
         <div className="space-y-4 text-sm">
             <div className="p-4 bg-green-50 rounded-lg space-y-2">
                 <ExpenseRow label="Gross Monthly Rent" value={formatCurrency(totalMonthlyRent)} />
-                <ExpenseRow label="Gross Annual Rent" value={formatCurrency(calcs.grossAnnualRent)} />
+                <ExpenseRow label="Other Monthly Income" value={formatCurrency(property.financials.otherMonthlyIncome || 0)} />
+                <ExpenseRow label="Gross Monthly Income" value={formatCurrency(totalMonthlyRent + (property.financials.otherMonthlyIncome || 0))} isTotal />
+                <ExpenseRow label="Gross Annual Income" value={formatCurrency((totalMonthlyRent + (property.financials.otherMonthlyIncome || 0)) * 12)} />
                 <ExpenseRow label={`Less: Vacancy (${vacancyRate}%)`} value={`-${formatCurrency(calcs.vacancyLoss / 12)}/month`} isSub />
                 <ExpenseRow label="Effective Gross Income" value={formatCurrency(calcs.effectiveGrossIncome / 12)} isTotal />
             </div>
@@ -1384,6 +1386,9 @@ const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
                     <h3 className="text-lg font-semibold text-gray-700 mb-3 pb-2 border-b">Monthly Cash Flow</h3>
                     <div className="space-y-2 text-sm">
                         <SummaryRow label="Gross Rent" value={formatCurrency(totalMonthlyRent)} />
+                        <SummaryRow label="Other Income" value={formatCurrency(financials.otherMonthlyIncome || 0)} />
+                        <SummaryRow label="Vacancy Loss" value={formatCurrency(calcs.vacancyLoss / 12)} isNegative />
+                        <SummaryRow label="Effective Gross Income" value={formatCurrency(calcs.effectiveGrossIncome / 12)} isSubTotal />
                         <SummaryRow label="Operating Expenses" value={formatCurrency(calcs.totalOperatingExpenses)} isNegative />
                         <SummaryRow label="Net Operating Income" value={formatCurrency(calcs.netOperatingIncome)} isSubTotal />
                         <SummaryRow label="Debt Service" value={formatCurrency(calcs.monthlyDebtService)} isNegative />
