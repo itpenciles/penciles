@@ -1,16 +1,49 @@
 import React from 'react';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowTrendingUpIcon, BanknotesIcon, ExclamationTriangleIcon, ChartBarIcon } from '../constants';
+import { ArrowTrendingUpIcon, BanknotesIcon } from '../constants';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const MobileDashboard = () => {
     const { properties } = useProperties();
-    const { user } = useAuth();
+    const { user, analysisStatus } = useAuth();
 
     const activeProperties = properties.filter(p => !p.deletedAt);
+    const archivedProperties = properties.filter(p => p.deletedAt);
+
     const avgCapRate = activeProperties.length > 0 ? activeProperties.reduce((acc, p) => acc + p.calculations.capRate, 0) / activeProperties.length : 0;
     const totalCashFlow = activeProperties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0);
-    const highRiskCount = activeProperties.filter(p => p.recommendation?.level === 'High Risk' || p.recommendation?.level === 'Avoid').length;
+
+    // --- Data for Portfolio Chart ---
+    const remainingAnalyses = analysisStatus.limit === 'Unlimited' ? 0 : Math.max(0, analysisStatus.limit - analysisStatus.count);
+    // If unlimited, we don't show "Remaining" slice, just Active vs Archived
+    const portfolioData = [
+        { name: 'Active', value: activeProperties.length, color: '#3B82F6' }, // Blue
+        { name: 'Archived', value: archivedProperties.length, color: '#9CA3AF' }, // Gray
+    ];
+    if (analysisStatus.limit !== 'Unlimited') {
+        portfolioData.push({ name: 'Remaining', value: remainingAnalyses, color: '#E5E7EB' }); // Light Gray
+    }
+
+    // --- Data for Risk Chart ---
+    const riskDistribution = activeProperties.reduce((acc, p) => {
+        const level = p.recommendation?.level || 'Unknown';
+        acc[level] = (acc[level] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const riskData = Object.entries(riskDistribution).map(([name, value]) => {
+        let color = '#D1D5DB'; // Default Gray
+        if (name === 'High Risk' || name === 'Avoid') color = '#EF4444'; // Red
+        if (name === 'Moderate Risk' || name === 'Hold') color = '#F59E0B'; // Amber
+        if (name === 'Buy' || name === 'Strong Buy') color = '#10B981'; // Emerald
+        return { name, value, color };
+    });
+
+    // If no data, show a placeholder
+    if (riskData.length === 0) {
+        riskData.push({ name: 'No Data', value: 1, color: '#E5E7EB' });
+    }
 
     const MetricCard = ({ title, value, subtext, icon: Icon, colorClass }: { title: string, value: string, subtext?: string, icon: any, colorClass: string }) => (
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center h-40 w-full relative overflow-hidden">
@@ -20,6 +53,39 @@ const MobileDashboard = () => {
             <p className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1">{title}</p>
             <h3 className={`text-3xl font-bold ${colorClass.replace('bg-', 'text-').replace('100', '600')}`}>{value}</h3>
             {subtext && <p className="text-gray-400 text-[10px] mt-1">{subtext}</p>}
+        </div>
+    );
+
+    const ChartCard = ({ title, data, centerText, subText }: { title: string, data: any[], centerText: string, subText?: string }) => (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col items-center">
+            <h3 className="text-sm font-bold text-gray-800 mb-2 w-full text-left">{title}</h3>
+            <div className="h-48 w-full relative">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={data}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                            stroke="none"
+                        >
+                            {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                    </PieChart>
+                </ResponsiveContainer>
+                {/* Center Text Overlay */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
+                    <span className="text-2xl font-bold text-gray-800">{centerText}</span>
+                    {subText && <span className="text-[10px] text-gray-500">{subText}</span>}
+                </div>
+            </div>
         </div>
     );
 
@@ -54,38 +120,22 @@ const MobileDashboard = () => {
                 />
             </div>
 
-            {/* Secondary Metrics */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex justify-between items-center">
-                <div className="flex items-center space-x-3">
-                    <div className="bg-orange-100 p-2 rounded-lg">
-                        <ExclamationTriangleIcon className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-gray-800">Risk Alert</p>
-                        <p className="text-xs text-gray-500">{highRiskCount} properties flagged</p>
-                    </div>
-                </div>
-                <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
-                    {highRiskCount}
-                </div>
-            </div>
+            {/* Charts Section */}
+            <div className="space-y-4">
+                <ChartCard
+                    title="Portfolio Status"
+                    data={portfolioData}
+                    centerText={`${activeProperties.length + archivedProperties.length}`}
+                    subText="Total Analyzed"
+                />
 
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex justify-between items-center">
-                <div className="flex items-center space-x-3">
-                    <div className="bg-purple-100 p-2 rounded-lg">
-                        <ChartBarIcon className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-gray-800">Total Analyzed</p>
-                        <p className="text-xs text-gray-500">{activeProperties.length} properties</p>
-                    </div>
-                </div>
-                <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
-                    {activeProperties.length}
-                </div>
+                <ChartCard
+                    title="Risk Analysis"
+                    data={riskData}
+                    centerText={`${activeProperties.length}`}
+                    subText="Active Properties"
+                />
             </div>
-
-            {/* Recent Activity / Quick Actions could go here */}
         </div>
     );
 };
