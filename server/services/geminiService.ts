@@ -302,7 +302,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                             monthlyStreetLights: 0, monthlyGas: 0, monthlyElectric: 0, monthlyLandscaping: 0, monthlyMiscFees: 0
                         }
                     },
-                    calculations: { monthlyPayment: 0, grossIncome: 0, operatingExpenses: 0, netOperatingIncome: 0, cashFlow: 0, cashOnCashReturn: 0 }
+                    calculations: { monthlyPayment: 0, grossIncome: 0, vacancyLoss: 0, effectiveIncome: 0, operatingExpenses: 0, netOperatingIncome: 0, cashFlow: 0, cashOnCashReturn: 0 }
                 },
                 brrrrAnalysis: {
                     inputs: {

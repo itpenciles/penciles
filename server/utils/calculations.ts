@@ -120,7 +120,7 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
   const totalCashInvested = downPayment + (inputs.rehabCost || 0);
   const cashOnCashReturn = totalCashInvested > 0 ? ((cashFlow * 12) / totalCashInvested) * 100 : 0;
 
-  return { monthlyPayment, grossIncome, operatingExpenses, netOperatingIncome, cashFlow, cashOnCashReturn };
+  return { monthlyPayment, grossIncome, vacancyLoss, effectiveIncome, operatingExpenses, netOperatingIncome, cashFlow, cashOnCashReturn };
 };
 
 export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations => {

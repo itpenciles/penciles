@@ -212,6 +212,8 @@ export interface SellerFinancingInputs {
 export interface SellerFinancingCalculations {
   monthlyPayment: number;
   grossIncome: number;
+  vacancyLoss: number;
+  effectiveIncome: number;
   operatingExpenses: number;
   netOperatingIncome: number;
   cashFlow: number;
