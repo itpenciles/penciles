@@ -166,11 +166,21 @@ Property to analyze: ${inputDescription}.
     - **Safety is Paramount:** The \`marketAnalysis.safetyScore\` is a critical factor. A low score indicates higher risks of vacancy, tenant issues, and property damage that can nullify strong on-paper financials.
         -   **Safety Score < 40:** The property is in a challenging area. It CANNOT be rated 'Worth Pursuing'. It must be rated 'High Risk' or 'Avoid', and you must explicitly state that the low safety score is the primary reason.
         -   **Safety Score 40-60:** This is a 'Moderate Risk' area. A property here can only be 'Worth Pursuing' if the financial metrics are **exceptionally strong** (e.g., CoC > 15%, very high cash flow) to compensate for the added location risk. Otherwise, it defaults to 'Moderate Risk'. You must mention the safety as a key factor.
-    - **Financial Health:**
-        - **'Worth Pursuing'**: Reserved for properties with strong financials **AND** an acceptable safety score (>60). Must have strong positive cash flow, a healthy Cash-on-Cash Return (>8-10%), a safe DSCR (>1.25), and a good Cap Rate.
-        - **'Moderate Risk'**: Properties with a mixed financial profile (e.g., break-even cash flow, borderline DSCR) OR strong financials in a borderline safety area (40-60 score).
-        - **'High Risk'**: Properties with significant financial flaws (clear negative cash flow, very low CoC, DSCR < 1.0) OR properties in a low safety area (<40 score).
-        - **'Avoid'**: Properties that are fundamentally unsound due to severe negative cash flow, an exorbitant price, OR being in a very poor location.
+    - **Financial Health & Cash Flow (CRITICAL):**
+        - **"Positive Cash Flow" Definition:** You must explicitly define "Positive Cash Flow" as **Net Monthly Cash Flow AFTER Debt Service** (assuming a standard 20-25% down payment loan). Do NOT confuse this with Net Operating Income (NOI).
+        - **'Worth Pursuing'**: Strong financials are the primary driver. Look for:
+            - **Cash-on-Cash Return (CoC):** > 8-10%
+            - **DSCR:** > 1.25
+            - **Cap Rate:** Healthy for the area (typically > 6%)
+            - **Safety:** Ideally > 60, but a score of 40-60 is acceptable if the CoC is exceptionally high (>12%).
+        - **'Moderate Risk'**:
+            - Mixed financials (e.g., positive cash flow but low CoC).
+            - **High Yield / Higher Risk:** Properties with excellent financials (CoC > 12%) but in a "Moderate Risk" neighborhood (Safety Score 40-60). You must explicitly label this trade-off.
+        - **'High Risk'**:
+            - **Negative Cash Flow:** Any property with negative cash flow after debt service is automatically 'High Risk' or 'Avoid' unless there is a massive value-add opportunity.
+            - **Unsafe Area:** Safety Score < 40 is 'High Risk' regardless of financials.
+        - **'Avoid'**: Severe negative cash flow, dangerous location (< 20 Safety), or structural issues.
+    - **Required Output:** In your \`recommendation.additionalNotes\`, you MUST explicitly state: "Cash flow calculated assuming a [X]% down payment loan."
     **Crucially, do not just look at one metric in isolation. A great financial deal in a terrible area is a bad deal. Your recommendation must reflect this reality.**
 10. Your final output MUST be a single, valid JSON object that strictly adheres to the schema provided below. Do not include any other text, markdown formatting, or explanations before or after the JSON object.
     
@@ -481,14 +491,21 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
         default:
             recommendationLogic = `
 - **Your recommendation must be based on a balanced assessment of both financial metrics and location quality for the 'Rental' strategy.**
-- **Safety is Paramount:** The \`marketAnalysis.safetyScore\` is a critical factor. A low score indicates higher risks of vacancy, tenant issues, and property damage that can nullify strong on-paper financials.
-    - **Safety Score < 40:** The property is in a challenging area. It CANNOT be rated 'Worth Pursuing'. It must be rated 'High Risk' or 'Avoid', and you must explicitly state that the low safety score is the primary reason.
-    - **Safety Score 40-60:** This is a 'Moderate Risk' area. A property here can only be 'Worth Pursuing' if the financial metrics are **exceptionally strong** (e.g., CoC > 15%, very high cash flow) to compensate for the added location risk. Otherwise, it defaults to 'Moderate Risk'. You must mention the safety as a key factor.
-- **Financial Health:**
-    - **'Worth Pursuing'**: Reserved for properties with strong financials **AND** an acceptable safety score (>60). Must have strong positive cash flow, a healthy Cash-on-Cash Return (>8-10%), a safe DSCR (>1.25), and a good Cap Rate.
-    - **'Moderate Risk'**: Properties with a mixed financial profile (e.g., break-even cash flow, borderline DSCR) OR strong financials in a borderline safety area (40-60 score).
-    - **'High Risk'**: Properties with significant financial flaws (clear negative cash flow, very low CoC, DSCR < 1.0) OR properties in a low safety area (<40 score).
-    - **'Avoid'**: Properties that are fundamentally unsound due to severe negative cash flow, an exorbitant price, OR being in a very poor location.`;
+- **Financial Health & Cash Flow (CRITICAL):**
+    - **"Positive Cash Flow" Definition:** You must explicitly define "Positive Cash Flow" as **Net Monthly Cash Flow AFTER Debt Service** (assuming a standard 20-25% down payment loan). Do NOT confuse this with Net Operating Income (NOI).
+    - **'Worth Pursuing'**: Strong financials are the primary driver. Look for:
+        - **Cash-on-Cash Return (CoC):** > 8-10%
+        - **DSCR:** > 1.25
+        - **Cap Rate:** Healthy for the area (typically > 6%)
+        - **Safety:** Ideally > 60, but a score of 40-60 is acceptable if the CoC is exceptionally high (>12%).
+    - **'Moderate Risk'**:
+        - Mixed financials (e.g., positive cash flow but low CoC).
+        - **High Yield / Higher Risk:** Properties with excellent financials (CoC > 12%) but in a "Moderate Risk" neighborhood (Safety Score 40-60). You must explicitly label this trade-off.
+    - **'High Risk'**:
+        - **Negative Cash Flow:** Any property with negative cash flow after debt service is automatically 'High Risk' or 'Avoid' unless there is a massive value-add opportunity.
+        - **Unsafe Area:** Safety Score < 40 is 'High Risk' regardless of financials.
+    - **'Avoid'**: Severe negative cash flow, dangerous location (< 20 Safety), or structural issues.
+- **Required Output:** In your \`additionalNotes\`, you MUST explicitly state: "Cash flow calculated assuming a [X]% down payment loan."`;
             break;
     }
 
