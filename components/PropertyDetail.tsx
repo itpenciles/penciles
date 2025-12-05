@@ -709,9 +709,9 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                 [],
                 ['--- Seller Financing Metrics ---'],
                 ['Monthly Payment', sf.calculations.monthlyPayment.toFixed(2)],
-                ['Net Operating Income', sf.calculations.netOperatingIncome.toFixed(2)],
-                ['Cash Flow', sf.calculations.cashFlow.toFixed(2)],
-                ['Cash on Cash Return', `${sf.calculations.cashOnCashReturn.toFixed(2)}%`],
+                ['Net Operating Income', (sf.calculations.netOperatingIncome || 0).toFixed(2)],
+                ['Cash Flow', (sf.calculations.cashFlow || 0).toFixed(2)],
+                ['Cash on Cash Return', `${(sf.calculations.cashOnCashReturn || 0).toFixed(2)}%`],
             );
         }
 
@@ -1152,10 +1152,10 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <MetricBox label="Monthly Payment" value={formatCurrency(calcs.monthlyPayment)} description="Payment to the seller" color="blue" />
-                <MetricBox label="Net Operating Income" value={formatCurrency(calcs.netOperatingIncome)} description="Income after expenses" color={calcs.netOperatingIncome > 0 ? 'green' : 'red'} />
-                <MetricBox label="Monthly Cash Flow" value={formatCurrency(calcs.cashFlow)} description="NOI minus Debt Service" color={calcs.cashFlow > 0 ? 'green' : 'red'} />
-                <MetricBox label="Cash-on-Cash Return" value={`${calcs.cashOnCashReturn.toFixed(1)}%`} description="Annualized return on cash invested" color={calcs.cashOnCashReturn > 8 ? 'green' : 'red'} />
+                <MetricBox label="Monthly Payment" value={formatCurrency(calcs.monthlyPayment || 0)} description="Payment to the seller" color="blue" />
+                <MetricBox label="Net Operating Income" value={formatCurrency(calcs.netOperatingIncome || 0)} description="Income after expenses" color={(calcs.netOperatingIncome || 0) > 0 ? 'green' : 'red'} />
+                <MetricBox label="Monthly Cash Flow" value={formatCurrency(calcs.cashFlow || 0)} description="NOI minus Debt Service" color={(calcs.cashFlow || 0) > 0 ? 'green' : 'red'} />
+                <MetricBox label="Cash-on-Cash Return" value={`${(calcs.cashOnCashReturn || 0).toFixed(1)}%`} description="Annualized return on cash invested" color={(calcs.cashOnCashReturn || 0) > 8 ? 'green' : 'red'} />
             </div>
 
             <div className="p-4 border rounded-lg bg-gray-50/50">
@@ -1174,11 +1174,11 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
             <div className="p-4 border rounded-lg bg-gray-50/50">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Cash Flow Breakdown</h3>
                 <div className="space-y-2 text-sm">
-                    <CalculationRow label="Gross Income" value={formatCurrency(calcs.grossIncome)} />
-                    <CalculationRow label="Less: Operating Expenses" value={formatCurrency(calcs.operatingExpenses)} isNegative={true} />
-                    <CalculationRow label="Net Operating Income (NOI)" value={formatCurrency(calcs.netOperatingIncome)} isSubTotal={true} />
-                    <CalculationRow label="Less: Seller Financing Payment" value={formatCurrency(calcs.monthlyPayment)} isNegative={true} />
-                    <CalculationRow label="Net Monthly Cash Flow" value={formatCurrency(calcs.cashFlow)} isTotal={true} color={calcs.cashFlow > 0 ? 'green' : 'red'} />
+                    <CalculationRow label="Gross Income" value={formatCurrency(calcs.grossIncome || 0)} />
+                    <CalculationRow label="Less: Operating Expenses" value={formatCurrency(calcs.operatingExpenses || 0)} isNegative={true} />
+                    <CalculationRow label="Net Operating Income (NOI)" value={formatCurrency(calcs.netOperatingIncome || 0)} isSubTotal={true} />
+                    <CalculationRow label="Less: Seller Financing Payment" value={formatCurrency(calcs.monthlyPayment || 0)} isNegative={true} />
+                    <CalculationRow label="Net Monthly Cash Flow" value={formatCurrency(calcs.cashFlow || 0)} isTotal={true} color={(calcs.cashFlow || 0) > 0 ? 'green' : 'red'} />
                 </div>
             </div>
 
