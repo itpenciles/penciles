@@ -15,15 +15,12 @@ const MobileDashboard = () => {
     const totalCashFlow = activeProperties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0);
 
     // --- Data for Portfolio Chart ---
-    const remainingAnalyses = analysisStatus.limit === 'Unlimited' ? 0 : Math.max(0, analysisStatus.limit - analysisStatus.count);
-    // If unlimited, we don't show "Remaining" slice, just Active vs Archived
+    // Note: We do NOT include "Remaining" in the pie chart because "Active" + "Archived" (Lifetime) 
+    // does not sum with "Remaining" (Monthly Limit) to equal a meaningful whole.
     const portfolioData = [
         { name: 'Active', value: activeProperties.length, color: '#3B82F6' }, // Blue
         { name: 'Archived', value: archivedProperties.length, color: '#9CA3AF' }, // Gray
     ];
-    if (analysisStatus.limit !== 'Unlimited') {
-        portfolioData.push({ name: 'Remaining', value: remainingAnalyses, color: '#E5E7EB' }); // Light Gray
-    }
 
     // --- Data for Risk Chart ---
     const riskDistribution = activeProperties.reduce((acc, p) => {
@@ -56,34 +53,45 @@ const MobileDashboard = () => {
         </div>
     );
 
-    const ChartCard = ({ title, data, centerText, subText }: { title: string, data: any[], centerText: string, subText?: string }) => (
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col items-center">
-            <h3 className="text-sm font-bold text-gray-800 mb-2 w-full text-left">{title}</h3>
-            <div className="h-48 w-full relative">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={data}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                            stroke="none"
-                        >
-                            {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-                    </PieChart>
-                </ResponsiveContainer>
-                {/* Center Text Overlay */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                    <span className="text-2xl font-bold text-gray-800">{centerText}</span>
-                    {subText && <span className="text-[10px] text-gray-500">{subText}</span>}
+    const ChartCard = ({ title, data, centerText, subText, extraInfo }: { title: string, data: any[], centerText: string, subText?: string, extraInfo?: React.ReactNode }) => (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col">
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+                {extraInfo}
+            </div>
+            <div className="flex items-center justify-center h-48 w-full relative">
+                {/* Chart Container */}
+                <div className="w-full h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={data}
+                                cx="40%" // Shift chart left to make room for legend
+                                cy="50%"
+                                innerRadius={55}
+                                outerRadius={75}
+                                paddingAngle={5}
+                                dataKey="value"
+                                stroke="none"
+                            >
+                                {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend
+                                layout="vertical"
+                                verticalAlign="middle"
+                                align="right"
+                                wrapperStyle={{ fontSize: '10px', right: 0 }}
+                            />
+                        </PieChart>
+                    </ResponsiveContainer>
+                    {/* Center Text Overlay - Adjusted position for shifted chart */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-1 pr-[20%]">
+                        <span className="text-2xl font-bold text-gray-800">{centerText}</span>
+                        {subText && <span className="text-[10px] text-gray-500">{subText}</span>}
+                    </div>
                 </div>
             </div>
         </div>
@@ -127,6 +135,13 @@ const MobileDashboard = () => {
                     data={portfolioData}
                     centerText={`${activeProperties.length + archivedProperties.length}`}
                     subText="Total Analyzed"
+                    extraInfo={
+                        analysisStatus.limit !== 'Unlimited' && (
+                            <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                                {Math.max(0, analysisStatus.limit - analysisStatus.count)} Left
+                            </span>
+                        )
+                    }
                 />
 
                 <ChartCard
