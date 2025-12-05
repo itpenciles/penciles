@@ -1267,32 +1267,41 @@ const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasC
 
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Purchase Price ($)" name="purchasePrice" value={inputs.purchasePrice} onChange={handleNumberInputChange} />
-                <InputField label="Down Payment ($)" name="downPayment" value={inputs.downPayment} onChange={handleNumberInputChange} />
-                <InputField label="Seller Loan Rate (%)" name="sellerLoanRate" value={inputs.sellerLoanRate} onChange={handleNumberInputChange} />
-                <InputField label="Loan Term (Years)" name="loanTerm" value={inputs.loanTerm} onChange={handleNumberInputChange} />
-                <InputField label="Balloon (Years, 0 if none)" name="balloonYears" value={inputs.balloonYears} onChange={handleNumberInputChange} />
-                <SelectField
-                    label="Payment Type"
-                    name="paymentType"
-                    value={inputs.paymentType}
-                    onChange={handleSelectChange}
-                    options={['Amortization', 'Interest Only']}
-                />
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Purchase & Loan Terms</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Purchase Price ($)" name="purchasePrice" value={inputs.purchasePrice} onChange={handleNumberInputChange} />
+                    <InputField label="Down Payment ($)" name="downPayment" value={inputs.downPayment} onChange={handleNumberInputChange} />
+                    <InputField label="Seller Loan Rate (%)" name="sellerLoanRate" value={inputs.sellerLoanRate} onChange={handleNumberInputChange} />
+                    <InputField label="Loan Term (Years)" name="loanTerm" value={inputs.loanTerm} onChange={handleNumberInputChange} />
+                    <InputField label="Balloon (Years, 0 if none)" name="balloonYears" value={inputs.balloonYears} onChange={handleNumberInputChange} />
+                    <SelectField
+                        label="Payment Type"
+                        name="paymentType"
+                        value={inputs.paymentType}
+                        onChange={handleSelectChange}
+                        options={['Amortization', 'Interest Only']}
+                    />
+                </div>
             </div>
 
-            <div className="border-t pt-4">
-                <h4 className="font-semibold text-gray-700 mb-3">Rehab & Income</h4>
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Income</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Total Rehab Estimate ($)" name="rehabCost" value={inputs.rehabCost || 0} onChange={handleNumberInputChange} />
                     <InputField label="Market Rent ($)" name="marketRent" value={inputs.marketRent} onChange={handleNumberInputChange} />
                     <InputField label="Other Monthly Income ($)" name="otherMonthlyIncome" value={inputs.otherMonthlyIncome || 0} onChange={handleNumberInputChange} />
                 </div>
             </div>
 
-            <div className="border-t pt-4">
-                <h4 className="font-semibold text-gray-700 mb-3">Operating Expenses</h4>
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Rehab</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Total Rehab Estimate ($)" name="rehabCost" value={inputs.rehabCost || 0} onChange={handleNumberInputChange} />
+                </div>
+            </div>
+
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Operating Expenses</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                     <SliderField label="Vacancy Rate" name="vacancyRate" value={inputs.expenses?.vacancyRate || 0} onChange={(v) => handleSliderChange('vacancyRate', v)} min={0} max={20} step={0.5} unit="%" />
                     <SliderField label="Maintenance" name="maintenanceRate" value={inputs.expenses?.maintenanceRate || 0} onChange={(v) => handleSliderChange('maintenanceRate', v)} min={0} max={20} step={0.5} unit="%" />
