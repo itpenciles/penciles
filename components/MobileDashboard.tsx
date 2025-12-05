@@ -31,7 +31,7 @@ const MobileDashboard = () => {
 
     const riskData = Object.entries(riskDistribution).map(([name, value]) => {
         let color = '#D1D5DB'; // Default Gray
-        if (name === 'High Risk' || name === 'Avoid') color = '#EF4444'; // Red
+        if (name === 'High Risk' || name === 'Avoid') color = '#F97316'; // Orange
         if (name === 'Moderate Risk' || name === 'Hold') color = '#F59E0B'; // Amber
         if (name === 'Buy' || name === 'Strong Buy') color = '#10B981'; // Emerald
         return { name, value, color };

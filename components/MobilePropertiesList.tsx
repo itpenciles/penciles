@@ -1,44 +1,120 @@
-import React from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
-import { MapPinIcon } from '../constants';
+import { MapPinIcon, ListBulletIcon, ClockIcon, CalendarDaysIcon } from '../constants';
 
 const MobilePropertiesList = () => {
     const { properties, loading, error } = useProperties();
     const navigate = useNavigate();
+    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+    const [sortBy, setSortBy] = useState<'date' | 'strategy'>('date');
 
-    const activeProperties = properties.filter(p => !p.deletedAt);
+    const truncateAddress = (address: string, limit: number = 25) => {
+        if (address.length <= limit) return address;
+        return address.slice(0, limit) + '...';
+    };
+
+    const filteredProperties = properties.filter(p =>
+        viewMode === 'active' ? !p.deletedAt : p.deletedAt
+    );
+
+    const sortedProperties = [...filteredProperties].sort((a, b) => {
+        if (sortBy === 'strategy') {
+            const strategyA = a.recommendation?.strategyAnalyzed || 'Rental';
+            const strategyB = b.recommendation?.strategyAnalyzed || 'Rental';
+            return strategyA.localeCompare(strategyB);
+        }
+        // Default to date (assuming properties are already sorted by date desc from hook, or we leave as is)
+        // If we strictly needed to sort by date string, we'd need to parse "Oct 12, 2023", but usually the API returns sorted.
+        return 0;
+    });
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
     return (
         <div className="p-4 pb-24 bg-gray-50 min-h-screen">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">My Properties</h1>
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-2xl font-bold text-gray-900">My Properties</h1>
+            </div>
+
+            {/* View Mode Tabs */}
+            <div className="flex p-1 bg-gray-200 rounded-lg mb-4">
+                <button
+                    onClick={() => setViewMode('active')}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center space-x-1 transition-all ${viewMode === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                >
+                    <ListBulletIcon className="h-3 w-3" />
+                    <span>Active</span>
+                </button>
+                <button
+                    onClick={() => setViewMode('archived')}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center space-x-1 transition-all ${viewMode === 'archived' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                >
+                    <ClockIcon className="h-3 w-3" />
+                    <span>Archived</span>
+                </button>
+            </div>
+
+            {/* Sort Control */}
+            <div className="flex justify-end mb-3">
+                <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Sort By:</span>
+                    <button
+                        onClick={() => setSortBy('date')}
+                        className={`text-xs font-medium ${sortBy === 'date' ? 'text-teal-600' : 'text-gray-500'}`}
+                    >
+                        Date
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button
+                        onClick={() => setSortBy('strategy')}
+                        className={`text-xs font-medium ${sortBy === 'strategy' ? 'text-teal-600' : 'text-gray-500'}`}
+                    >
+                        Strategy
+                    </button>
+                </div>
+            </div>
 
             <div className="space-y-4">
-                {activeProperties.length === 0 ? (
+                {sortedProperties.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
-                        <p>No properties yet.</p>
-                        <button onClick={() => navigate('/add-property')} className="mt-2 text-teal-600 font-semibold">
-                            Add your first property
-                        </button>
+                        <p>No {viewMode} properties found.</p>
+                        {viewMode === 'active' && (
+                            <button onClick={() => navigate('/add-property')} className="mt-2 text-teal-600 font-semibold">
+                                Add your first property
+                            </button>
+                        )}
                     </div>
                 ) : (
-                    activeProperties.map((property) => (
+                    sortedProperties.map((property) => (
                         <div
                             key={property.id}
                             onClick={() => navigate(`/property/${property.id}`)}
-                            className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 active:bg-gray-50 transition-colors"
+                            className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 active:bg-gray-50 transition-colors relative overflow-hidden"
                         >
-                            <div className="flex justify-between items-start">
-                                <div className="flex items-start space-x-3">
-                                    <div className="bg-teal-50 p-2 rounded-lg mt-1">
+                            {/* Strategy Badge */}
+                            <div className="absolute top-0 right-0 bg-gray-100 px-2 py-1 rounded-bl-lg border-b border-l border-gray-50">
+                                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wide">
+                                    {property.recommendation?.strategyAnalyzed || 'Rental'}
+                                </span>
+                            </div>
+
+                            <div className="flex justify-between items-start mt-2">
+                                <div className="flex items-start space-x-3 w-full">
+                                    <div className="bg-teal-50 p-2 rounded-lg mt-1 flex-shrink-0">
                                         <MapPinIcon className="h-5 w-5 text-teal-600" />
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-gray-800 line-clamp-1">{property.address}</h3>
-                                        <p className="text-xs text-gray-500">{property.propertyType} • {property.dateAnalyzed}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-gray-800 text-sm truncate pr-2">
+                                            {truncateAddress(property.address)}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 flex items-center mt-0.5">
+                                            <CalendarDaysIcon className="h-3 w-3 mr-1" />
+                                            {property.dateAnalyzed}
+                                        </p>
 
                                         <div className="flex items-center space-x-4 mt-3">
                                             <div>
@@ -52,9 +128,11 @@ const MobilePropertiesList = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className={`px-2 py-1 rounded-full text-[10px] font-bold ${property.recommendation?.level === 'Worth Pursuing' ? 'bg-green-100 text-green-700' :
+
+                                {/* Recommendation Badge (Bottom Right or separate) */}
+                                <div className={`flex-shrink-0 px-2 py-1 rounded-full text-[10px] font-bold mt-8 ${property.recommendation?.level === 'Worth Pursuing' ? 'bg-green-100 text-green-700' :
                                     property.recommendation?.level === 'Moderate Risk' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-red-100 text-red-700'
+                                        'bg-orange-100 text-orange-700' // Changed to Orange for risk
                                     }`}>
                                     {property.recommendation?.level === 'Worth Pursuing' ? 'Good' :
                                         property.recommendation?.level === 'Moderate Risk' ? 'Okay' : 'Risk'}
