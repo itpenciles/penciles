@@ -77,7 +77,7 @@ const MainLayout = () => {
 
       <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Mobile Header - Teal Design */}
-        <header className="md:hidden bg-teal-600 text-white p-4 flex items-center justify-between flex-shrink-0 shadow-md z-10">
+        <header className="md:hidden bg-gray-800 text-white p-4 flex items-center justify-between flex-shrink-0 shadow-md z-10">
           <div className="flex items-center">
             <button
               onClick={() => setIsSidebarOpen(true)}

@@ -158,8 +158,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 onClick={onClose}
                 className={({ isActive }) =>
                   `flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${isActive
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700'
+                    ? 'bg-brand-blue-light text-brand-blue'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`
                 }
               >
