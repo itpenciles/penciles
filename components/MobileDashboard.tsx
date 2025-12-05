@@ -2,7 +2,7 @@ import React from 'react';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowTrendingUpIcon, BanknotesIcon } from '../constants';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const MobileDashboard = () => {
     const { properties } = useProperties();
@@ -59,14 +59,14 @@ const MobileDashboard = () => {
                 <h3 className="text-sm font-bold text-gray-800">{title}</h3>
                 {extraInfo}
             </div>
-            <div className="flex items-center justify-center h-48 w-full relative">
-                {/* Chart Container */}
-                <div className="w-full h-full">
+            <div className="flex items-center h-48 w-full">
+                {/* Chart Container (Left 2/3) */}
+                <div className="relative w-2/3 h-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={data}
-                                cx="40%" // Shift chart left to make room for legend
+                                cx="50%"
                                 cy="50%"
                                 innerRadius={55}
                                 outerRadius={75}
@@ -79,19 +79,26 @@ const MobileDashboard = () => {
                                 ))}
                             </Pie>
                             <Tooltip />
-                            <Legend
-                                layout="vertical"
-                                verticalAlign="middle"
-                                align="right"
-                                wrapperStyle={{ fontSize: '10px', right: 0 }}
-                            />
                         </PieChart>
                     </ResponsiveContainer>
-                    {/* Center Text Overlay - Adjusted position for shifted chart */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-1 pr-[20%]">
+                    {/* Center Text Overlay - Perfectly centered in the chart container */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-1">
                         <span className="text-2xl font-bold text-gray-800">{centerText}</span>
                         {subText && <span className="text-[10px] text-gray-500">{subText}</span>}
                     </div>
+                </div>
+
+                {/* Custom Legend (Right 1/3) */}
+                <div className="w-1/3 flex flex-col justify-center space-y-3 pl-2">
+                    {data.map((item, index) => (
+                        <div key={index} className="flex items-start">
+                            <div className="w-3 h-3 rounded-full mt-0.5 mr-2 flex-shrink-0" style={{ backgroundColor: item.color }}></div>
+                            <div className="flex flex-col">
+                                <span className="text-xs font-medium text-gray-700 leading-tight">{item.name}</span>
+                                <span className="text-[10px] text-gray-400">{item.value} props</span>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
