@@ -157,6 +157,11 @@ const PropertyDetail = () => {
             setProperty(foundProperty);
             setEditedProperty(JSON.parse(JSON.stringify(foundProperty))); // Deep copy for editing
 
+            // Set the active strategy from the property's saved strategy
+            if (foundProperty.recommendation?.strategyAnalyzed) {
+                setActiveStrategy(foundProperty.recommendation.strategyAnalyzed);
+            }
+
             // Initialize filters with property details if not already set (or reset on new property load)
             setAttomFilters(prev => ({
                 ...prev,
