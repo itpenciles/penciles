@@ -70,6 +70,7 @@ export interface Financials {
   rehabCost: number;
   downPaymentPercent: number;
   monthlyRents: number[];
+  otherMonthlyIncome?: number;
   vacancyRate: number;
   maintenanceRate: number;
   managementRate: number;

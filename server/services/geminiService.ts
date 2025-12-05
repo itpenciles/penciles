@@ -223,6 +223,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                 listPrice: data.financials.listPrice,
                 estimatedValue: data.financials.estimatedValue,
                 monthlyRents: data.financials.monthlyRents,
+                otherMonthlyIncome: 0,
                 monthlyTaxes: data.financials.monthlyTaxes,
                 monthlyInsurance: data.financials.monthlyInsurance,
                 purchasePrice: data.financials.listPrice, // Default purchasePrice to listPrice

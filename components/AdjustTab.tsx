@@ -89,6 +89,7 @@ export const AdjustTab = ({ property, setProperty, onSave, onReset, hasChanges, 
                 ) : (
                     <InputField label="Monthly Rent ($)" name="monthlyRents" value={property.financials.monthlyRents[0] || 0} onChange={(e) => handleRentChange(e, 0)} />
                 )}
+                <InputField label="Other Monthly Income ($)" name="otherMonthlyIncome" value={property.financials.otherMonthlyIncome || 0} onChange={handleInputChange} />
             </div>
 
             <div className="p-4 border rounded-lg space-y-4">

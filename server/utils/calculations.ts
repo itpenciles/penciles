@@ -34,12 +34,15 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
 
   const totalMonthlyRent = monthlyRents.reduce((acc, rent) => acc + rent, 0);
   const grossAnnualRent = totalMonthlyRent * 12;
-  const vacancyLoss = grossAnnualRent * (vacancyRate / 100);
-  const effectiveGrossIncome = grossAnnualRent - vacancyLoss;
+  const grossMonthlyIncome = totalMonthlyRent + (financials.otherMonthlyIncome || 0);
+  const grossAnnualIncome = grossMonthlyIncome * 12;
 
-  const maintenanceCost = grossAnnualRent * (maintenanceRate / 100);
-  const managementCost = grossAnnualRent * (managementRate / 100);
-  const capexCost = grossAnnualRent * (capexRate / 100);
+  const vacancyLoss = grossAnnualIncome * (vacancyRate / 100);
+  const effectiveGrossIncome = grossAnnualIncome - vacancyLoss;
+
+  const maintenanceCost = grossAnnualIncome * (maintenanceRate / 100);
+  const managementCost = grossAnnualIncome * (managementRate / 100);
+  const capexCost = grossAnnualIncome * (capexRate / 100);
   const annualUtilities = ((monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) + (monthlyElectric || 0) + (monthlyLandscaping || 0)) * 12;
   const totalOperatingExpensesAnnual = maintenanceCost + managementCost + capexCost + (monthlyTaxes * 12) + (monthlyInsurance * 12) + annualUtilities + ((monthlyHoaFee || 0) * 12) + ((operatingMiscFee || 0) * 12);
 
@@ -200,9 +203,9 @@ export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations =>
   const vacancyLoss = monthlyRent * ((vacancyRate || 0) / 100);
   const effectiveIncome = grossMonthlyIncome - vacancyLoss;
 
-  const maintenanceCost = monthlyRent * ((maintenanceRate || 0) / 100);
-  const capexCost = monthlyRent * ((capexRate || 0) / 100);
-  const managementCost = monthlyRent * ((managementRate || 0) / 100);
+  const maintenanceCost = grossMonthlyIncome * ((maintenanceRate || 0) / 100);
+  const capexCost = grossMonthlyIncome * ((capexRate || 0) / 100);
+  const managementCost = grossMonthlyIncome * ((managementRate || 0) / 100);
 
   const totalFixedExpenses = (monthlyTaxes || 0) + (monthlyInsurance || 0) + (monthlyHoa || 0) +
     (monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) +
