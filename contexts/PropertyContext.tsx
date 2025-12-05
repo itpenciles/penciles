@@ -1,26 +1,33 @@
-import React, { createContext, useReducer, Dispatch, ReactNode } from 'react';
-import { Property, PropertyAction, Financials, CalculatedMetrics, WholesaleInputs, WholesaleCalculations, SubjectToInputs, SubjectToCalculations, SellerFinancingInputs, SellerFinancingCalculations } from '../types';
-import { initialProperties } from '../data/initialProperties';
 
-// --- CALCULATIONS ---
+import React, { createContext, useState, Dispatch, ReactNode, SetStateAction, useEffect, useCallback } from 'react';
+import { Property, Financials, CalculatedMetrics, WholesaleInputs, WholesaleCalculations, SubjectToInputs, SubjectToCalculations, SellerFinancingInputs, SellerFinancingCalculations, BrrrrInputs, BrrrrCalculations } from '../types';
+import apiClient from '../services/apiClient';
+import { localPropertyService } from '../services/localPropertyService';
+import { useAuth } from './AuthContext';
+
+
+// --- CALCULATIONS (These remain on the frontend for real-time adjustments) ---
 export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
-  const { 
-    purchasePrice, rehabCost, downPaymentPercent, monthlyRents, vacancyRate, 
+  const {
+    purchasePrice, rehabCost, downPaymentPercent, monthlyRents, vacancyRate,
     maintenanceRate, managementRate, capexRate, monthlyTaxes, monthlyInsurance,
     monthlyWaterSewer, monthlyStreetLights, monthlyGas, monthlyElectric, monthlyLandscaping,
-    loanInterestRate, loanTermYears, originationFeePercent, closingFee, 
+    monthlyHoaFee, operatingMiscFee,
+    loanInterestRate, loanTermYears, originationFeePercent, closingFee,
     processingFee, appraisalFee, titleFee,
-    sellerCreditTax, sellerCreditSewer, sellerCreditOrigination, sellerCreditClosing
+    brokerAgentFee, homeWarrantyFee, attorneyFee, closingMiscFee,
+    sellerCreditTax, sellerCreditSewer, sellerCreditOrigination, sellerCreditClosing,
+    sellerCreditRents, sellerCreditSecurityDeposit, sellerCreditMisc
   } = financials;
 
   const downPaymentAmount = purchasePrice * (downPaymentPercent / 100);
   const loanAmount = purchasePrice - downPaymentAmount;
 
   const originationFeeAmount = loanAmount * (originationFeePercent / 100);
-  const otherClosingFees = closingFee + processingFee + appraisalFee + titleFee;
+  const otherClosingFees = (closingFee || 0) + (processingFee || 0) + (appraisalFee || 0) + (titleFee || 0) + (brokerAgentFee || 0) + (homeWarrantyFee || 0) + (attorneyFee || 0) + (closingMiscFee || 0);
   const totalClosingCosts = otherClosingFees + originationFeeAmount;
-  
-  const totalSellerCredits = (sellerCreditTax || 0) + (sellerCreditSewer || 0) + (sellerCreditOrigination || 0) + (sellerCreditClosing || 0);
+
+  const totalSellerCredits = (sellerCreditTax || 0) + (sellerCreditSewer || 0) + (sellerCreditOrigination || 0) + (sellerCreditClosing || 0) + (sellerCreditRents || 0) + (sellerCreditSecurityDeposit || 0) + (sellerCreditMisc || 0);
   const totalCashToClose = downPaymentAmount + rehabCost + totalClosingCosts - totalSellerCredits;
   const totalInvestment = purchasePrice + rehabCost; // For "All-in Cap Rate"
 
@@ -28,7 +35,7 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const monthlyInterestRate = (loanInterestRate / 100) / 12;
   const numberOfPayments = loanTermYears * 12;
   const monthlyDebtService = loanAmount > 0 && loanInterestRate > 0 ? (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1) : 0;
-  
+
   const annualDebtService = monthlyDebtService * 12;
 
   const totalMonthlyRent = monthlyRents.reduce((acc, rent) => acc + rent, 0);
@@ -39,11 +46,11 @@ export const calculateMetrics = (financials: Financials): CalculatedMetrics => {
   const maintenanceCost = grossAnnualRent * (maintenanceRate / 100);
   const managementCost = grossAnnualRent * (managementRate / 100);
   const capexCost = grossAnnualRent * (capexRate / 100);
-  const annualUtilities = (monthlyWaterSewer + monthlyStreetLights + monthlyGas + monthlyElectric + monthlyLandscaping) * 12;
-  const totalOperatingExpensesAnnual = maintenanceCost + managementCost + capexCost + (monthlyTaxes * 12) + (monthlyInsurance * 12) + annualUtilities;
-  
+  const annualUtilities = ((monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) + (monthlyElectric || 0) + (monthlyLandscaping || 0)) * 12;
+  const totalOperatingExpensesAnnual = maintenanceCost + managementCost + capexCost + (monthlyTaxes * 12) + (monthlyInsurance * 12) + annualUtilities + ((monthlyHoaFee || 0) * 12) + ((operatingMiscFee || 0) * 12);
+
   const netOperatingIncomeAnnual = effectiveGrossIncome - totalOperatingExpensesAnnual;
-  
+
   const monthlyCashFlowNoDebt = netOperatingIncomeAnnual / 12;
   const monthlyCashFlowWithDebt = monthlyCashFlowNoDebt - monthlyDebtService;
 
@@ -87,9 +94,9 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
       const monthlyInterestRate = (sellerLoanRate / 100) / 12;
       const numberOfPayments = loanTerm * 12;
       if (monthlyInterestRate > 0) {
-          monthlyPayment = (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
+        monthlyPayment = (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
       } else {
-          monthlyPayment = loanAmount / numberOfPayments;
+        monthlyPayment = loanAmount / numberOfPayments;
       }
     } else if (paymentType === 'Interest Only') {
       monthlyPayment = (loanAmount * (sellerLoanRate / 100)) / 12;
@@ -100,62 +107,303 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
   return { monthlyPayment, spreadVsMarketRent, returnOnDp };
 };
 
+export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations => {
+  const {
+    purchasePrice, arv,
+    purchaseCosts, rehabCosts, financing, refinance, expenses,
+    monthlyRent, holdingCostsMonthly
+  } = inputs;
 
-const propertyReducer = (state: Property[], action: PropertyAction): Property[] => {
-  switch (action.type) {
-    case 'ADD_PROPERTY':
-      return [action.payload, ...state];
-    case 'ADD_MULTIPLE_PROPERTIES':
-      return [...action.payload, ...state];
-    case 'UPDATE_PROPERTY':
-      return state.map(p => p.id === action.payload.id ? action.payload : p);
-    case 'DELETE_PROPERTY':
-      return state.filter(p => p.id !== action.payload);
-    default:
-      return state;
-  }
-};
+  // Helper to sum object values
+  const sumValues = (obj: any) => Object.values(obj || {}).reduce((a: any, b: any) => (Number(a) || 0) + (Number(b) || 0), 0) as number;
 
-const LOCAL_STORAGE_KEY = 'itPencilsData';
+  // 1. Calculate Total Costs
+  const totalPurchaseClosingCosts = sumValues(purchaseCosts);
 
-const initializeState = (): Property[] => {
-  try {
-    const storedProperties = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (storedProperties) {
-      const parsedProperties = JSON.parse(storedProperties);
-      if (Array.isArray(parsedProperties)) {
-        return parsedProperties;
-      }
+  const totalExteriorRehab = sumValues(rehabCosts?.exterior);
+  const totalInteriorRehab = sumValues(rehabCosts?.interior);
+  const totalGeneralRehab = sumValues(rehabCosts?.general);
+  const totalRehabCost = totalExteriorRehab + totalInteriorRehab + totalGeneralRehab;
+
+  const rehabDurationMonths = financing?.rehabTimelineMonths || 0;
+  const totalHoldingCosts = (holdingCostsMonthly || 0) * rehabDurationMonths;
+
+  // Financing Costs (Phase 1)
+  let initialLoanAmount = 0;
+  let totalInitialLoanInterest = 0;
+  let initialLoanPointsAmount = 0;
+  let otherLenderCharges = financing?.otherCharges || 0;
+
+  if (!financing?.isCash) {
+    initialLoanAmount = financing?.loanAmount || 0;
+    const rate = financing?.interestRate || 0;
+
+    // Interest during rehab
+    if (financing?.interestOnly) {
+      const monthlyInterest = (initialLoanAmount * (rate / 100)) / 12;
+      totalInitialLoanInterest = monthlyInterest * rehabDurationMonths;
+    } else {
+      // Simple approximation for amortized loan interest during rehab if not interest only
+      // For simplicity, we'll assume interest-only payments during rehab is standard for hard money
+      const monthlyInterest = (initialLoanAmount * (rate / 100)) / 12;
+      totalInitialLoanInterest = monthlyInterest * rehabDurationMonths;
     }
-  } catch (error) {
-    console.error("Failed to parse properties from localStorage", error);
+
+    initialLoanPointsAmount = initialLoanAmount * ((financing?.points || 0) / 100);
   }
-  return initialProperties;
+
+  // If fees are wrapped, they are added to the loan balance (increasing payoff) but not paid out of pocket initially.
+  // However, for "Total Project Cost", they are a cost.
+  // If wrapped, they don't increase "Cash In" but they increase "Loan Payoff".
+  // Let's assume Total Project Cost tracks the *value* consumed.
+
+  const totalFinancingCosts = initialLoanPointsAmount + otherLenderCharges + totalInitialLoanInterest;
+
+  const totalProjectCost = purchasePrice + totalRehabCost + totalPurchaseClosingCosts + totalHoldingCosts + totalFinancingCosts;
+
+  // 2. Refinance
+  const refinanceLoanAmount = arv * ((refinance?.loanLtv || 75) / 100);
+  const refiClosingCosts = refinance?.closingCosts || 0;
+
+  // 3. Cash Out / Cash Left
+  // Payoff amount = Initial Loan Balance. 
+  // If fees were wrapped, the loan balance might be higher. 
+  // For simplicity, we'll assume the Initial Loan Amount entered *includes* any wrapped fees if the user set it that way,
+  // or we just subtract the principal. 
+  // Let's stick to: Cash Left = Total Project Cost - (Refi Loan - Refi Closing Costs).
+  // This represents the net cash remaining in the deal after all expenses and the refi cash-out.
+  const cashLeftInDeal = totalProjectCost - (refinanceLoanAmount - refiClosingCosts);
+
+  // 4. Post-Refi Cash Flow
+  const r = (refinance?.interestRate || 0) / 100 / 12;
+  const n = 30 * 12; // Assume 30 year fixed
+  let refiMonthlyPayment = 0;
+  if (r > 0) {
+    refiMonthlyPayment = refinanceLoanAmount * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  }
+
+  // Operating Expenses
+  const {
+    monthlyTaxes, monthlyInsurance, monthlyHoa,
+    monthlyWaterSewer, monthlyStreetLights, monthlyGas, monthlyElectric, monthlyLandscaping, monthlyMiscFees,
+    vacancyRate, maintenanceRate, capexRate, managementRate,
+    otherMonthlyIncome
+  } = expenses || {};
+
+  const grossMonthlyIncome = monthlyRent + (otherMonthlyIncome || 0);
+
+  const vacancyLoss = monthlyRent * ((vacancyRate || 0) / 100);
+  const effectiveIncome = grossMonthlyIncome - vacancyLoss;
+
+  const maintenanceCost = monthlyRent * ((maintenanceRate || 0) / 100);
+  const capexCost = monthlyRent * ((capexRate || 0) / 100);
+  const managementCost = monthlyRent * ((managementRate || 0) / 100);
+
+  const totalFixedExpenses = (monthlyTaxes || 0) + (monthlyInsurance || 0) + (monthlyHoa || 0) +
+    (monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) +
+    (monthlyElectric || 0) + (monthlyLandscaping || 0) + (monthlyMiscFees || 0);
+
+  const totalMonthlyExpenses = totalFixedExpenses + maintenanceCost + capexCost + managementCost;
+
+  const monthlyCashFlowPostRefi = effectiveIncome - totalMonthlyExpenses - refiMonthlyPayment;
+
+  // 5. ROI
+  const annualCashFlow = monthlyCashFlowPostRefi * 12;
+  let roi = 0;
+  let isInfiniteReturn = false;
+
+  if (cashLeftInDeal <= 0) {
+    roi = Infinity;
+    isInfiniteReturn = true;
+  } else {
+    roi = (annualCashFlow / cashLeftInDeal) * 100;
+  }
+
+  return {
+    totalProjectCost,
+    totalRehabCost,
+    totalPurchaseClosingCosts,
+    totalHoldingCosts,
+    totalFinancingCosts,
+    refinanceLoanAmount,
+    refiClosingCosts,
+    netRefiProceeds: refinanceLoanAmount - refiClosingCosts,
+    cashOutAmount: -cashLeftInDeal,
+    cashLeftInDeal,
+    roi,
+    monthlyCashFlowPostRefi,
+    monthlyRevenue: effectiveIncome,
+    monthlyExpenses: totalMonthlyExpenses + refiMonthlyPayment,
+    breakdown: {
+      revenue: {
+        grossRent: monthlyRent,
+        otherIncome: otherMonthlyIncome || 0,
+        vacancyLoss: vacancyLoss,
+        effectiveIncome: effectiveIncome
+      },
+      expenses: {
+        propertyTaxes: monthlyTaxes || 0,
+        insurance: monthlyInsurance || 0,
+        hoa: monthlyHoa || 0,
+        utilities: (monthlyWaterSewer || 0) + (monthlyStreetLights || 0) + (monthlyGas || 0) + (monthlyElectric || 0) + (monthlyLandscaping || 0),
+        repairsMaintenance: maintenanceCost,
+        capex: capexCost,
+        management: managementCost,
+        debtService: refiMonthlyPayment,
+        misc: monthlyMiscFees || 0,
+        totalOperatingExpenses: totalMonthlyExpenses,
+        totalExpenses: totalMonthlyExpenses + refiMonthlyPayment
+      }
+    },
+    isInfiniteReturn
+  };
 };
+
 
 export const PropertyContext = createContext<{
   properties: Property[];
-  dispatch: Dispatch<PropertyAction>;
-  saveProperties: () => void;
+  setProperties: Dispatch<SetStateAction<Property[]>>;
+  addProperty: (propertyData: Omit<Property, 'id'>) => Promise<Property>;
+  updateProperty: (id: string, propertyData: Property) => Promise<Property>;
+  deleteProperty: (id: string) => Promise<void>;
+  loading: boolean;
+  error: string | null;
 }>({
   properties: [],
-  dispatch: () => null,
-  saveProperties: () => {},
+  setProperties: () => { },
+  addProperty: async () => ({} as Property),
+  updateProperty: async () => ({} as Property),
+  deleteProperty: async () => { },
+  loading: true,
+  error: null,
 });
 
 export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [properties, dispatch] = useReducer(propertyReducer, undefined, initializeState);
+  const { user, refreshUser, incrementAnalysisCount } = useAuth();
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const saveProperties = () => {
+  // Forces usage of DB for all logged-in users to ensure Admin Dashboard visibility
+  const shouldUseLocalStorage = useCallback(() => {
+    return false;
+  }, []);
+
+  // Check for orphan local properties and move them to the DB
+  const syncLocalProperties = useCallback(async () => {
+    if (!user) return;
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(properties));
-    } catch (error) {
-      console.error("Failed to save properties to localStorage", error);
+      const localProps = await localPropertyService.getProperties(user.id);
+      if (localProps.length > 0) {
+        console.log("Found local properties. Migrating to database...");
+        // Process serially to avoid overwhelming the server
+        for (const prop of localProps) {
+          const { id, ...dataToSync } = prop;
+          // Add to DB
+          await apiClient.post('/properties', dataToSync);
+          // Remove from Local Storage
+          await localPropertyService.deleteProperty(user.id, id);
+        }
+        console.log("Local to DB Migration complete.");
+      }
+    } catch (err) {
+      console.error("Error migrating local properties:", err);
     }
+  }, [user]);
+
+  const fetchProperties = useCallback(async () => {
+    if (!user) {
+      setProperties([]);
+      setLoading(false);
+      return;
+    };
+    setLoading(true);
+    setError(null);
+    try {
+      let fetchedProperties: Property[];
+
+      if (shouldUseLocalStorage()) {
+        // Use Local Storage Service
+        fetchedProperties = await localPropertyService.getProperties(user.id);
+      } else {
+        // Check if we need to push local data up to the server (Migration)
+        await syncLocalProperties();
+
+        // Use Backend API
+        fetchedProperties = await apiClient.get('/properties');
+      }
+
+      setProperties(fetchedProperties);
+    } catch (err) {
+      setError('Failed to fetch properties.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, shouldUseLocalStorage, syncLocalProperties]);
+
+  useEffect(() => {
+    fetchProperties();
+  }, [fetchProperties]);
+
+  const addProperty = async (propertyData: Omit<Property, 'id'>): Promise<Property> => {
+    if (!user) throw new Error("User not authenticated");
+
+    let newProperty: Property;
+
+    if (shouldUseLocalStorage()) {
+      newProperty = await localPropertyService.addProperty(user.id, propertyData);
+    } else {
+      newProperty = await apiClient.post('/properties', propertyData);
+    }
+
+    setProperties(prev => [newProperty, ...prev]);
+
+    // Optimistically update analysis count
+    incrementAnalysisCount();
+
+    // Refresh user to update analysis count from server (backup)
+    await refreshUser();
+
+    return newProperty;
+  };
+
+  const updateProperty = async (id: string, propertyData: Property): Promise<Property> => {
+    if (!user) throw new Error("User not authenticated");
+
+    let updatedProperty: Property;
+
+    if (shouldUseLocalStorage()) {
+      updatedProperty = await localPropertyService.updateProperty(user.id, id, propertyData);
+    } else {
+      updatedProperty = await apiClient.put(`/properties/${id}`, propertyData);
+    }
+
+    setProperties(prev => prev.map(p => (p.id === id ? updatedProperty : p)));
+    return updatedProperty;
+  };
+
+  const deleteProperty = async (id: string) => {
+    if (!user) throw new Error("User not authenticated");
+
+    if (shouldUseLocalStorage()) {
+      await localPropertyService.deleteProperty(user.id, id);
+    } else {
+      await apiClient.delete(`/properties/${id}`);
+    }
+
+    // FIX: Instead of removing the property, update it to have a deletedAt timestamp
+    // This allows it to immediately appear in the "Archived" list on the Dashboard.
+    setProperties(prev => prev.map(p => {
+      if (p.id === id) {
+        return { ...p, deletedAt: new Date().toISOString() };
+      }
+      return p;
+    }));
   };
 
   return (
-    <PropertyContext.Provider value={{ properties, dispatch, saveProperties }}>
+    <PropertyContext.Provider value={{ properties, setProperties, addProperty, updateProperty, deleteProperty, loading, error }}>
       {children}
     </PropertyContext.Provider>
   );

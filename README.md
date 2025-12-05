@@ -1,107 +1,183 @@
+
 # It Pencils - Real Estate Deal Analyzer
 
 This is a powerful real estate analysis tool designed to help investors make data-driven decisions. It uses the Google Gemini API to analyze property data from various sources and provides comprehensive financial metrics and investment recommendations.
 
-## Local Development Setup
+This project is structured as a full-stack application:
+-   **Frontend:** A React application built with Vite located in the root directory.
+-   **Backend:** A Node.js/Express API server located in the `server/` directory.
+
+---
+
+## Development Setup
 
 ### Prerequisites
 
-1.  **Node.js and npm**: You must have Node.js (version 18 or newer) and npm installed. You can download them from [nodejs.org](https://nodejs.org/).
-2.  **A Code Editor**: Visual Studio Code is recommended.
+1.  **Node.js and npm**: You must have Node.js (version 18 or newer) and npm installed.
+2.  **A Google Client ID for OAuth**: To enable Google Sign-In, you'll need a Client ID. Follow the instructions [here](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid) to create one.
 3.  **A Gemini API Key**: Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-4.  **A Google Client ID for OAuth**: To enable Google Sign-In, you'll need a Client ID. Follow the instructions [here](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid) to create one.
+4.  **PostgreSQL Database**: You need a running PostgreSQL database. You can run one locally using Docker or use a free hosted provider like [Supabase](https://supabase.com/) or [Render](https://render.com/).
+5.  **JWT Secret**: A long, random, secret string for signing session tokens. You can generate one using an online tool.
 
-### Step 1: Install Dependencies
 
-Open your terminal, navigate to the project folder, and run this command to install all the required libraries:
-
-```bash
-npm install
-```
-
-### Step 2: Configure Your Environment Variables
+### Step 1: Configure Your Environment Variables
 
 1.  In the root of the project folder, create a new file named `.env`.
-2.  Open the `.env` file and add the following lines, replacing the placeholder values with your actual Gemini API key and your Google Client ID.
+2.  Open the `.env` file and add all your secret keys and URLs.
 
     ```
+    # Backend Configuration
     API_KEY=YOUR_GEMINI_API_KEY_HERE
+    DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+    JWT_SECRET=YOUR_SUPER_SECRET_RANDOM_STRING_HERE
+
+    # Google Auth Configuration (used by both frontend and backend)
+    # IMPORTANT: This variable MUST be prefixed with "VITE_" to be accessible by the frontend code.
     VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com
     ```
     
-    _See `.env.example` for a template._
+### Step 2: Set Up the Database
 
-### Step 3: Run the Development Server
+Connect to your PostgreSQL database and run the following SQL commands to create the necessary tables:
 
-Now, start the Vite development server by running this command in your terminal:
+```sql
+CREATE TABLE "users" (
+  "id" SERIAL PRIMARY KEY,
+  "email" VARCHAR(255) UNIQUE NOT NULL,
+  "name" VARCHAR(255),
+  "google_id" VARCHAR(255) UNIQUE, -- Stores unique Google user ID
+  "profile_picture_url" TEXT, -- Stores URL for user's avatar
+  "password_hash" VARCHAR(255), -- Can be NULL for Google OAuth users
+  "subscription_tier" VARCHAR(50), -- Stores the user's selected plan, e.g., 'Free', 'Pro'
+  "created_at" TIMESTAMPTZ DEFAULT (now()),
+  "updated_at" TIMESTAMPTZ DEFAULT (now()),
+  "analysis_count" INTEGER DEFAULT 0, -- Tracks AI analysis usage
+  "analysis_limit_reset_at" TIMESTAMPTZ, -- Tracks when monthly limits reset
+  "credits" NUMERIC DEFAULT 0 -- [NEW] Tracks balance for Pay As You Go users
+);
 
+CREATE TABLE "properties" (
+  "id" SERIAL PRIMARY KEY,
+  "user_id" INTEGER NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
+  "property_data" JSONB NOT NULL,
+  "created_at" TIMESTAMPTZ DEFAULT (now()),
+  "updated_at" TIMESTAMPTZ DEFAULT (now())
+);
+
+CREATE TABLE "subscription_history" (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER REFERENCES "users" ("id"),
+    "old_tier" VARCHAR(50),
+    "new_tier" VARCHAR(50),
+    "change_type" VARCHAR(20), -- 'new', 'upgrade', 'downgrade', 'cancel', 'credit_purchase'
+    "amount" NUMERIC,
+    "created_at" TIMESTAMPTZ DEFAULT (now())
+);
+
+-- [NEW] Table for Dynamic Plan Configuration
+CREATE TABLE plans (
+    key VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    monthly_price INTEGER DEFAULT 0,
+    annual_price INTEGER DEFAULT 0,
+    analysis_limit INTEGER DEFAULT 0, -- -1 for unlimited, 0 for PAYG
+    features JSONB,
+    is_popular BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Optional: Insert Default Plans
+INSERT INTO plans (key, name, description, monthly_price, annual_price, analysis_limit, features, is_popular) VALUES
+('Free', 'Free', 'For investors just getting started.', 0, 0, 3, '["3 AI Property Analyses (Lifetime)", "Standard Rental Analysis", "Save Properties to Browser"]'::jsonb, false),
+('Starter', 'Starter', 'For active investors analyzing a few deals a month.', 9, 90, 15, '["15 AI Property Analyses per Month", "Standard Rental Analysis", "Comparison Tool", "Email Support"]'::jsonb, false),
+('Experienced', 'Experienced', 'For growing investors analyzing weekly deals and building their portfolio.', 19, 190, 40, '["40 AI Property Analyses per Month", "Standard Rental Analysis", "Export Data to CSV & PDF", "Comparison Tool", "Email Support"]'::jsonb, true),
+('Pro', 'Pro', 'For serious investors needing advanced tools.', 29, 290, 100, '["100 AI Property Analyses per Month", "Creative Finance Calculators", "Comparison Tool", "Export Data", "Priority Support"]'::jsonb, false),
+('Team', 'Team', 'For professional teams.', 79, 790, -1, '["Unlimited Analyses", "All Pro Features", "Dedicated Support"]'::jsonb, false),
+('PayAsYouGo', 'Pay As You Go', 'No monthly fees. Just pay for what you use.', 0, 0, 0, '["$7 per Analysis", "No Monthly Subscription", "Purchase Credits as Needed", "Full Pro Features Access"]'::jsonb, false)
+ON CONFLICT DO NOTHING;
+
+-- [NEW] Feature Flags & Advanced Strategies (Run this if updating an existing DB)
+-- 1. Ensure ALL feature columns exist
+ALTER TABLE plans 
+ADD COLUMN IF NOT EXISTS can_compare BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS can_export_csv BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS can_use_advanced_strategies BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS can_wholesale BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS can_subject_to BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS can_seller_finance BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS can_brrrr BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS can_access_comparables BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS can_access_projections BOOLEAN DEFAULT FALSE;
+
+-- 2. Set defaults based on Plan Key (Safe to run multiple times)
+-- Pro, Team, PayAsYouGo get EVERYTHING
+UPDATE plans 
+SET 
+    can_compare = TRUE,
+    can_export_csv = TRUE,
+    can_use_advanced_strategies = TRUE,
+    can_wholesale = TRUE,
+    can_subject_to = TRUE,
+    can_seller_finance = TRUE,
+    can_brrrr = TRUE,
+    can_access_comparables = TRUE, 
+    can_access_projections = TRUE 
+WHERE key IN ('Pro', 'Team', 'PayAsYouGo');
+
+-- Experienced gets Comparables, Projections, Export, Compare
+UPDATE plans 
+SET 
+    can_compare = TRUE,
+    can_export_csv = TRUE,
+    can_access_comparables = TRUE,
+    can_access_projections = TRUE
+WHERE key = 'Experienced';
+
+-- Starter gets Compare, Comparables (limited)
+UPDATE plans 
+SET 
+    can_compare = TRUE,
+    can_access_comparables = TRUE 
+WHERE key = 'Starter';
+```
+
+### Step 3: Install Dependencies & Run
+
+You will need two separate terminal windows to run the frontend and backend simultaneously.
+
+**Terminal 1: Frontend**
 ```bash
+# Install dependencies (only needs to be done once)
+npm install
+
+# Run the Vite development server (usually on http://localhost:5173/)
 npm run dev
 ```
 
-The terminal will show you a message indicating that the server is running, along with a local URL, which is usually `http://localhost:5173/`.
+**Terminal 2: Backend**
+```bash
+# No need to install again if you already ran `npm install` in the root.
 
-### Step 4: View the Application
-
-Open your web browser and navigate to the URL provided by Vite (e.g., `http://localhost:5173/`). You should now see the landing page with a Google Sign-In button.
-
----
-
-## Troubleshooting
-
-### Error: `Configuration Error`, `The given origin is not allowed...`, or a 403 error from `accounts.google.com`
-
-This error means there is **100% a configuration mismatch** between the URL in your browser, your `.env` file, and your settings in your Google Cloud Console. The application code is working correctly, but Google is denying the login request. Follow this checklist **exactly** to fix it.
-
-#### ✅ Step 1: Check Your Browser URL & `.env` File
-
-1.  **Look at your browser's address bar.** It will most likely say `http://localhost:5173`. Note the exact origin (the `http://...:port` part).
-2.  **Go to the login page.** It will now show a **"Configuration Notice"** box with the exact Client ID the app is currently using.
-3.  **Compare this Client ID** character-for-character with the Client ID shown in your Google Cloud Console.
-4.  If they don't match, copy the correct ID from Google Console, paste it into your `.env` file, and **immediately proceed to the next step.**
-
-<br>
-
-> **❗️ MOST COMMON MISTAKE: You MUST restart the server!**
-> The server only reads the `.env` file when it first starts. After you save any changes to `.env`, you **must stop your development server** (press `Ctrl + C` in the terminal) and **restart it** with `npm run dev`. If you don't, the app will keep using the old, incorrect Client ID.
-
-<br>
-
-#### ✅ Step 2: Verify Google Cloud Console Settings
-
-1.  Go to the **Google Cloud Console Credentials page**: [https://console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials).
-2.  Select the correct project, then click on your "OAuth 2.0 Client ID" to edit it.
-
-3.  **Check "Authorized JavaScript origins":**
-    -   This section tells Google which websites are allowed to use this Client ID.
-    -   Click **"+ ADD URI"**.
-    -   Add entries that **exactly match** your browser's origin. To be safe, add both common local addresses:
-        - `http://localhost:5173`
-        - `http://127.0.0.1:5173`
-    -   **Critical:** Check for typos. It must be `http`, not `https`. There must be **NO trailing slash (`/`)**. The port number must match what's in your browser.
-
-4.  **Check "Authorized redirect URIs":**
-    -   **This section MUST BE EMPTY.**
-    -   The Google Sign-In library used in this app does not use redirects. Having a redirect URI configured **will cause an error**.
-    -   If there are any entries here, click the trash can icon next to each one to remove them.
-
-#### ✅ Step 3: Save and Hard Reload
-
-1.  Click the blue **"Save"** button at the bottom of the Google Cloud Console page.
-2.  **Wait for 1-2 minutes.** It can take a moment for Google's settings to update across their servers.
-3.  Go back to your application tab (e.g., `http://localhost:5173/#/login`).
-4.  Perform a **hard reload** to clear your browser's cache:
-    -   **Windows/Linux:** `Ctrl + Shift + R`
-    -   **Mac:** `Cmd + Shift + R`
-5.  Try clicking "Sign in with Google" again. The issue should now be resolved.
+# Run the backend Express server (usually on http://localhost:3000/)
+npm run start:server
+```
+The frontend and backend will automatically read the `.env` file from the project root. You can now use the application.
 
 ---
 
-### If `npm install` or `npm run dev` fails
+## Deployment
 
-If you encounter errors during installation or startup (especially after a failed attempt), your `node_modules` directory might be corrupted. To fix this:
+When you deploy your application to a hosting provider like Render, Heroku, or Vercel, you **must** configure your environment variables in the provider's dashboard. The `.env` file is only for local development and is not uploaded.
 
-1.  **Delete the `node_modules` folder.**
-2.  **Delete the `package-lock.json` file.**
-3.  Run `npm install` again.
-4.  Then run `npm run dev`.
+### Step-by-Step for Render
+
+1.  Go to your **Render Dashboard** and select your service.
+2.  Navigate to the **"Environment"** tab.
+3.  Under "Environment Variables," add a new variable for each of the following keys from your `.env` file. Copy the values exactly.
+    -   `API_KEY`
+    -   `DATABASE_URL`: This is your full connection string from your PostgreSQL provider.
+        -   **CRITICAL:** The last part of this URL is your database name (e.g., `.../my_database`). Double-check that this is the correct database where you ran the setup scripts. If you created a database named `itPenciles`, the URL must end with `/itPenciles`.
+    -   `JWT_SECRET`
+    -   `VITE_GOOGLE_CLIENT_ID`
+4.  After adding the variables, Render will automatically trigger a new deployment to apply the settings.

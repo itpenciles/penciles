@@ -1,10 +1,13 @@
+
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import { PropertyProvider } from './contexts/PropertyContext';
+import { Bars3Icon } from './constants';
 
 // Layouts
 import Sidebar from './components/Sidebar';
+import BottomNav from './components/BottomNav';
 import PublicLayout from './components/PublicLayout';
 
 // Public Pages
@@ -20,40 +23,88 @@ import Dashboard from './components/Dashboard';
 import AddProperty from './components/AddProperty';
 import PropertyDetail from './components/PropertyDetail';
 import ComparisonPage from './components/ComparisonPage';
+import SubscriptionPage from './components/SubscriptionPage';
+import CheckoutPage from './components/CheckoutPage';
+import UpgradePage from './components/UpgradePage';
+import FAQPage from './components/FAQPage';
+import AdminDashboard from './components/AdminDashboard';
+import AdminSetup from './components/AdminSetup';
+
+import MobilePropertiesList from './components/MobilePropertiesList';
+import { useMobile } from './hooks/useMobile';
+
+const PropertiesRoute = () => {
+  const isMobile = useMobile();
+  return isMobile ? <MobilePropertiesList /> : <Navigate to="/dashboard" replace />;
+};
 
 // A component to protect routes that require authentication.
-const ProtectedRoute: React.FC = () => {
-    const { user, isAuthEnabled, isLoading } = useAuth();
+const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
+  const { user, isAuthEnabled, isLoading } = useAuth();
+  const location = useLocation();
 
-    if (isLoading) {
-        // You can render a loading spinner here
-        return <div>Loading...</div>;
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (isAuthEnabled && !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (adminOnly && user?.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // If user is logged in but hasn't selected a subscription, redirect them.
+  if (user && !user.subscriptionTier && !adminOnly) {
+    // Allow access only to the subscription and checkout pages
+    if (location.pathname !== '/subscribe' && !location.pathname.startsWith('/checkout')) {
+      return <Navigate to="/subscribe" replace />;
     }
+  }
 
-    if (isAuthEnabled && !user) {
-        // If auth is on and there's no user, redirect to the login page.
-        return <Navigate to="/login" replace />;
-    }
-
-    // If auth is disabled, or if the user is logged in, show the content.
-    return <Outlet />;
+  return <Outlet />;
 };
 
 // The main layout for the core application with the sidebar
-const MainLayout = () => (
-  <div className="flex h-screen bg-gray-100 font-sans">
-    <Sidebar />
-    <main className="flex-1 overflow-y-auto">
-      <Outlet />
-    </main>
-  </div>
-);
+const MainLayout = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+
+  return (
+    <div className="flex h-screen bg-gray-100 font-sans app-layout">
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Mobile Header - Teal Design */}
+        <header className="md:hidden bg-teal-600 text-white p-4 flex items-center justify-between flex-shrink-0 shadow-md z-10">
+          <div className="flex items-center">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="text-white hover:text-teal-100 mr-3 focus:outline-none"
+            >
+              <Bars3Icon className="h-6 w-6" />
+            </button>
+            <span className="text-lg font-bold">It Pencils</span>
+          </div>
+          {/* Optional: Add profile or notification icon here if needed */}
+        </header>
+
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+          <Outlet />
+        </main>
+
+        {/* Mobile Bottom Navigation */}
+        <BottomNav />
+      </div>
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   return (
-    <PropertyProvider>
-      <HashRouter>
-        <AuthProvider>
+    <HashRouter>
+      <AuthProvider>
+        <PropertyProvider>
           <Routes>
             {/* Public routes using the PublicLayout */}
             <Route element={<PublicLayout />}>
@@ -67,20 +118,36 @@ const App: React.FC = () => {
 
             {/* Protected app routes */}
             <Route element={<ProtectedRoute />}>
+              {/* Routes WITHOUT the main sidebar layout */}
+              <Route path="/subscribe" element={<SubscriptionPage />} />
+              <Route path="/checkout/:tier" element={<CheckoutPage />} />
+
+              {/* Routes WITH the main sidebar layout */}
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/properties" element={<PropertiesRoute />} />
                 <Route path="/add-property" element={<AddProperty />} />
                 <Route path="/property/:id" element={<PropertyDetail />} />
                 <Route path="/compare" element={<ComparisonPage />} />
+                <Route path="/upgrade" element={<UpgradePage />} />
+                <Route path="/faq" element={<FAQPage />} />
               </Route>
             </Route>
-            
+
+            {/* Admin Route */}
+            <Route element={<ProtectedRoute adminOnly={true} />}>
+              <Route element={<MainLayout />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/setup" element={<AdminSetup />} />
+              </Route>
+            </Route>
+
             {/* Fallback for any unknown routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </AuthProvider>
-      </HashRouter>
-    </PropertyProvider>
+        </PropertyProvider>
+      </AuthProvider>
+    </HashRouter>
   );
 };
 

@@ -5,6 +5,71 @@ import { BuildingOfficeIcon, ExclamationTriangleIcon } from '../constants';
 
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
 
+const DatabaseMismatchErrorDisplay: React.FC<{ details: { host: string; database: string, column?: string } }> = ({ details }) => (
+    <>
+        <h3 className="font-semibold">Database Mismatch Detected!</h3>
+        <p className="mt-1">
+            Your login failed because the application is connected to a database with an outdated table structure. This is the final step to fix it!
+        </p>
+        
+        <div className="mt-3 pt-3 border-t border-yellow-200">
+            <p className="font-bold text-xs">The application server reports it is connected to:</p>
+            <div className="mt-1 font-mono bg-yellow-100 text-yellow-900 p-2 rounded text-xs">
+                <div><strong>Database:</strong> {details.database}</div>
+                <div><strong>Host:</strong> {details.host}</div>
+            </div>
+            <p className="mt-2 text-xs">
+                The `users` table in this database is missing the required <code className="font-bold text-yellow-900 bg-yellow-200 px-1 py-0.5 rounded">{details.column || 'required'}</code> column.
+            </p>
+
+            <h4 className="font-bold mt-3">Definitive Solution:</h4>
+            <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
+                <li>Open your database tool (DBeaver, TablePlus, etc.).</li>
+                <li>Create a <strong>NEW</strong> connection or <strong>EDIT</strong> your existing one.</li>
+                <li>Ensure the "Host" / "Server Address" field <strong>EXACTLY</strong> matches the host shown above.</li>
+                <li>Connect and select the database shown above.</li>
+                <li>Run the `ALTER TABLE` commands from the project's `README.md` file to add the missing columns.</li>
+                <li>Once complete, refresh this page and try logging in again.</li>
+            </ol>
+        </div>
+    </>
+);
+
+const DatabaseErrorDisplay = () => (
+    <>
+        <h3 className="font-semibold">Database Schema Error Detected!</h3>
+        <p className="mt-1">
+            The login is failing because the server is connected to a database where the `users` table has the wrong structure. Let's verify exactly what the server sees.
+        </p>
+        
+        <div className="mt-3 pt-3 border-t border-yellow-200">
+            <h4 className="font-bold">The Definitive Database Check:</h4>
+            <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
+                <li>
+                    Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
+                </li>
+                <li>
+                    Look for a message block at the top of your logs that starts with:<br/>
+                    <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">--- [DB Inspector] ---</code>
+                </li>
+                <li>
+                    Inside that block, you will see a list of columns the server has found in the `public.users` table.
+                </li>
+                <li>
+                    <strong>Check if `google_id (character varying)` is in that list.</strong>
+                </li>
+                <li>
+                    <strong>If `google_id` is MISSING from the log:</strong> This is definitive proof your application is connected to a database with an outdated schema. 
+                    You must run the `ALTER TABLE` commands from the `README.md` file on the correct database instance that your `DATABASE_URL` is pointing to.
+                </li>
+                <li>
+                    This usually happens when you have multiple database instances (e.g., one on your computer, one on Render) and the update script was run on the wrong one. Double-check your connection details in your database tool.
+                </li>
+            </ol>
+        </div>
+    </>
+);
+
 const LoginPage: React.FC = () => {
     const { user, isLoading, authError, isAuthEnabled, clientIdForDebugging, handleGoogleLogin } = useAuth();
     const navigate = useNavigate();
@@ -71,7 +136,47 @@ const LoginPage: React.FC = () => {
 
     }, [isAuthEnabled, isLoading, user, handleGoogleLogin]);
     
-    const finalError = authError || gsiError;
+    const finalError = authError?.response?.data?.message || authError?.message || gsiError;
+    const errorType = authError?.response?.data?.type;
+    const errorDetails = authError?.response?.data?.details;
+    const isGenericDatabaseError = !errorType && finalError && typeof finalError === 'string' && finalError.toLowerCase().includes('database');
+
+    const ClientIdErrorDisplay = () => (
+        <>
+            <h3 className="font-semibold">We're very close! Let's solve this.</h3>
+            <p className="mt-1">
+                The server is rejecting the login. This almost always means the server is using a different (likely outdated) Client ID than the one on this page, even if you've updated it in Render.
+            </p>
+            
+            <div className="mt-3 pt-3 border-t border-yellow-200">
+                <h4 className="font-bold">Final Debugging Checklist:</h4>
+                <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
+                    <li>
+                        Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
+                    </li>
+                    <li>
+                        Look for a message block at the top of your logs that says:<br/>
+                        <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">--- SERVER STARTUP ---</code>
+                    </li>
+                    <li>
+                        Inside that block, find the line:<br/>
+                        <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">Server will use Client ID ending in: ...xxxxxxxxxxxxxxx</code>
+                    </li>
+                    <li>
+                        <strong>Compare the ID from your logs</strong> to the ID this page is using below. They **MUST** match exactly.
+                    </li>
+                    <li>
+                        <strong>If they do NOT match:</strong> Go to your <strong>"Environment"</strong> tab in Render, confirm the `VITE_GOOGLE_CLIENT_ID` is correct, then click <strong>"Manual Deploy" &gt; "Deploy latest commit"</strong> to force the server to restart with the new, correct value.
+                    </li>
+                </ol>
+
+                <p className="font-semibold mt-3 text-xs">This Page is Using:</p>
+                <p className="font-mono bg-yellow-100 text-yellow-900 p-2 mt-1 rounded break-all select-all text-xs">
+                    {clientIdForDebugging}
+                </p>
+            </div>
+        </>
+    );
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
@@ -96,21 +201,12 @@ const LoginPage: React.FC = () => {
                                         <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
                                     </div>
                                     <div className="ml-3">
-                                        <h3 className="font-semibold">Configuration Notice</h3>
-                                        <p className="mt-1">{finalError}</p>
-                                        {clientIdForDebugging && (
-                                            <div className="mt-3 pt-3 border-t border-yellow-200">
-                                                <h4 className="font-semibold">Troubleshooting Steps:</h4>
-                                                <ul className="list-disc list-inside text-xs mt-1 space-y-1">
-                                                    <li>Ensure the Client ID below exactly matches the one in your Google Console.</li>
-                                                    <li>In Google Console, verify "Authorized JavaScript origins" includes `http://localhost:5173`.</li>
-                                                     <li>Make sure "Authorized redirect URIs" is **empty**.</li>
-                                                    <li>After changing your `.env` file, **you must restart the server.**</li>
-                                                </ul>
-                                                 <p className="font-mono bg-yellow-100 text-yellow-900 p-2 mt-2 rounded break-all select-all text-xs">
-                                                    Current Client ID: {clientIdForDebugging}
-                                                </p>
-                                            </div>
+                                        {errorType === 'DB_SCHEMA_MISMATCH' && errorDetails ? (
+                                            <DatabaseMismatchErrorDisplay details={errorDetails} />
+                                        ) : isGenericDatabaseError ? (
+                                            <DatabaseErrorDisplay />
+                                        ) : (
+                                            <ClientIdErrorDisplay />
                                         )}
                                     </div>
                                 </div>

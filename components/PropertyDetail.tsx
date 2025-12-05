@@ -1,10 +1,16 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
-import { Property, Financials, WholesaleInputs, SubjectToInputs, SellerFinancingInputs, Strategy } from '../types';
-import { calculateMetrics, calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics } from '../contexts/PropertyContext';
-import { reevaluatePropertyWithGemini } from '../services/geminiService';
-import { ArrowLeftIcon, CheckIcon } from '../constants';
+import { useAuth } from '../contexts/AuthContext';
+import { Property, Strategy, AttomComparable, AttomFilters } from '../types';
+import { calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics, calculateBrrrrMetrics } from '../contexts/PropertyContext';
+import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
+import apiClient from '../services/apiClient';
+import { AdjustTab } from './AdjustTab';
+import { ProjectionsTab } from './ProjectionsTab';
+import { InputField, SelectField, ToggleField } from './common/FormFields';
+import { BrrrrMetricsTab, BrrrrParamsTab } from './BrrrrStrategy';
+import { ComparablesTab } from './ComparablesTab';
 
 // --- Icons ---
 const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -12,11 +18,12 @@ const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="ht
 const formatCurrency = (amount: number, precision = 0) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: precision, maximumFractionDigits: precision }).format(amount);
 
 // --- EXIT STRATEGY DATA ---
+// ... (Keep existing Exit Strategy Data constants WHOLESALE_EXIT_STRATEGIES, SUBJECT_TO_EXIT_STRATEGIES, SELLER_FINANCING_EXIT_STRATEGIES exactly as is)
 interface ExitPoint {
-  title: string;
-  description: string;
-  points: { label: string; items: string[] };
-  notes?: string[];
+    title: string;
+    description: string;
+    points: { label: string; items: string[] };
+    notes?: string[];
 }
 const WHOLESALE_EXIT_STRATEGIES: ExitPoint[] = [
     { title: "Assignment of Contract (Traditional Wholesale)", description: "You assign your purchase contract to a cash buyer/investor for a fee.", points: { label: "Example:", items: ["Contract price: $120,000", "Buyer pays: $135,000", "Your assignment fee: $15,000"] }, notes: ["Best when: Seller is fine with assignment, Title is clean, Buyer pool is strong & fast.", "Most common and simplest."] },
@@ -52,44 +59,100 @@ const SELLER_FINANCING_EXIT_STRATEGIES: ExitPoint[] = [
 const PropertyDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { properties, dispatch } = useProperties();
+    const { properties, updateProperty } = useProperties();
+    const { featureAccess } = useAuth();
     const [property, setProperty] = useState<Property | null>(null);
     const [editedProperty, setEditedProperty] = useState<Property | null>(null);
     const [activeStrategy, setActiveStrategy] = useState<Strategy>('Rental');
+    const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'market' | 'adjust' | 'projections' | 'comparables'>('overview');
     const [isReevaluating, setIsReevaluating] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
+    // Lifted state for ComparablesTab
+    // marketComps is now part of the property object (property.marketComparables)
+    const [attomFilters, setAttomFilters] = useState<AttomFilters>({
+        distance: 1,
+        recency: '6 months',
+        sqft: '+-20%',
+        bedrooms: 'Same',
+        bathrooms: 'Same',
+        condition: 'As Is',
+        yearBuilt: '', // Will be initialized when property loads
+        lotSize: '',
+        propertyType: 'Single Family', // Default
+        garage: 'Any',
+        buildType: 'Any'
+    });
+
 
     useEffect(() => {
+        if (!id) return;
         const foundProperty = properties.find(p => p.id === id);
         if (foundProperty) {
+            // Initialize BRRRR if missing (for existing properties)
+            if (!foundProperty.brrrrAnalysis) {
+                const inputs = {
+                    purchasePrice: foundProperty.financials.purchasePrice,
+                    rehabCost: foundProperty.financials.rehabCost,
+                    rehabDurationMonths: 6,
+                    arv: foundProperty.financials.estimatedValue,
+                    initialLoanAmount: foundProperty.financials.purchasePrice * 0.8,
+                    initialLoanRate: 10,
+                    initialLoanClosingCosts: 2000,
+                    holdingCostsMonthly: 500,
+                    refinanceLoanLtv: 75,
+                    refinanceLoanRate: 7,
+                    refinanceClosingCosts: 3000,
+                    monthlyRentPostRefi: foundProperty.financials.monthlyRents.reduce((a: number, b: number) => a + b, 0),
+                    monthlyExpensesPostRefi: foundProperty.financials.monthlyTaxes + foundProperty.financials.monthlyInsurance + 200
+                };
+                const calculations = calculateBrrrrMetrics(inputs);
+                foundProperty.brrrrAnalysis = { inputs, calculations };
+            }
+
             setProperty(foundProperty);
             setEditedProperty(JSON.parse(JSON.stringify(foundProperty))); // Deep copy for editing
+
+            // Initialize filters with property details if not already set (or reset on new property load)
+            setAttomFilters(prev => ({
+                ...prev,
+                yearBuilt: foundProperty.details.yearBuilt?.toString() || '',
+                propertyType: foundProperty.propertyType
+            }));
         }
     }, [id, properties]);
-    
+
     const hasChanges = useMemo(() => {
         if (!property || !editedProperty) return false;
         return JSON.stringify(property) !== JSON.stringify(editedProperty);
     }, [property, editedProperty]);
 
-    const handleSaveChanges = async () => {
-        if (!editedProperty) return;
+    const handleSaveChanges = async (propertyToSave?: Property, skipReevaluation = false) => {
+        const prop = propertyToSave || editedProperty;
+        if (!prop || !id) return;
+
+        console.log('[PropertyDetail] Saving property:', prop.id);
+        console.log('[PropertyDetail] Market Comps to save:', prop.marketComparables?.length);
+
         setIsReevaluating(true);
         setSaveError(null);
         try {
-            const newRecommendation = await reevaluatePropertyWithGemini(editedProperty, activeStrategy);
-            const fullyUpdatedProperty = { ...editedProperty, recommendation: newRecommendation };
-            dispatch({ type: 'UPDATE_PROPERTY', payload: fullyUpdatedProperty });
-            alert("Changes Saved & Re-evaluated!");
+            // The backend will handle the re-evaluation and save the updated property
+            // We pass skipReevaluation if we just want to save data without triggering AI
+            await updateProperty(id, {
+                ...prop,
+                recommendation: { ...prop.recommendation, strategyAnalyzed: activeStrategy },
+                skipReevaluation: skipReevaluation // Pass the flag to the backend
+            } as any); // Cast to any to avoid TS error since Property type doesn't have this flag
+            alert("Changes Saved!");
         } catch (e: any) {
-            console.error("Re-evaluation failed", e);
-            setSaveError(e.message || "Failed to re-evaluate with AI. Your changes have NOT been saved. Please try again.");
+            console.error("Update failed", e);
+            setSaveError(e.response?.data?.message || e.message || "Failed to save changes. Please try again.");
         } finally {
             setIsReevaluating(false);
         }
     };
-    
+
     const handleResetChanges = () => {
         if (property) {
             setEditedProperty(JSON.parse(JSON.stringify(property)));
@@ -97,13 +160,19 @@ const PropertyDetail = () => {
         }
     };
 
-    if (!property || !editedProperty) {
-        return <div className="p-8">Property not found.</div>;
-    }
+    if (!editedProperty) return <div className="p-8 text-center">Loading property...</div>;
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 bg-gray-50">
-            <header className="mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Print-only header for a clean report title */}
+            <div className="print-only text-center mb-4">
+                <h1 className="text-2xl font-bold">{editedProperty.address}</h1>
+                <p className="text-base text-gray-700">Investment Analysis Report</p>
+                <p className="text-xs text-gray-500">Date Generated: {new Date().toLocaleDateString()}</p>
+            </div>
+
+            {/* Screen header is now hidden during printing */}
+            <header className="mb-6 no-print">
                 <button onClick={() => navigate('/dashboard')} className="flex items-center text-sm font-semibold text-gray-600 hover:text-gray-900 mb-4">
                     <ArrowLeftIcon className="h-5 w-5 mr-2" />
                     Back to Dashboard
@@ -117,26 +186,129 @@ const PropertyDetail = () => {
                 </div>
             </header>
 
-            <div className="flex flex-col lg:flex-row gap-8">
-                <div className="flex-grow space-y-8">
+
+
+            {/* PRINT LAYOUT */}
+            <div className="print-only print-grid-layout">
+                <div className="print-q1">
                     <PropertyDetailsCard property={editedProperty} />
-                    <StrategySelector activeStrategy={activeStrategy} setActiveStrategy={setActiveStrategy} />
-                    <FinancialAnalysisCard 
-                        property={editedProperty} 
-                        setProperty={setEditedProperty}
-                        activeStrategy={activeStrategy}
-                        onSave={handleSaveChanges}
-                        onReset={handleResetChanges} 
-                        hasChanges={hasChanges}
-                        isLoading={isReevaluating}
-                        error={saveError}
-                    />
-                    {activeStrategy === 'Rental' && <InvestmentSummaryBreakdown property={editedProperty} />}
                 </div>
-                <div className="w-full lg:w-96 flex-shrink-0 space-y-8">
+                <div className="print-q2">
                     <InvestmentRecommendationCard property={editedProperty} />
+                </div>
+                <div className="print-q3 printable-card">
+                    <h2 className="print-quadrant-title">Financial Analysis: {activeStrategy.replace('-', ' ')}</h2>
+                    <MetricsTab property={editedProperty} />
+                </div>
+                <div className="print-q4">
                     <MarketAnalysisCard property={editedProperty} />
-                    <GoogleMapCard address={editedProperty.address} />
+                </div>
+                <div className="print-q5 printable-card">
+                    <h2 className="print-quadrant-title">Expense &amp; Investment Summary</h2>
+                    <ExpensesTab property={editedProperty} />
+                    <div className="mt-4">
+                        <InvestmentSummaryBreakdown property={editedProperty} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Main Tabs for PropertyDetail */}
+            <div className="no-print mt-8">
+                <div className="border-b border-gray-200">
+                    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button
+                            onClick={() => setActiveTab('overview')}
+                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        >
+                            Overview
+                        </button>
+                        {featureAccess.canAccessComparables && (
+                            <button
+                                onClick={() => setActiveTab('comparables')}
+                                className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'comparables' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                            >
+                                Comparables
+                            </button>
+                        )}
+                    </nav>
+                </div>
+
+                <div className="mt-6">
+                    {activeTab === 'overview' && (
+                        <div className="flex flex-col lg:flex-row gap-8">
+                            <div className="flex-grow space-y-8">
+                                <PropertyDetailsCard property={editedProperty} />
+                                <StrategySelector activeStrategy={activeStrategy} setActiveStrategy={setActiveStrategy} />
+                                <FinancialAnalysisCard
+                                    property={editedProperty}
+                                    setProperty={setEditedProperty}
+                                    activeStrategy={activeStrategy}
+                                    onSave={handleSaveChanges}
+                                    onReset={handleResetChanges}
+                                    hasChanges={hasChanges}
+                                    isLoading={isReevaluating}
+                                    error={saveError}
+                                />
+                                {activeStrategy === 'Rental' && <InvestmentSummaryBreakdown property={editedProperty} />}
+                            </div>
+                            <div className="w-full lg:w-96 flex-shrink-0 space-y-8">
+                                <InvestmentRecommendationCard property={editedProperty} />
+                                <MarketAnalysisCard property={editedProperty} />
+                                <GoogleMapCard address={editedProperty.address} />
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'financials' && (
+                        <FinancialAnalysisCard
+                            property={editedProperty}
+                            setProperty={setEditedProperty}
+                            activeStrategy={activeStrategy}
+                            onSave={handleSaveChanges}
+                            onReset={handleResetChanges}
+                            hasChanges={hasChanges}
+                            isLoading={isReevaluating}
+                            error={saveError}
+                        />
+                    )}
+
+                    {activeTab === 'market' && (
+                        <div className="space-y-6">
+                            <MarketAnalysisCard property={editedProperty} />
+                            <GoogleMapCard address={editedProperty.address} />
+                        </div>
+                    )}
+
+                    {activeTab === 'comparables' && editedProperty && (
+                        <div className="bg-white shadow rounded-lg p-6">
+                            <ComparablesTab
+                                property={editedProperty}
+                                setProperty={setEditedProperty}
+                                onSave={handleSaveChanges}
+                                hasChanges={hasChanges}
+                                marketComps={editedProperty.marketComparables || []}
+                                setMarketComps={(comps) => setEditedProperty({ ...editedProperty, marketComparables: comps })}
+                                attomFilters={attomFilters}
+                                setAttomFilters={setAttomFilters}
+                            />
+                        </div>
+                    )}
+
+                    {activeTab === 'adjust' && editedProperty && (
+                        <AdjustTab
+                            property={editedProperty}
+                            setProperty={setEditedProperty}
+                            onSave={handleSaveChanges}
+                            onReset={handleResetChanges}
+                            hasChanges={hasChanges}
+                            isLoading={isReevaluating}
+                            error={saveError}
+                        />
+                    )}
+
+                    {activeTab === 'projections' && editedProperty && (
+                        <ProjectionsTab financials={editedProperty.financials} />
+                    )}
                 </div>
             </div>
         </div>
@@ -144,22 +316,78 @@ const PropertyDetail = () => {
 };
 
 // Sub-components
-const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrategy: Strategy, setActiveStrategy: (s: Strategy) => void }) => {
-    const strategies: Strategy[] = ['Rental', 'Wholesale', 'Subject-To', 'Seller Financing'];
+
+// ... (StrategyLockedTooltip, ReportLockedTooltip, StrategySelector, RecommendationBadge, PropertyDetailsCard, DetailItem, InvestmentRecommendationCard, MarketAnalysisCard, GoogleMapCard - KEEP AS IS)
+const StrategyLockedTooltip: React.FC<{ children: React.ReactNode; isLocked: boolean }> = ({ children, isLocked }) => {
+    const navigate = useNavigate();
+    if (!isLocked) return <>{children}</>;
     return (
-        <div className="bg-white p-2 rounded-xl shadow-sm">
+        <div className="relative group">
+            {children}
+            <div className="absolute bottom-full mb-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -translate-x-1/2 left-1/2">
+                <h4 className="font-bold">This is a Pro Feature</h4>
+                <p className="mt-1">Upgrade your plan to use advanced strategy calculators like Wholesale, Sub-To, and Seller Financing.</p>
+                <button
+                    onClick={() => navigate('/upgrade')}
+                    className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
+                >
+                    View Plans
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const ReportLockedTooltip: React.FC<{ children: React.ReactNode; isLocked: boolean; featureName: string }> = ({ children, isLocked, featureName }) => {
+    const navigate = useNavigate();
+    if (!isLocked) return <>{children}</>;
+    return (
+        <div className="relative group">
+            {children}
+            <div className="absolute top-full mt-2 w-60 bg-gray-800 text-white text-xs rounded-lg shadow-lg p-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -translate-x-1/2 left-1/2">
+                <h4 className="font-bold">{featureName} is a Pro Feature</h4>
+                <p className="mt-1">Upgrade your plan to export detailed CSV and PDF reports of your analyses.</p>
+                <button
+                    onClick={() => navigate('/upgrade')}
+                    className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
+                >
+                    View Plans
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrategy: Strategy, setActiveStrategy: (s: Strategy) => void }) => {
+    const { featureAccess } = useAuth();
+
+    const strategies: { name: Strategy, requiredFeature: keyof typeof featureAccess | null }[] = [
+        { name: 'Rental', requiredFeature: null },
+        { name: 'Wholesale', requiredFeature: 'canUseWholesale' },
+        { name: 'Subject-To', requiredFeature: 'canUseSubjectTo' },
+        { name: 'Seller Financing', requiredFeature: 'canUseSellerFinancing' },
+        { name: 'BRRRR', requiredFeature: 'canUseBrrrr' },
+    ];
+
+    return (
+        <div className="bg-white p-2 rounded-xl shadow-sm printable-card">
             <div className="flex flex-col sm:flex-row justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-800 px-4 mb-2 sm:mb-0">Strategy Option</h2>
                 <div className="flex flex-wrap border border-gray-200 rounded-lg p-0.5">
-                    {strategies.map(strategy => (
-                        <button
-                            key={strategy}
-                            onClick={() => setActiveStrategy(strategy)}
-                            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${activeStrategy === strategy ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
-                        >
-                            {strategy.replace('-', ' ')}
-                        </button>
-                    ))}
+                    {strategies.map(({ name, requiredFeature }) => {
+                        const isLocked = requiredFeature ? !featureAccess[requiredFeature] : false;
+                        return (
+                            <StrategyLockedTooltip key={name} isLocked={isLocked}>
+                                <button
+                                    onClick={() => !isLocked && setActiveStrategy(name)}
+                                    className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${activeStrategy === name ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'} ${isLocked ? 'cursor-not-allowed opacity-50 bg-gray-100' : ''}`}
+                                    disabled={isLocked}
+                                >
+                                    {name.replace('-', ' ')}
+                                </button>
+                            </StrategyLockedTooltip>
+                        );
+                    })}
                 </div>
             </div>
         </div>
@@ -177,8 +405,8 @@ const RecommendationBadge = ({ level }: { level: Property['recommendation']['lev
 };
 
 const PropertyDetailsCard = ({ property }: { property: Property }) => (
-    <div className="bg-white p-6 rounded-xl shadow-sm">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Property Details</h2>
+    <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
+        <h2 className="text-xl font-bold text-gray-800 mb-4 print-hide-title">Property Details</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center mb-4">
             <DetailItem label="Bedrooms" value={property.details.bedrooms.toString()} />
             <DetailItem label="Bathrooms" value={property.details.bathrooms.toString()} />
@@ -210,12 +438,12 @@ const InvestmentRecommendationCard = ({ property }: { property: Property }) => {
     const strategyText = recommendation.strategyAnalyzed
         ? `Based on "${recommendation.strategyAnalyzed.replace('-', ' ')}" strategy`
         : 'Based on "Rental" strategy';
-    
+
     // FEATURE: Determine if the analyzed strategy is 'Rental' to conditionally show metrics.
     const isRentalStrategy = recommendation.strategyAnalyzed === 'Rental';
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-green-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-green-200 printable-card">
             <div className="flex items-start mb-2">
                 <CheckCircleIcon className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
                 <div>
@@ -224,18 +452,18 @@ const InvestmentRecommendationCard = ({ property }: { property: Property }) => {
                 </div>
             </div>
             <div className="mb-4 ml-9">
-                 <RecommendationBadge level={property.recommendation.level} />
+                <RecommendationBadge level={property.recommendation.level} />
             </div>
 
             <p className="text-sm text-gray-600 mb-4 ml-9">{property.recommendation.summary}</p>
-            
+
             <div className="mb-4 ml-9">
                 <h3 className="font-semibold text-gray-700 mb-2">Key Factors:</h3>
                 <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
                     {property.recommendation.keyFactors.map((factor, i) => <li key={i}>{factor}</li>)}
                 </ul>
             </div>
-            
+
             <div className="mb-4 ml-9">
                 <h3 className="font-semibold text-gray-700 mb-2">Additional Notes:</h3>
                 <p className="text-sm text-gray-600">{property.recommendation.additionalNotes}</p>
@@ -244,12 +472,12 @@ const InvestmentRecommendationCard = ({ property }: { property: Property }) => {
             {/* FEATURE: Only show Cap Rate and Cash Flow for the Rental strategy. */}
             {isRentalStrategy && (
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                     <div className="text-center">
-                        <p className="text-sm text-gray-500">Cap Rate (Adjusted)</p>
+                    <div className="text-center">
+                        <p className="text-sm text-gray-500">Adjusted Cap Rate</p>
                         <p className="text-lg font-bold text-green-600">{property.calculations.capRate.toFixed(1)}%</p>
                     </div>
-                     <div className="text-center">
-                        <p className="text-sm text-gray-500">Monthly Cash Flow (Adjusted)</p>
+                    <div className="text-center">
+                        <p className="text-sm text-gray-500">Adjusted Monthly Cash Flow</p>
                         <p className="text-lg font-bold text-green-600">{formatCurrency(property.calculations.monthlyCashFlowWithDebt)}</p>
                     </div>
                 </div>
@@ -263,7 +491,7 @@ const MarketAnalysisCard = ({ property }: { property: Property }) => {
     const { safetyScore } = property.marketAnalysis;
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Market Analysis</h2>
             <div className="space-y-4">
                 <div>
@@ -271,10 +499,10 @@ const MarketAnalysisCard = ({ property }: { property: Property }) => {
                         <span className="font-semibold text-gray-700">Safety Score</span>
                         <span><span className="font-bold">{safetyScore}</span>/100</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-yellow-500 h-2 rounded-full" style={{width: `${safetyScore}%`}}></div></div>
+                    <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${safetyScore}%` }}></div></div>
                     <p className="text-xs text-gray-500 mt-1">Average crime levels</p>
                 </div>
-                 <div>
+                <div>
                     <h3 className="font-semibold text-gray-700 mb-2">
                         Rental Market Breakdown
                         <span className="text-xs font-normal text-gray-500 ml-2">(per unit)</span>
@@ -315,8 +543,8 @@ const MarketAnalysisCard = ({ property }: { property: Property }) => {
                 <div>
                     <h3 className="font-semibold text-gray-700 mb-2">Location Factors</h3>
                     <div className="text-sm space-y-1">
-                         <div className="flex justify-between"><span className="text-gray-500">Property Type</span><span className="font-semibold">{property.propertyType}</span></div>
-                         <div className="flex justify-between"><span className="text-gray-500">Investment Score</span><span className="font-semibold">{property.marketAnalysis.investmentScore}/10</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500">Property Type</span><span className="font-semibold">{property.propertyType}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500">Investment Score</span><span className="font-semibold">{property.marketAnalysis.investmentScore}/10</span></div>
                     </div>
                 </div>
             </div>
@@ -329,7 +557,7 @@ const GoogleMapCard = ({ address }: { address: string }) => {
     const mapSrc = `https://www.google.com/maps?q=${encodedAddress}&layer=c&output=svembed`;
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Location & Street View</h2>
             <div className="h-64 rounded-lg overflow-hidden border border-gray-200">
                 <iframe
@@ -348,17 +576,129 @@ const GoogleMapCard = ({ address }: { address: string }) => {
 
 // --- Financial Analysis Card and Children ---
 const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, activeStrategy: Strategy, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
-    // FIX: Explicitly setting the type for useState to prevent `activeTab` from being inferred as `any`.
     const [activeTab, setActiveTab] = useState<string>('Metrics');
+    const { featureAccess } = useAuth();
 
     useEffect(() => {
         setActiveTab('Metrics');
     }, [activeStrategy]);
 
+    const handlePrint = async () => {
+        try {
+            await apiClient.post('/user/track', { action: 'print_report' });
+        } catch (e) { console.error(e); }
+        window.print();
+    };
+
+    const handleExportCSV = async () => {
+        try {
+            await apiClient.post('/user/track', { action: 'export_csv' });
+        } catch (e) { console.error(e); }
+
+        const { details, financials, calculations, recommendation } = property;
+        const rows = [
+            // ... (rest of CSV generation logic remains the same)
+            ['Property Analysis Report'],
+            ['Property Address', `"${property.address}"`],
+            ['Date Analyzed', `"${property.dateAnalyzed}"`],
+            ['Strategy Analyzed', `"${activeStrategy}"`],
+            ['Recommendation', `"${recommendation.level}"`],
+            [],
+            ['--- Property Details ---'],
+            ['Property Type', `"${property.propertyType}"`],
+            ['Bedrooms', details.bedrooms],
+            ['Bathrooms', details.bathrooms],
+            ['SqFt', details.sqft],
+            ['Year Built', details.yearBuilt],
+            ['Units', details.numberOfUnits],
+            [],
+            ['--- Financial Inputs ---'],
+            ['Purchase Price', financials.purchasePrice],
+            ['Rehab Cost', financials.rehabCost],
+            ['Down Payment %', `${financials.downPaymentPercent}%`],
+            ['Loan Interest Rate %', `${financials.loanInterestRate}%`],
+            ['Monthly Taxes', financials.monthlyTaxes],
+            ['Monthly Insurance', financials.monthlyInsurance],
+            [],
+            ['--- Rental Metrics ---'],
+            ['Cap Rate', `${calculations.capRate.toFixed(2)}%`],
+            ['Cash on Cash Return', `${calculations.cashOnCashReturn.toFixed(2)}%`],
+            ['Monthly Cash Flow', calculations.monthlyCashFlowWithDebt.toFixed(2)],
+            ['NOI (Annual)', calculations.netOperatingIncome.toFixed(2)],
+            ['Total Cash to Close', calculations.totalCashToClose.toFixed(2)],
+            ['DSCR', calculations.dscr.toFixed(2)],
+        ];
+
+        // Add specific strategy metrics if active
+        if (activeStrategy === 'Wholesale' && property.wholesaleAnalysis) {
+            const ws = property.wholesaleAnalysis;
+            rows.push(
+                [],
+                ['--- Wholesale Metrics ---'],
+                ['ARV', ws.inputs.arv],
+                ['MAO', ws.calculations.mao.toFixed(2)],
+                ['Estimated Rehab', ws.inputs.estimatedRehab],
+                ['Potential Fee', ws.calculations.potentialFees.toFixed(2)],
+                ['Eligible?', ws.calculations.isEligible ? 'Yes' : 'No']
+            );
+        }
+
+        if (activeStrategy === 'Subject-To' && property.subjectToAnalysis) {
+            const sub = property.subjectToAnalysis;
+            rows.push(
+                [],
+                ['--- Subject-To Metrics ---'],
+                ['Monthly Spread', sub.calculations.monthlySpread.toFixed(2)],
+                ['Cash Needed', sub.calculations.cashNeeded.toFixed(2)],
+                ['Cash on Cash Return', `${sub.calculations.cashOnCashReturn.toFixed(2)}%`],
+            );
+        }
+
+        if (activeStrategy === 'Seller Financing' && property.sellerFinancingAnalysis) {
+            const sf = property.sellerFinancingAnalysis;
+            rows.push(
+                [],
+                ['--- Seller Financing Metrics ---'],
+                ['Monthly Payment', sf.calculations.monthlyPayment.toFixed(2)],
+                ['Spread vs Market Rent', sf.calculations.spreadVsMarketRent.toFixed(2)],
+                ['Return on Down Payment', `${sf.calculations.returnOnDp.toFixed(2)}%`],
+            );
+        }
+
+        if (activeStrategy === 'BRRRR' && property.brrrrAnalysis) {
+            const brrrr = property.brrrrAnalysis;
+            rows.push(
+                [],
+                ['--- BRRRR Metrics ---'],
+                ['Total Project Cost', brrrr.calculations.totalProjectCost.toFixed(2)],
+                ['Refinance Loan Amount', brrrr.calculations.refinanceLoanAmount.toFixed(2)],
+                ['Cash Left In Deal', brrrr.calculations.cashLeftInDeal.toFixed(2)],
+                ['ROI', brrrr.calculations.isInfiniteReturn ? 'Infinite' : `${brrrr.calculations.roi.toFixed(2)}%`],
+                ['Monthly Cash Flow (Post-Refi)', brrrr.calculations.monthlyCashFlowPostRefi.toFixed(2)]
+            );
+        }
+
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + rows.map(e => e.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Analysis_${property.address.substring(0, 20).replace(/[^a-z0-9]/gi, '_')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const renderTabs = () => {
+        const { featureAccess } = useAuth();
         const tabs = activeStrategy === 'Rental'
             ? ['Metrics', 'Expenses', 'Adjust']
             : ['Metrics', 'Parameters'];
+
+        if (activeStrategy === 'Rental' && featureAccess.canAccessProjections) {
+            tabs.push('Projections');
+        }
 
         return (
             <div className="flex border border-gray-200 rounded-lg p-0.5">
@@ -393,34 +733,63 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                 if (activeTab === 'Metrics') return <SellerFinancingMetricsTab {...commonProps} />;
                 if (activeTab === 'Parameters') return <SellerFinancingParamsTab {...commonProps} />;
                 return null;
+            case 'BRRRR':
+                if (activeTab === 'Metrics') return <BrrrrMetricsTab property={property} />;
+                if (activeTab === 'Parameters') return <BrrrrParamsTab {...commonProps} />;
+                return null;
             case 'Rental':
             default:
                 if (activeTab === 'Metrics') return <MetricsTab property={property} />;
                 if (activeTab === 'Expenses') return <ExpensesTab property={property} />;
                 if (activeTab === 'Adjust') return <AdjustTab property={property} setProperty={setProperty} onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />;
+                if (activeTab === 'Projections') return <ProjectionsTab financials={property.financials} />;
                 return null;
         }
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
             <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">Financial Analysis: {activeStrategy.replace('-', ' ')}</h2>
-                {renderTabs()}
+                <div className="flex items-center space-x-2">
+                    <div className="no-print">{renderTabs()}</div>
+
+                    <ReportLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Print/Export">
+                        <button
+                            onClick={handlePrint}
+                            title="Print Report"
+                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-md no-print disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={!featureAccess.canExportCsv}
+                        >
+                            <DocumentArrowDownIcon className="h-5 w-5" />
+                        </button>
+                    </ReportLockedTooltip>
+
+                    <ReportLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Export CSV">
+                        <button
+                            onClick={handleExportCSV}
+                            title="Export CSV"
+                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-md no-print disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={!featureAccess.canExportCsv}
+                        >
+                            <TableCellsIcon className="h-5 w-5" />
+                        </button>
+                    </ReportLockedTooltip>
+                </div>
             </div>
             <div>{renderContent()}</div>
         </div>
     );
 };
 
-// FIX: Changed to a React.FC to correctly handle the 'key' prop when used in a map.
-const TabButton: React.FC<{ name: string, activeTab: string, setActiveTab: (name: string) => void}> = ({ name, activeTab, setActiveTab }) => (
+// ... (Rest of the components - TabButton, MetricBox, MetricsTab, ExpensesTab, ExpenseRow, AdjustTab, InputField, SelectField, ToggleField, SliderField, InvestmentSummaryBreakdown, SummaryRow - KEEP AS IS)
+const TabButton: React.FC<{ name: string, activeTab: string, setActiveTab: (name: string) => void }> = ({ name, activeTab, setActiveTab }) => (
     <button onClick={() => setActiveTab(name)} className={`px-4 py-1 text-sm font-semibold rounded-md transition-colors ${activeTab === name ? 'bg-brand-blue text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}>
         {name}
     </button>
 );
 
-const MetricBox = ({ label, value, description, color }: { label: string, value: string | number, description: string, color: string}) => {
+const MetricBox = ({ label, value, description, color }: { label: string, value: string | number, description: string, color: string }) => {
     const colorClasses = {
         green: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
         red: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
@@ -449,29 +818,29 @@ const MetricsTab = ({ property }: { property: Property }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <MetricBox label="Cap Rate" value={`${calcs.capRate.toFixed(1)}%`} description="Annual return on purchase price" color="green" />
             <MetricBox label="All-in Cap Rate" value={`${calcs.allInCapRate.toFixed(1)}%`} description="Annual return including rehab costs" color="green" />
-            <MetricBox 
-                label="Cash-on-Cash Return" 
-                value={`${calcs.cashOnCashReturn.toFixed(1)}%`} 
-                description="Return on total cash invested (incl. rehab)" 
-                color={calcs.cashOnCashReturn >= 8 ? 'green' : 'red'} 
+            <MetricBox
+                label="Cash-on-Cash Return"
+                value={`${calcs.cashOnCashReturn.toFixed(1)}%`}
+                description="Return on total cash invested (incl. rehab)"
+                color={calcs.cashOnCashReturn >= 8 ? 'green' : 'red'}
             />
-            <MetricBox 
-                label="Cash Flow (With Debt)" 
-                value={formatCurrency(calcs.monthlyCashFlowWithDebt)} 
-                description="Net monthly cash after debt service" 
-                color={calcs.monthlyCashFlowWithDebt > 0 ? 'green' : 'red'} 
+            <MetricBox
+                label="Cash Flow (With Debt)"
+                value={formatCurrency(calcs.monthlyCashFlowWithDebt)}
+                description="Net monthly cash after debt service"
+                color={calcs.monthlyCashFlowWithDebt > 0 ? 'green' : 'red'}
             />
-            <MetricBox 
-                label="DSCR" 
-                value={dscrValue} 
-                description="Debt Service Coverage Ratio" 
-                color={dscrColor} 
+            <MetricBox
+                label="DSCR"
+                value={dscrValue}
+                description="Debt Service Coverage Ratio"
+                color={dscrColor}
             />
-            <MetricBox 
-                label="Monthly Cash Flow (No Debt)" 
-                value={formatCurrency(calcs.monthlyCashFlowNoDebt)} 
-                description="Net monthly income before debt" 
-                color="green" 
+            <MetricBox
+                label="Monthly Cash Flow (No Debt)"
+                value={formatCurrency(calcs.monthlyCashFlowNoDebt)}
+                description="Net monthly income before debt"
+                color="green"
             />
         </div>
     );
@@ -479,10 +848,10 @@ const MetricsTab = ({ property }: { property: Property }) => {
 
 const ExpensesTab = ({ property }: { property: Property }) => {
     const calcs = property.calculations;
-    const { 
-        monthlyTaxes, monthlyInsurance, monthlyWaterSewer, monthlyStreetLights, 
-        monthlyGas, monthlyElectric, monthlyLandscaping, vacancyRate, 
-        maintenanceRate, managementRate, capexRate 
+    const {
+        monthlyTaxes, monthlyInsurance, monthlyWaterSewer, monthlyStreetLights,
+        monthlyGas, monthlyElectric, monthlyLandscaping, vacancyRate,
+        maintenanceRate, managementRate, capexRate, monthlyHoaFee, operatingMiscFee
     } = property.financials;
     const totalMonthlyRent = property.financials.monthlyRents.reduce((a, b) => a + b, 0);
 
@@ -495,31 +864,32 @@ const ExpensesTab = ({ property }: { property: Property }) => {
                 <ExpenseRow label="Effective Gross Income" value={formatCurrency(calcs.effectiveGrossIncome / 12)} isTotal />
             </div>
             <div className="p-4 bg-red-50 rounded-lg space-y-2">
-                 <h4 className="font-semibold text-gray-700">Operating Expenses</h4>
-                 {/* FIX: Removed Vacancy Loss from this section to avoid confusion/double-counting appearance. */}
-                 <ExpenseRow label={`Maintenance & Repairs (${maintenanceRate}%)`} value={`${formatCurrency(calcs.maintenanceCost)}/month`} valueYear={`${formatCurrency(calcs.maintenanceCost*12)}/year`} isSub />
-                 <ExpenseRow label={`Property Management (${managementRate}%)`} value={`${formatCurrency(calcs.managementCost)}/month`} valueYear={`${formatCurrency(calcs.managementCost*12)}/year`} isSub />
-                 <ExpenseRow label={`CapEx Reserves (${capexRate}%)`} value={`${formatCurrency(calcs.capexCost)}/month`} valueYear={`${formatCurrency(calcs.capexCost*12)}/year`} isSub />
-                 <ExpenseRow label="Property Taxes" value={`${formatCurrency(monthlyTaxes)}/month`} valueYear={`${formatCurrency(monthlyTaxes * 12)}/year`} isSub />
-                 <ExpenseRow label="Insurance" value={`${formatCurrency(monthlyInsurance)}/month`} valueYear={`${formatCurrency(monthlyInsurance*12)}/year`} isSub />
-                 <h5 className="font-semibold text-gray-600 text-xs uppercase pt-2">Utilities</h5>
-                 <ExpenseRow label="Water/Sewer" value={`${formatCurrency(monthlyWaterSewer)}/month`} valueYear={`${formatCurrency(monthlyWaterSewer*12)}/year`} isSub />
-                 <ExpenseRow label="Street Lights" value={`${formatCurrency(monthlyStreetLights)}/month`} valueYear={`${formatCurrency(monthlyStreetLights*12)}/year`} isSub />
-                 <ExpenseRow label="Gas" value={`${formatCurrency(monthlyGas)}/month`} valueYear={`${formatCurrency(monthlyGas*12)}/year`} isSub />
-                 <ExpenseRow label="Electric" value={`${formatCurrency(monthlyElectric)}/month`} valueYear={`${formatCurrency(monthlyElectric*12)}/year`} isSub />
-                 <ExpenseRow label="Landscaping" value={`${formatCurrency(monthlyLandscaping)}/month`} valueYear={`${formatCurrency(monthlyLandscaping*12)}/year`} isSub />
-                 <ExpenseRow label="Total Operating Expenses" value={`${formatCurrency(calcs.totalOperatingExpenses)}/month`} valueYear={`${formatCurrency(calcs.totalOperatingExpenses * 12)}/year`} isTotal isNegative />
+                <h4 className="font-semibold text-gray-700">Operating Expenses</h4>
+                <ExpenseRow label={`Maintenance & Repairs (${maintenanceRate}%)`} value={`${formatCurrency(calcs.maintenanceCost)}/month`} valueYear={`${formatCurrency(calcs.maintenanceCost * 12)}/year`} isSub />
+                <ExpenseRow label={`Property Management (${managementRate}%)`} value={`${formatCurrency(calcs.managementCost)}/month`} valueYear={`${formatCurrency(calcs.managementCost * 12)}/year`} isSub />
+                <ExpenseRow label={`CapEx Reserves (${capexRate}%)`} value={`${formatCurrency(calcs.capexCost)}/month`} valueYear={`${formatCurrency(calcs.capexCost * 12)}/year`} isSub />
+                <ExpenseRow label="Property Taxes" value={`${formatCurrency(monthlyTaxes)}/month`} valueYear={`${formatCurrency(monthlyTaxes * 12)}/year`} isSub />
+                <ExpenseRow label="Insurance" value={`${formatCurrency(monthlyInsurance)}/month`} valueYear={`${formatCurrency(monthlyInsurance * 12)}/year`} isSub />
+                <ExpenseRow label="HOA Fee" value={`${formatCurrency(monthlyHoaFee)}/month`} valueYear={`${formatCurrency(monthlyHoaFee * 12)}/year`} isSub />
+                <ExpenseRow label="Misc. Fees" value={`${formatCurrency(operatingMiscFee)}/month`} valueYear={`${formatCurrency(operatingMiscFee * 12)}/year`} isSub />
+                <h5 className="font-semibold text-gray-600 text-xs uppercase pt-2">Utilities</h5>
+                <ExpenseRow label="Water/Sewer" value={`${formatCurrency(monthlyWaterSewer)}/month`} valueYear={`${formatCurrency(monthlyWaterSewer * 12)}/year`} isSub />
+                <ExpenseRow label="Street Lights" value={`${formatCurrency(monthlyStreetLights)}/month`} valueYear={`${formatCurrency(monthlyStreetLights * 12)}/year`} isSub />
+                <ExpenseRow label="Gas" value={`${formatCurrency(monthlyGas)}/month`} valueYear={`${formatCurrency(monthlyGas * 12)}/year`} isSub />
+                <ExpenseRow label="Electric" value={`${formatCurrency(monthlyElectric)}/month`} valueYear={`${formatCurrency(monthlyElectric * 12)}/year`} isSub />
+                <ExpenseRow label="Landscaping" value={`${formatCurrency(monthlyLandscaping)}/month`} valueYear={`${formatCurrency(monthlyLandscaping * 12)}/year`} isSub />
+                <ExpenseRow label="Total Operating Expenses" value={`${formatCurrency(calcs.totalOperatingExpenses)}/month`} valueYear={`${formatCurrency(calcs.totalOperatingExpenses * 12)}/year`} isTotal isNegative />
             </div>
-             <div className="p-4 bg-blue-50 rounded-lg space-y-2">
-                 <ExpenseRow label="Effective Gross Income" value={formatCurrency(calcs.effectiveGrossIncome / 12)} />
-                 <ExpenseRow label="Less: Operating Expenses" value={`-${formatCurrency(calcs.totalOperatingExpenses)}`} isSub />
-                 <ExpenseRow label="Net Operating Income (NOI)" value={formatCurrency(calcs.netOperatingIncome)} isTotal />
-                 <ExpenseRow label="Monthly Cash Flow" value={formatCurrency(calcs.monthlyCashFlowNoDebt)} isTotal />
+            <div className="p-4 bg-blue-50 rounded-lg space-y-2">
+                <ExpenseRow label="Effective Gross Income" value={formatCurrency(calcs.effectiveGrossIncome / 12)} />
+                <ExpenseRow label="Less: Operating Expenses" value={`-${formatCurrency(calcs.totalOperatingExpenses)}`} isSub />
+                <ExpenseRow label="Net Operating Income (NOI)" value={formatCurrency(calcs.netOperatingIncome)} isTotal />
+                <ExpenseRow label="Monthly Cash Flow" value={formatCurrency(calcs.monthlyCashFlowNoDebt)} isTotal />
             </div>
         </div>
     );
 };
-const ExpenseRow = ({ label, value, valueYear, isSub=false, isTotal=false, isNegative=false } : {label:string, value:string, valueYear?: string, isSub?:boolean, isTotal?:boolean, isNegative?:boolean}) => (
+const ExpenseRow = ({ label, value, valueYear, isSub = false, isTotal = false, isNegative = false }: { label: string, value: string, valueYear?: string, isSub?: boolean, isTotal?: boolean, isNegative?: boolean }) => (
     <div className={`flex justify-between items-center ${isTotal ? 'pt-2 border-t border-gray-300/50' : ''}`}>
         <span className={`${isSub ? 'pl-4' : ''} ${isTotal ? 'font-bold' : ''} text-gray-600`}>{label}</span>
         <div className="text-right">
@@ -529,109 +899,7 @@ const ExpenseRow = ({ label, value, valueYear, isSub=false, isTotal=false, isNeg
     </div>
 );
 
-const AdjustTab = ({ property, setProperty, onSave, onReset, hasChanges, isLoading, error }: { property: Property, setProperty: (p: Property) => void, onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => {
-    
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const newFinancials = { ...property.financials, [name]: Number(value) };
-        const newCalculations = calculateMetrics(newFinancials);
-        setProperty({ ...property, financials: newFinancials, calculations: newCalculations });
-    };
 
-    const handleRentChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-        const { value } = e.target;
-        const newRents = [...property.financials.monthlyRents];
-        newRents[index] = Number(value);
-        const newFinancials = { ...property.financials, monthlyRents: newRents };
-        const newCalculations = calculateMetrics(newFinancials);
-        setProperty({ ...property, financials: newFinancials, calculations: newCalculations });
-    };
-
-    const handleSliderChange = (name: keyof Financials, value: number) => {
-        const newFinancials = { ...property.financials, [name]: value };
-        const newCalculations = calculateMetrics(newFinancials);
-        setProperty({ ...property, financials: newFinancials, calculations: newCalculations });
-    };
-    
-    const downPaymentAmountValue = property.financials.purchasePrice * (property.financials.downPaymentPercent / 100);
-
-    return (
-         <div className="space-y-4">
-            <p className="text-sm bg-yellow-50 p-3 rounded-lg text-yellow-800">Adjust the parameters below to model different scenarios. Click "Save Changes" to persist your adjustments.</p>
-            
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Purchase & Rehab</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Purchase Price ($)" name="purchasePrice" value={property.financials.purchasePrice} onChange={handleInputChange} />
-                    <InputField label="Rehab/Renovation Cost ($)" name="rehabCost" value={property.financials.rehabCost} onChange={handleInputChange} />
-                </div>
-            </div>
-            
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Loan & Closing Costs</h4>
-                <SliderField label="Down Payment" displayValue={`${property.financials.downPaymentPercent}% (${formatCurrency(downPaymentAmountValue)})`} name="downPaymentPercent" value={property.financials.downPaymentPercent} onChange={v => handleSliderChange('downPaymentPercent', v)} unit="%" min={0} max={100} step={1} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Loan Interest Rate (%)" name="loanInterestRate" value={property.financials.loanInterestRate} onChange={handleInputChange} />
-                    <InputField label="Loan Term (Years)" name="loanTermYears" value={property.financials.loanTermYears} onChange={handleInputChange} />
-                    <InputField label="Origination Fee (%)" name="originationFeePercent" value={property.financials.originationFeePercent} onChange={handleInputChange} />
-                    <InputField label="Closing Fee ($)" name="closingFee" value={property.financials.closingFee} onChange={handleInputChange} />
-                    <InputField label="Processing Fee ($)" name="processingFee" value={property.financials.processingFee} onChange={handleInputChange} />
-                    <InputField label="Appraisal Fee ($)" name="appraisalFee" value={property.financials.appraisalFee} onChange={handleInputChange} />
-                    <InputField label="Title Fee ($)" name="titleFee" value={property.financials.titleFee} onChange={handleInputChange} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Credits from Seller</h4>
-                <p className="text-xs text-gray-500 -mt-2">These credits reduce your total cash to close.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Taxes Credit ($)" name="sellerCreditTax" value={property.financials.sellerCreditTax || 0} onChange={handleInputChange} />
-                    <InputField label="Sewer Credit ($)" name="sellerCreditSewer" value={property.financials.sellerCreditSewer || 0} onChange={handleInputChange} />
-                    <InputField label="Origination Fee Credit ($)" name="sellerCreditOrigination" value={property.financials.sellerCreditOrigination || 0} onChange={handleInputChange} />
-                    <InputField label="Closing Fees Credit ($)" name="sellerCreditClosing" value={property.financials.sellerCreditClosing || 0} onChange={handleInputChange} />
-                </div>
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold text-gray-700 -mb-2">Income</h4>
-                 {property.financials.monthlyRents.length > 1 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {property.financials.monthlyRents.map((rent, index) => (
-                        <div key={index}>
-                            <label className="block text-sm font-medium text-gray-700">Unit {index + 1} Rent ($)</label>
-                            <input type="number" value={rent} onChange={(e) => handleRentChange(e, index)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-blue focus:border-brand-blue" />
-                        </div>
-                    ))}
-                    </div>
-                ) : (
-                    <InputField label="Monthly Rent ($)" name="monthlyRents" value={property.financials.monthlyRents[0] || 0} onChange={(e) => handleRentChange(e, 0)} />
-                )}
-            </div>
-
-            <div className="p-4 border rounded-lg space-y-4">
-                 <h4 className="font-semibold text-gray-700 -mb-2">Operating Expenses</h4>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <SliderField label="Vacancy Rate" name="vacancyRate" value={property.financials.vacancyRate} onChange={v => handleSliderChange('vacancyRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <SliderField label="Maintenance" name="maintenanceRate" value={property.financials.maintenanceRate} onChange={v => handleSliderChange('maintenanceRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <SliderField label="Management" name="managementRate" value={property.financials.managementRate} onChange={v => handleSliderChange('managementRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <SliderField label="CapEx" name="capexRate" value={property.financials.capexRate} onChange={v => handleSliderChange('capexRate', v)} unit="%" min={0} max={30} step={0.5} />
-                    <InputField label="Monthly Property Taxes ($)" name="monthlyTaxes" value={property.financials.monthlyTaxes} onChange={handleInputChange} />
-                    <InputField label="Monthly Insurance ($)" name="monthlyInsurance" value={property.financials.monthlyInsurance} onChange={handleInputChange} />
-                </div>
-                <h5 className="font-semibold text-gray-600 text-sm pt-2 -mb-2">Utilities</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Water/Sewer ($)" name="monthlyWaterSewer" value={property.financials.monthlyWaterSewer} onChange={handleInputChange} />
-                    <InputField label="Street Lights ($)" name="monthlyStreetLights" value={property.financials.monthlyStreetLights} onChange={handleInputChange} />
-                    <InputField label="Gas ($)" name="monthlyGas" value={property.financials.monthlyGas} onChange={handleInputChange} />
-                    <InputField label="Electric ($)" name="monthlyElectric" value={property.financials.monthlyElectric} onChange={handleInputChange} />
-                    <InputField label="Landscaping ($)" name="monthlyLandscaping" value={property.financials.monthlyLandscaping} onChange={handleInputChange} />
-                </div>
-            </div>
-            
-            <SaveChangesFooter onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />
-        </div>
-    );
-};
 
 // --- STRATEGY EXIT GUIDE COMPONENT ---
 const ExitStrategyGuide = ({ title, strategies }: { title: string, strategies: ExitPoint[] }) => (
@@ -668,16 +936,15 @@ const ExitStrategyGuide = ({ title, strategies }: { title: string, strategies: E
     </div>
 );
 
-
-// --- WHOLESALE STRATEGY COMPONENTS ---
-
-const CalculationRow = ({ label, value, isSubTotal=false, isTotal=false, isNegative=false, color='default' } : {label:string, value:string, isSubTotal?:boolean, isTotal?:boolean, isNegative?:boolean, color?: 'green' | 'red' | 'default' }) => {
+// ... (WholesaleMetricsTab, WholesaleParamsTab, SubjectToMetricsTab, SubjectToParamsTab, SellerFinancingMetricsTab, SellerFinancingParamsTab, SaveChangesFooter, InputField, SelectField, ToggleField, SliderField, InvestmentSummaryBreakdown, SummaryRow - KEEP ALL AS IS)
+// [OMITTED FOR BREVITY - NO CHANGES]
+const CalculationRow = ({ label, value, isSubTotal = false, isTotal = false, isNegative = false, color = 'default' }: { label: string, value: string, isSubTotal?: boolean, isTotal?: boolean, isNegative?: boolean, color?: 'green' | 'red' | 'default' }) => {
     const colorClasses = {
         green: 'text-green-600',
         red: 'text-red-600',
         default: 'text-gray-900',
     };
-    
+
     return (
         <div className={`flex justify-between items-center ${isTotal || isSubTotal ? 'pt-2 border-t' : ''} ${isSubTotal ? 'border-dashed border-gray-300' : ''} ${isTotal ? 'border-gray-300' : ''}`}>
             <span className={`${isTotal ? 'font-semibold' : ''} text-gray-600`}>{label}</span>
@@ -711,18 +978,19 @@ const WholesaleMetricsTab = ({ property }: { property: Property }) => {
             </div>
 
             <div className="p-4 border rounded-lg bg-gray-50/50">
-                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Deal Analysis</h3>
-                 <div className="space-y-2 text-sm">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Deal Analysis</h3>
+                <div className="space-y-2 text-sm">
                     <CalculationRow label="Your Max Allowable Offer (MAO)" value={formatCurrency(calcs.mao)} />
                     <CalculationRow label="Less: Seller's Asking Price" value={formatCurrency(inputs.sellerAsk)} isNegative={true} />
                     <CalculationRow label="Potential Wholesale Fee (Spread)" value={formatCurrency(calcs.potentialFees)} isTotal={true} color={calcs.potentialFees >= 0 ? 'green' : 'red'} />
-                 </div>
-                 <div className={`mt-4 p-3 rounded-lg flex items-center justify-center text-center ${calcs.isEligible ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                </div>
+                <div className={`mt-4 p-3 rounded-lg flex items-center justify-center text-center ${calcs.isEligible ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
                     <span className="font-bold text-lg">{calcs.isEligible ? 'This deal is eligible!' : 'This deal is NOT eligible based on your MAO.'}</span>
-                 </div>
+                </div>
             </div>
-
-            <ExitStrategyGuide title="Wholesale Exit Options" strategies={WHOLESALE_EXIT_STRATEGIES} />
+            <div className="screen-only">
+                <ExitStrategyGuide title="Wholesale Exit Options" strategies={WHOLESALE_EXIT_STRATEGIES} />
+            </div>
         </div>
     );
 };
@@ -768,7 +1036,7 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
                 <MetricBox label="Monthly Spread" value={formatCurrency(calcs.monthlySpread)} description="Market Rent minus existing PITI" color={calcs.monthlySpread > 0 ? 'green' : 'red'} />
                 <MetricBox label="Blended CoC Return" value={`${calcs.cashOnCashReturn.toFixed(1)}%`} description="Annualized return on cash needed" color={calcs.cashOnCashReturn > 0 ? 'green' : 'red'} />
             </div>
-            
+
             <div className="p-4 border rounded-lg bg-gray-50/50">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Cash Needed Breakdown</h3>
                 <div className="space-y-2 text-sm">
@@ -788,7 +1056,9 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
                 </div>
             </div>
 
-            <ExitStrategyGuide title="Subject-To Exit Options" strategies={SUBJECT_TO_EXIT_STRATEGIES} />
+            <div className="screen-only">
+                <ExitStrategyGuide title="Subject-To Exit Options" strategies={SUBJECT_TO_EXIT_STRATEGIES} />
+            </div>
         </div>
     );
 };
@@ -836,7 +1106,7 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
                 <MetricBox label="Spread vs. Market Rent" value={formatCurrency(calcs.spreadVsMarketRent)} description="Cash flow potential" color={calcs.spreadVsMarketRent > 0 ? 'green' : 'red'} />
                 <MetricBox label="Return on Down Payment" value={`${calcs.returnOnDp.toFixed(1)}%`} description="Annualized return on DP" color={calcs.returnOnDp > 0 ? 'green' : 'red'} />
             </div>
-            
+
             <div className="p-4 border rounded-lg bg-gray-50/50">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Monthly Payment Calculation</h3>
                 <div className="space-y-2 text-sm">
@@ -859,7 +1129,9 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
                 </div>
             </div>
 
-            <ExitStrategyGuide title="Seller Financing Exit Options" strategies={SELLER_FINANCING_EXIT_STRATEGIES} />
+            <div className="screen-only">
+                <ExitStrategyGuide title="Seller Financing Exit Options" strategies={SELLER_FINANCING_EXIT_STRATEGIES} />
+            </div>
         </div>
     );
 };
@@ -868,14 +1140,13 @@ const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasC
     const inputs = property.sellerFinancingAnalysis?.inputs;
     if (!inputs) return null;
 
-    // FIX: Split the handler into two separate functions to resolve the Babel parsing error.
     const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         const newInputs = { ...inputs, [name]: Number(value) };
         const newCalculations = calculateSellerFinancingMetrics(newInputs);
         setProperty({ ...property, sellerFinancingAnalysis: { inputs: newInputs, calculations: newCalculations } });
     };
-    
+
     const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
         const newInputs = { ...inputs, [name]: value as 'Amortization' | 'Interest Only' };
@@ -893,10 +1164,10 @@ const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasC
                 <InputField label="Loan Term (Years)" name="loanTerm" value={inputs.loanTerm} onChange={handleNumberInputChange} />
                 <InputField label="Balloon (Years, 0 if none)" name="balloonYears" value={inputs.balloonYears} onChange={handleNumberInputChange} />
                 <InputField label="Market Rent ($)" name="marketRent" value={inputs.marketRent} onChange={handleNumberInputChange} />
-                <SelectField 
-                    label="Payment Type" 
-                    name="paymentType" 
-                    value={inputs.paymentType} 
+                <SelectField
+                    label="Payment Type"
+                    name="paymentType"
+                    value={inputs.paymentType}
                     onChange={handleSelectChange}
                     options={['Amortization', 'Interest Only']}
                 />
@@ -910,13 +1181,13 @@ const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasC
 // --- COMMON & UTILITY COMPONENTS ---
 
 const SaveChangesFooter = ({ onSave, onReset, hasChanges, isLoading, error }: { onSave: () => void, onReset: () => void, hasChanges: boolean, isLoading: boolean, error: string | null }) => (
-    <div className="mt-6">
+    <div className="mt-6 no-print">
         {error && <div className="bg-red-100 border border-red-300 text-red-800 text-sm p-3 rounded-md mb-4">{error}</div>}
         <div className="flex justify-end items-center space-x-4">
             {hasChanges ? (
                 <>
                     <button onClick={onReset} disabled={isLoading} className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50">Reset</button>
-                    <button onClick={onSave} disabled={isLoading} className="px-4 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 flex items-center min-w-[170px] justify-center">
+                    <button onClick={() => onSave()} disabled={isLoading} className="px-4 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-blue-700 disabled:bg-blue-300 flex items-center min-w-[170px] justify-center">
                         {isLoading ? (
                             <>
                                 <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
@@ -933,61 +1204,36 @@ const SaveChangesFooter = ({ onSave, onReset, hasChanges, isLoading, error }: { 
 );
 
 
-const InputField = ({ label, name, value, onChange, type = "number" }: { label: string, name: string, value: number | string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, type?: string }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <input type={type} name={name} value={value} onChange={onChange} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-blue focus:border-brand-blue" />
-    </div>
-);
 
-const SelectField = ({ label, name, value, onChange, options }: { label: string, name: string, value: string, onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void, options: string[] }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <select name={name} value={value} onChange={onChange} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-blue focus:border-brand-blue bg-white">
-            {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-    </div>
-);
-
-const ToggleField = ({ label, name, checked, onChange }: { label: string, name: string, checked: boolean, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-    <div className="flex items-center">
-        <label htmlFor={name} className="flex items-center cursor-pointer">
-            <div className="relative">
-                <input type="checkbox" id={name} name={name} className="sr-only" checked={checked} onChange={onChange} />
-                <div className={`block w-14 h-8 rounded-full ${checked ? 'bg-brand-blue' : 'bg-gray-200'}`}></div>
-                <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${checked ? 'transform translate-x-6' : ''}`}></div>
-            </div>
-            <div className="ml-3 text-sm font-medium text-gray-700">{label}</div>
-        </label>
-    </div>
-);
-
-
-const SliderField = ({ label, name, value, onChange, unit, min, max, step, displayValue }: { label: string, name: keyof Financials, value: number, onChange: (v: number) => void, unit: string, min: number, max: number, step: number, displayValue?: string }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}: <span className="font-bold">{displayValue || `${value}${unit}`}</span></label>
-        <input type="range" name={name} value={value} onChange={(e) => onChange(Number(e.target.value))} min={min} max={max} step={step} className="mt-1 w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-blue" />
-    </div>
-);
 
 const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
     const calcs = property.calculations;
-    const { rehabCost } = property.financials;
-    const totalMonthlyRent = property.financials.monthlyRents.reduce((a, b) => a + b, 0);
-    const totalSellerCredits = (property.financials.sellerCreditTax || 0) + (property.financials.sellerCreditSewer || 0) + (property.financials.sellerCreditOrigination || 0) + (property.financials.sellerCreditClosing || 0);
-
+    const financials = property.financials; // Get financials for itemized costs
+    const totalMonthlyRent = financials.monthlyRents.reduce((a, b) => a + b, 0);
+    const totalSellerCredits = (financials.sellerCreditTax || 0) + (financials.sellerCreditSewer || 0) + (financials.sellerCreditOrigination || 0) + (financials.sellerCreditClosing || 0) + (financials.sellerCreditRents || 0) + (financials.sellerCreditSecurityDeposit || 0) + (financials.sellerCreditMisc || 0);
+    const originationFeeAmount = calcs.loanAmount * (financials.originationFeePercent / 100);
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Investment Summary (Rental Strategy)</h2>
+        <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 print-hide-title">Investment Summary (Rental Strategy)</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 {/* Upfront Costs Section */}
                 <div>
                     <h3 className="text-lg font-semibold text-gray-700 mb-3 pb-2 border-b">Upfront Costs (Cash to Close)</h3>
                     <div className="space-y-2 text-sm">
                         <SummaryRow label="Down Payment" value={formatCurrency(calcs.downPaymentAmount)} />
-                        <SummaryRow label="Rehab Cost" value={formatCurrency(rehabCost)} />
-                        <SummaryRow label="Closing Costs" value={formatCurrency(calcs.totalClosingCosts)} />
+                        <SummaryRow label="Rehab Cost" value={formatCurrency(financials.rehabCost)} />
+                        <h4 className="font-semibold text-gray-600 text-xs uppercase pt-2">Closing Costs</h4>
+                        <SummaryRow label="Origination Fee" value={formatCurrency(originationFeeAmount)} isSub />
+                        <SummaryRow label="Closing Fee" value={formatCurrency(financials.closingFee)} isSub />
+                        <SummaryRow label="Processing Fee" value={formatCurrency(financials.processingFee)} isSub />
+                        <SummaryRow label="Appraisal Fee" value={formatCurrency(financials.appraisalFee)} isSub />
+                        <SummaryRow label="Title Fee" value={formatCurrency(financials.titleFee)} isSub />
+                        <SummaryRow label="Broker/Agent Fee" value={formatCurrency(financials.brokerAgentFee || 0)} isSub />
+                        <SummaryRow label="Home Warranty Fee" value={formatCurrency(financials.homeWarrantyFee || 0)} isSub />
+                        <SummaryRow label="Attorney Fee" value={formatCurrency(financials.attorneyFee || 0)} isSub />
+                        <SummaryRow label="Misc. Fees" value={formatCurrency(financials.closingMiscFee || 0)} isSub />
+                        <SummaryRow label="Total Closing Costs" value={formatCurrency(calcs.totalClosingCosts)} isSubTotal />
                         <SummaryRow label="Less: Seller Credits" value={formatCurrency(totalSellerCredits)} isNegative />
                         <SummaryRow label="Total Cash To Close" value={formatCurrency(calcs.totalCashToClose)} isTotal />
                     </div>
@@ -1007,15 +1253,15 @@ const InvestmentSummaryBreakdown = ({ property }: { property: Property }) => {
         </div>
     );
 };
-const SummaryRow = ({ label, value, isTotal = false, isSubTotal = false, isNegative = false }: { label: string, value: string, isTotal?: boolean, isSubTotal?: boolean, isNegative?: boolean }) => {
+const SummaryRow = ({ label, value, isTotal = false, isSubTotal = false, isNegative = false, isSub = false }: { label: string, value: string, isTotal?: boolean, isSubTotal?: boolean, isNegative?: boolean, isSub?: boolean }) => {
     const baseClasses = "flex justify-between items-center";
     const totalClasses = isTotal ? "pt-2 mt-2 border-t font-bold" : "";
-    const subTotalClasses = isSubTotal ? "pt-2 border-t" : "";
+    const subTotalClasses = isSubTotal ? "pt-2 mt-2 border-t" : "";
 
     return (
         <div className={`${baseClasses} ${totalClasses} ${subTotalClasses}`}>
-            <span className={`text-gray-600 ${isTotal ? 'text-gray-800' : ''}`}>{label}</span>
-            <span className={`font-semibold ${isTotal ? 'text-lg text-gray-900' : 'text-gray-700'} ${isNegative ? 'text-red-600' : ''}`}>{isNegative ? '-' + value: value}</span>
+            <span className={`text-gray-600 ${isTotal ? 'text-gray-800' : ''} ${isSub ? 'pl-4' : ''}`}>{label}</span>
+            <span className={`font-semibold ${isTotal ? 'text-lg text-gray-900' : 'text-gray-700'} ${isNegative ? 'text-red-600' : ''}`}>{isNegative ? '-' + value : value}</span>
         </div>
     );
 };
