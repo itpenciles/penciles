@@ -96,9 +96,31 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
       monthlyPayment = (loanAmount * (sellerLoanRate / 100)) / 12;
     }
   }
-  const spreadVsMarketRent = marketRent - monthlyPayment;
-  const returnOnDp = downPayment > 0 ? ((spreadVsMarketRent * 12) / downPayment) * 100 : 0;
-  return { monthlyPayment, spreadVsMarketRent, returnOnDp };
+  // Income
+  const grossIncome = marketRent + (inputs.otherMonthlyIncome || 0);
+  const vacancyLoss = grossIncome * ((inputs.expenses?.vacancyRate || 0) / 100);
+  const effectiveIncome = grossIncome - vacancyLoss;
+
+  // Expenses
+  const maintenanceCost = grossIncome * ((inputs.expenses?.maintenanceRate || 0) / 100);
+  const managementCost = grossIncome * ((inputs.expenses?.managementRate || 0) / 100);
+  const capexCost = grossIncome * ((inputs.expenses?.capexRate || 0) / 100);
+
+  const fixedExpenses = (inputs.expenses?.monthlyTaxes || 0) + (inputs.expenses?.monthlyInsurance || 0) + (inputs.expenses?.monthlyHoa || 0) +
+    (inputs.expenses?.monthlyWaterSewer || 0) + (inputs.expenses?.monthlyStreetLights || 0) + (inputs.expenses?.monthlyGas || 0) +
+    (inputs.expenses?.monthlyElectric || 0) + (inputs.expenses?.monthlyLandscaping || 0) + (inputs.expenses?.monthlyMiscFees || 0);
+
+  const operatingExpenses = fixedExpenses + maintenanceCost + managementCost + capexCost;
+
+  // NOI & Cash Flow
+  const netOperatingIncome = effectiveIncome - operatingExpenses;
+  const cashFlow = netOperatingIncome - monthlyPayment;
+
+  // Returns
+  const totalCashInvested = downPayment + (inputs.rehabCost || 0);
+  const cashOnCashReturn = totalCashInvested > 0 ? ((cashFlow * 12) / totalCashInvested) * 100 : 0;
+
+  return { monthlyPayment, grossIncome, operatingExpenses, netOperatingIncome, cashFlow, cashOnCashReturn };
 };
 
 export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations => {

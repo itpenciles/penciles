@@ -86,7 +86,7 @@ export const calculateSubjectToMetrics = (inputs: SubjectToInputs): SubjectToCal
 };
 
 export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): SellerFinancingCalculations => {
-  const { purchasePrice, downPayment, sellerLoanRate, loanTerm, paymentType, marketRent } = inputs;
+  const { purchasePrice, downPayment, sellerLoanRate, loanTerm, paymentType, marketRent, otherMonthlyIncome, rehabCost, expenses } = inputs;
   const loanAmount = purchasePrice - downPayment;
   let monthlyPayment = 0;
   if (loanAmount > 0 && sellerLoanRate > 0 && loanTerm > 0) {
@@ -102,9 +102,32 @@ export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): 
       monthlyPayment = (loanAmount * (sellerLoanRate / 100)) / 12;
     }
   }
-  const spreadVsMarketRent = marketRent - monthlyPayment;
-  const returnOnDp = downPayment > 0 ? ((spreadVsMarketRent * 12) / downPayment) * 100 : 0;
-  return { monthlyPayment, spreadVsMarketRent, returnOnDp };
+
+  // Income
+  const grossIncome = marketRent + (otherMonthlyIncome || 0);
+  const vacancyLoss = grossIncome * ((expenses?.vacancyRate || 0) / 100);
+  const effectiveIncome = grossIncome - vacancyLoss;
+
+  // Expenses
+  const maintenanceCost = grossIncome * ((expenses?.maintenanceRate || 0) / 100);
+  const managementCost = grossIncome * ((expenses?.managementRate || 0) / 100);
+  const capexCost = grossIncome * ((expenses?.capexRate || 0) / 100);
+
+  const fixedExpenses = (expenses?.monthlyTaxes || 0) + (expenses?.monthlyInsurance || 0) + (expenses?.monthlyHoa || 0) +
+    (expenses?.monthlyWaterSewer || 0) + (expenses?.monthlyStreetLights || 0) + (expenses?.monthlyGas || 0) +
+    (expenses?.monthlyElectric || 0) + (expenses?.monthlyLandscaping || 0) + (expenses?.monthlyMiscFees || 0);
+
+  const operatingExpenses = fixedExpenses + maintenanceCost + managementCost + capexCost;
+
+  // NOI & Cash Flow
+  const netOperatingIncome = effectiveIncome - operatingExpenses;
+  const cashFlow = netOperatingIncome - monthlyPayment;
+
+  // Returns
+  const totalCashInvested = downPayment + (rehabCost || 0);
+  const cashOnCashReturn = totalCashInvested > 0 ? ((cashFlow * 12) / totalCashInvested) * 100 : 0;
+
+  return { monthlyPayment, grossIncome, operatingExpenses, netOperatingIncome, cashFlow, cashOnCashReturn };
 };
 
 export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations => {

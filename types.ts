@@ -180,6 +180,22 @@ export interface SubjectToCalculations {
 }
 
 // --- Seller Financing Strategy ---
+export interface SellerFinancingExpenses {
+  vacancyRate: number;
+  maintenanceRate: number;
+  managementRate: number;
+  capexRate: number;
+  monthlyTaxes: number;
+  monthlyInsurance: number;
+  monthlyHoa: number;
+  monthlyWaterSewer: number;
+  monthlyStreetLights: number;
+  monthlyGas: number;
+  monthlyElectric: number;
+  monthlyLandscaping: number;
+  monthlyMiscFees: number;
+}
+
 export interface SellerFinancingInputs {
   purchasePrice: number;
   downPayment: number;
@@ -188,12 +204,18 @@ export interface SellerFinancingInputs {
   balloonYears: number; // 0 if none
   paymentType: 'Amortization' | 'Interest Only';
   marketRent: number;
+  otherMonthlyIncome: number;
+  rehabCost: number;
+  expenses: SellerFinancingExpenses;
 }
 
 export interface SellerFinancingCalculations {
   monthlyPayment: number;
-  spreadVsMarketRent: number;
-  returnOnDp: number;
+  grossIncome: number;
+  operatingExpenses: number;
+  netOperatingIncome: number;
+  cashFlow: number;
+  cashOnCashReturn: number;
 }
 
 export interface BrrrrPurchaseCosts {

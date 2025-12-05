@@ -8,7 +8,7 @@ import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from 
 import apiClient from '../services/apiClient';
 import { AdjustTab } from './AdjustTab';
 import { ProjectionsTab } from './ProjectionsTab';
-import { InputField, SelectField, ToggleField } from './common/FormFields';
+import { InputField, SelectField, ToggleField, SliderField } from './common/FormFields';
 import { BrrrrMetricsTab, BrrrrParamsTab } from './BrrrrStrategy';
 import { ComparablesTab } from './ComparablesTab';
 
@@ -709,8 +709,9 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                 [],
                 ['--- Seller Financing Metrics ---'],
                 ['Monthly Payment', sf.calculations.monthlyPayment.toFixed(2)],
-                ['Spread vs Market Rent', sf.calculations.spreadVsMarketRent.toFixed(2)],
-                ['Return on Down Payment', `${sf.calculations.returnOnDp.toFixed(2)}%`],
+                ['Net Operating Income', sf.calculations.netOperatingIncome.toFixed(2)],
+                ['Cash Flow', sf.calculations.cashFlow.toFixed(2)],
+                ['Cash on Cash Return', `${sf.calculations.cashOnCashReturn.toFixed(2)}%`],
             );
         }
 
@@ -1152,8 +1153,9 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <MetricBox label="Monthly Payment" value={formatCurrency(calcs.monthlyPayment)} description="Payment to the seller" color="blue" />
-                <MetricBox label="Spread vs. Market Rent" value={formatCurrency(calcs.spreadVsMarketRent)} description="Cash flow potential" color={calcs.spreadVsMarketRent > 0 ? 'green' : 'red'} />
-                <MetricBox label="Return on Down Payment" value={`${calcs.returnOnDp.toFixed(1)}%`} description="Annualized return on DP" color={calcs.returnOnDp > 0 ? 'green' : 'red'} />
+                <MetricBox label="Net Operating Income" value={formatCurrency(calcs.netOperatingIncome)} description="Income after expenses" color={calcs.netOperatingIncome > 0 ? 'green' : 'red'} />
+                <MetricBox label="Monthly Cash Flow" value={formatCurrency(calcs.cashFlow)} description="NOI minus Debt Service" color={calcs.cashFlow > 0 ? 'green' : 'red'} />
+                <MetricBox label="Cash-on-Cash Return" value={`${calcs.cashOnCashReturn.toFixed(1)}%`} description="Annualized return on cash invested" color={calcs.cashOnCashReturn > 8 ? 'green' : 'red'} />
             </div>
 
             <div className="p-4 border rounded-lg bg-gray-50/50">
@@ -1170,11 +1172,13 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
             </div>
 
             <div className="p-4 border rounded-lg bg-gray-50/50">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Spread & Return Breakdown</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Cash Flow Breakdown</h3>
                 <div className="space-y-2 text-sm">
-                    <CalculationRow label="Market Rent" value={formatCurrency(inputs.marketRent)} />
-                    <CalculationRow label="Less: Monthly Payment" value={formatCurrency(calcs.monthlyPayment)} isNegative={true} />
-                    <CalculationRow label="Spread vs Market Rent" value={formatCurrency(calcs.spreadVsMarketRent)} isTotal={true} color={calcs.spreadVsMarketRent > 0 ? 'green' : 'red'} />
+                    <CalculationRow label="Gross Income" value={formatCurrency(calcs.grossIncome)} />
+                    <CalculationRow label="Less: Operating Expenses" value={formatCurrency(calcs.operatingExpenses)} isNegative={true} />
+                    <CalculationRow label="Net Operating Income (NOI)" value={formatCurrency(calcs.netOperatingIncome)} isSubTotal={true} />
+                    <CalculationRow label="Less: Seller Financing Payment" value={formatCurrency(calcs.monthlyPayment)} isNegative={true} />
+                    <CalculationRow label="Net Monthly Cash Flow" value={formatCurrency(calcs.cashFlow)} isTotal={true} color={calcs.cashFlow > 0 ? 'green' : 'red'} />
                 </div>
             </div>
 
@@ -1203,6 +1207,23 @@ const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasC
         setProperty({ ...property, sellerFinancingAnalysis: { inputs: newInputs, calculations: newCalculations } });
     };
 
+    const handleExpenseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        const currentExpenses = inputs.expenses || {};
+        const newExpenses = { ...currentExpenses, [name]: Number(value) };
+        const newInputs = { ...inputs, expenses: newExpenses };
+        const newCalculations = calculateSellerFinancingMetrics(newInputs);
+        setProperty({ ...property, sellerFinancingAnalysis: { inputs: newInputs, calculations: newCalculations } });
+    };
+
+    const handleSliderChange = (name: string, value: number) => {
+        const currentExpenses = inputs.expenses || {};
+        const newExpenses = { ...currentExpenses, [name]: value };
+        const newInputs = { ...inputs, expenses: newExpenses };
+        const newCalculations = calculateSellerFinancingMetrics(newInputs);
+        setProperty({ ...property, sellerFinancingAnalysis: { inputs: newInputs, calculations: newCalculations } });
+    };
+
 
     return (
         <div className="space-y-4">
@@ -1212,7 +1233,6 @@ const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasC
                 <InputField label="Seller Loan Rate (%)" name="sellerLoanRate" value={inputs.sellerLoanRate} onChange={handleNumberInputChange} />
                 <InputField label="Loan Term (Years)" name="loanTerm" value={inputs.loanTerm} onChange={handleNumberInputChange} />
                 <InputField label="Balloon (Years, 0 if none)" name="balloonYears" value={inputs.balloonYears} onChange={handleNumberInputChange} />
-                <InputField label="Market Rent ($)" name="marketRent" value={inputs.marketRent} onChange={handleNumberInputChange} />
                 <SelectField
                     label="Payment Type"
                     name="paymentType"
@@ -1220,6 +1240,40 @@ const SellerFinancingParamsTab = ({ property, setProperty, onSave, onReset, hasC
                     onChange={handleSelectChange}
                     options={['Amortization', 'Interest Only']}
                 />
+            </div>
+
+            <div className="border-t pt-4">
+                <h4 className="font-semibold text-gray-700 mb-3">Rehab & Income</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Total Rehab Estimate ($)" name="rehabCost" value={inputs.rehabCost || 0} onChange={handleNumberInputChange} />
+                    <InputField label="Market Rent ($)" name="marketRent" value={inputs.marketRent} onChange={handleNumberInputChange} />
+                    <InputField label="Other Monthly Income ($)" name="otherMonthlyIncome" value={inputs.otherMonthlyIncome || 0} onChange={handleNumberInputChange} />
+                </div>
+            </div>
+
+            <div className="border-t pt-4">
+                <h4 className="font-semibold text-gray-700 mb-3">Operating Expenses</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <SliderField label="Vacancy Rate" name="vacancyRate" value={inputs.expenses?.vacancyRate || 0} onChange={(v) => handleSliderChange('vacancyRate', v)} min={0} max={20} step={0.5} unit="%" />
+                    <SliderField label="Maintenance" name="maintenanceRate" value={inputs.expenses?.maintenanceRate || 0} onChange={(v) => handleSliderChange('maintenanceRate', v)} min={0} max={20} step={0.5} unit="%" />
+                    <SliderField label="Management" name="managementRate" value={inputs.expenses?.managementRate || 0} onChange={(v) => handleSliderChange('managementRate', v)} min={0} max={20} step={0.5} unit="%" />
+                    <SliderField label="CapEx" name="capexRate" value={inputs.expenses?.capexRate || 0} onChange={(v) => handleSliderChange('capexRate', v)} min={0} max={20} step={0.5} unit="%" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Monthly Property Taxes ($)" name="monthlyTaxes" value={inputs.expenses?.monthlyTaxes || 0} onChange={handleExpenseChange} />
+                    <InputField label="Monthly Insurance ($)" name="monthlyInsurance" value={inputs.expenses?.monthlyInsurance || 0} onChange={handleExpenseChange} />
+                </div>
+
+                <h5 className="font-medium text-gray-600 mt-4 mb-2">Utilities & Other</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Water/Sewer ($)" name="monthlyWaterSewer" value={inputs.expenses?.monthlyWaterSewer || 0} onChange={handleExpenseChange} />
+                    <InputField label="Street Lights ($)" name="monthlyStreetLights" value={inputs.expenses?.monthlyStreetLights || 0} onChange={handleExpenseChange} />
+                    <InputField label="Gas ($)" name="monthlyGas" value={inputs.expenses?.monthlyGas || 0} onChange={handleExpenseChange} />
+                    <InputField label="Electric ($)" name="monthlyElectric" value={inputs.expenses?.monthlyElectric || 0} onChange={handleExpenseChange} />
+                    <InputField label="Landscaping ($)" name="monthlyLandscaping" value={inputs.expenses?.monthlyLandscaping || 0} onChange={handleExpenseChange} />
+                    <InputField label="HOA Fee ($)" name="monthlyHoa" value={inputs.expenses?.monthlyHoa || 0} onChange={handleExpenseChange} />
+                    <InputField label="Misc Operating Fees ($)" name="monthlyMiscFees" value={inputs.expenses?.monthlyMiscFees || 0} onChange={handleExpenseChange} />
+                </div>
             </div>
             <SaveChangesFooter onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />
         </div>

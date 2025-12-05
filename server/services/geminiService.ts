@@ -293,8 +293,16 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                     calculations: { monthlySpread: 0, cashNeeded: 0, cashOnCashReturn: 0 }
                 },
                 sellerFinancingAnalysis: {
-                    inputs: { purchasePrice: 0, downPayment: 0, sellerLoanRate: 0, loanTerm: 0, balloonYears: 0, paymentType: 'Amortization', marketRent: totalMarketRent },
-                    calculations: { monthlyPayment: 0, spreadVsMarketRent: 0, returnOnDp: 0 }
+                    inputs: {
+                        purchasePrice: 0, downPayment: 0, sellerLoanRate: 0, loanTerm: 0, balloonYears: 0, paymentType: 'Amortization', marketRent: totalMarketRent,
+                        otherMonthlyIncome: 0, rehabCost: 0,
+                        expenses: {
+                            vacancyRate: 0, maintenanceRate: 0, managementRate: 0, capexRate: 0,
+                            monthlyTaxes: 0, monthlyInsurance: 0, monthlyHoa: 0, monthlyWaterSewer: 0,
+                            monthlyStreetLights: 0, monthlyGas: 0, monthlyElectric: 0, monthlyLandscaping: 0, monthlyMiscFees: 0
+                        }
+                    },
+                    calculations: { monthlyPayment: 0, grossIncome: 0, operatingExpenses: 0, netOperatingIncome: 0, cashFlow: 0, cashOnCashReturn: 0 }
                 },
                 brrrrAnalysis: {
                     inputs: {
