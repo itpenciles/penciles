@@ -128,113 +128,115 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {user?.subscriptionTier && (
-          <div className="px-4 py-4 border-b border-gray-200 bg-gray-50/50">
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500 uppercase tracking-wide font-bold">Current Plan</span>
-                <h3 className="text-sm font-bold text-gray-900">{user.subscriptionTier === 'PayAsYouGo' ? 'Pay As You Go' : user.subscriptionTier}</h3>
+        <div className="flex-1 overflow-y-auto">
+          {user?.subscriptionTier && (
+            <div className="px-4 py-4 border-b border-gray-200 bg-gray-50/50">
+              <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500 uppercase tracking-wide font-bold">Current Plan</span>
+                  <h3 className="text-sm font-bold text-gray-900">{user.subscriptionTier === 'PayAsYouGo' ? 'Pay As You Go' : user.subscriptionTier}</h3>
+                </div>
+                {user.subscriptionTier !== 'Team' && user.subscriptionTier !== 'PayAsYouGo' && (
+                  <button
+                    onClick={() => { navigate('/upgrade'); onClose(); }}
+                    className="text-xs bg-white border border-brand-blue text-brand-blue px-2 py-1 rounded hover:bg-brand-blue hover:text-white transition-colors"
+                  >
+                    Upgrade
+                  </button>
+                )}
               </div>
-              {user.subscriptionTier !== 'Team' && user.subscriptionTier !== 'PayAsYouGo' && (
-                <button
-                  onClick={() => { navigate('/upgrade'); onClose(); }}
-                  className="text-xs bg-white border border-brand-blue text-brand-blue px-2 py-1 rounded hover:bg-brand-blue hover:text-white transition-colors"
-                >
-                  Upgrade
-                </button>
-              )}
-            </div>
-            {renderAnalysisUsage()}
-          </div>
-        )}
-
-        <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
-          <span className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Analysis Tools</span>
-          {SIDEBAR_LINKS.map((link) => (
-            <NavLink
-              key={link.name}
-              to={link.href}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${isActive
-                  ? 'bg-brand-blue-light text-brand-blue'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`
-              }
-            >
-              <link.icon className="h-5 w-5 mr-3" />
-              {link.name}
-            </NavLink>
-          ))}
-
-          {user?.role === 'admin' && (
-            <div className="pt-4 border-t border-gray-200 mt-4">
-              <span className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Administration</span>
-              <NavLink
-                to="/admin"
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-2 mt-2 text-sm font-medium rounded-md transition-colors duration-150 ${isActive
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`
-                }
-              >
-                <ChartBarIcon className="h-5 w-5 mr-3" />
-                Admin Dashboard
-              </NavLink>
-              <NavLink
-                to="/admin/setup"
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-2 mt-2 text-sm font-medium rounded-md transition-colors duration-150 ${isActive
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`
-                }
-              >
-                <LockClosedIcon className="h-5 w-5 mr-3" />
-                Setup
-              </NavLink>
+              {renderAnalysisUsage()}
             </div>
           )}
 
-        </nav>
-        <div className="px-4 py-4 border-t border-gray-200">
-          <h3 className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quick Metrics</h3>
-          <div className="mt-2 space-y-2 text-sm text-gray-600">
-            <div className="flex justify-between px-2">
-              <span>Properties Analyzed</span>
-              <span className="font-semibold">{propertiesAnalyzed}</span>
-            </div>
-            <div className="flex justify-between px-2">
-              <span>Avg. Cap Rate</span>
-              <span className="font-semibold">{propertiesAnalyzed > 0 ? `${avgCapRate.toFixed(1)}%` : '--%'}</span>
-            </div>
-          </div>
-        </div>
-        {user && (
+          <nav className="px-2 py-4 space-y-2">
+            <span className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Analysis Tools</span>
+            {SIDEBAR_LINKS.map((link) => (
+              <NavLink
+                key={link.name}
+                to={link.href}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${isActive
+                    ? 'bg-brand-blue-light text-brand-blue'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`
+                }
+              >
+                <link.icon className="h-5 w-5 mr-3" />
+                {link.name}
+              </NavLink>
+            ))}
+
+            {user?.role === 'admin' && (
+              <div className="pt-4 border-t border-gray-200 mt-4">
+                <span className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Administration</span>
+                <NavLink
+                  to="/admin"
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center px-4 py-2 mt-2 text-sm font-medium rounded-md transition-colors duration-150 ${isActive
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`
+                  }
+                >
+                  <ChartBarIcon className="h-5 w-5 mr-3" />
+                  Admin Dashboard
+                </NavLink>
+                <NavLink
+                  to="/admin/setup"
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center px-4 py-2 mt-2 text-sm font-medium rounded-md transition-colors duration-150 ${isActive
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`
+                  }
+                >
+                  <LockClosedIcon className="h-5 w-5 mr-3" />
+                  Setup
+                </NavLink>
+              </div>
+            )}
+
+          </nav>
           <div className="px-4 py-4 border-t border-gray-200">
-            <div className="flex items-center">
-              <img
-                className="h-8 w-8 rounded-full"
-                src={user.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=e0e7ff&color=4338ca`}
-                alt="User avatar"
-                referrerPolicy="no-referrer"
-              />
-              <div className="ml-3 overflow-hidden">
-                <p className="text-sm font-medium text-gray-800 truncate">{user.name}</p>
+            <h3 className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quick Metrics</h3>
+            <div className="mt-2 space-y-2 text-sm text-gray-600">
+              <div className="flex justify-between px-2">
+                <span>Properties Analyzed</span>
+                <span className="font-semibold">{propertiesAnalyzed}</span>
+              </div>
+              <div className="flex justify-between px-2">
+                <span>Avg. Cap Rate</span>
+                <span className="font-semibold">{propertiesAnalyzed > 0 ? `${avgCapRate.toFixed(1)}%` : '--%'}</span>
               </div>
             </div>
-            <button
-              onClick={logout}
-              className="mt-3 w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-md"
-            >
-              <ArrowRightOnRectangleIcon className="h-5 w-5 mr-2" />
-              Logout
-            </button>
           </div>
-        )}
+          {user && (
+            <div className="px-4 py-4 border-t border-gray-200 pb-20 md:pb-4"> {/* Added extra padding for mobile bottom nav clearance if needed */}
+              <div className="flex items-center">
+                <img
+                  className="h-8 w-8 rounded-full"
+                  src={user.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=e0e7ff&color=4338ca`}
+                  alt="User avatar"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="ml-3 overflow-hidden">
+                  <p className="text-sm font-medium text-gray-800 truncate">{user.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                className="mt-3 w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-md"
+              >
+                <ArrowRightOnRectangleIcon className="h-5 w-5 mr-2" />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
     </>
   );
