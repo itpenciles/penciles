@@ -18,7 +18,7 @@ const BottomNav = () => {
                         key={item.name}
                         to={item.href}
                         className={({ isActive }) =>
-                            `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'
+                            `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? 'text-purple-600' : 'text-gray-400 hover:text-purple-600'
                             }`
                         }
                     >
