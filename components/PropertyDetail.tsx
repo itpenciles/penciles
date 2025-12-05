@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
-import { Property, Strategy, AttomComparable, AttomFilters } from '../types';
+import { Property, Strategy, AttomFilters } from '../types';
 import { calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics, calculateBrrrrMetrics } from '../contexts/PropertyContext';
 import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
 import apiClient from '../services/apiClient';
@@ -91,20 +91,64 @@ const PropertyDetail = () => {
         if (foundProperty) {
             // Initialize BRRRR if missing (for existing properties)
             if (!foundProperty.brrrrAnalysis) {
-                const inputs = {
+                const inputs: any = { // Temporary cast to any to construct complex object, validated by type structure below
                     purchasePrice: foundProperty.financials.purchasePrice,
-                    rehabCost: foundProperty.financials.rehabCost,
-                    rehabDurationMonths: 6,
                     arv: foundProperty.financials.estimatedValue,
-                    initialLoanAmount: foundProperty.financials.purchasePrice * 0.8,
-                    initialLoanRate: 10,
-                    initialLoanClosingCosts: 2000,
+                    monthlyRent: foundProperty.financials.monthlyRents.reduce((a: number, b: number) => a + b, 0),
                     holdingCostsMonthly: 500,
-                    refinanceLoanLtv: 75,
-                    refinanceLoanRate: 7,
-                    refinanceClosingCosts: 3000,
-                    monthlyRentPostRefi: foundProperty.financials.monthlyRents.reduce((a: number, b: number) => a + b, 0),
-                    monthlyExpensesPostRefi: foundProperty.financials.monthlyTaxes + foundProperty.financials.monthlyInsurance + 200
+                    purchaseCosts: {
+                        points: 0,
+                        prepaidHazardInsurance: 0,
+                        prepaidFloodInsurance: 0,
+                        prepaidPropertyTax: 0,
+                        annualAssessments: 0,
+                        titleEscrowFees: 0,
+                        attorneyFees: 0,
+                        inspectionCost: 0,
+                        recordingFees: 0,
+                        appraisalFees: 0,
+                        brokerFees: 0,
+                        otherFees: foundProperty.financials.closingFee || 2000
+                    },
+                    rehabCosts: {
+                        exterior: { roof: 0, gutters: 0, garage: 0, siding: 0, landscaping: 0, painting: 0, septic: 0, decks: 0, foundation: 0, electrical: 0, other: 0 },
+                        interior: { demo: 0, sheetrock: 0, plumbing: 0, carpentry: 0, windows: 0, doors: 0, electrical: 0, painting: 0, hvac: 0, cabinets: 0, framing: 0, flooring: 0, basement: 0, other: foundProperty.financials.rehabCost || 0 },
+                        general: { permits: 0, termites: 0, mold: 0, misc: 0 }
+                    },
+                    financing: {
+                        isCash: false,
+                        points: 0,
+                        otherCharges: 0,
+                        wrapFeesIntoLoan: false,
+                        interestOnly: true,
+                        includePmi: false,
+                        pmiAmount: 0,
+                        refinanceTimelineMonths: 6,
+                        rehabTimelineMonths: 3,
+                        loanAmount: foundProperty.financials.purchasePrice * 0.8,
+                        interestRate: 10
+                    },
+                    refinance: {
+                        loanLtv: 75,
+                        interestRate: 7,
+                        closingCosts: 3000
+                    },
+                    expenses: {
+                        monthlyTaxes: foundProperty.financials.monthlyTaxes,
+                        monthlyInsurance: foundProperty.financials.monthlyInsurance,
+                        monthlyHoa: foundProperty.financials.monthlyHoaFee,
+                        monthlyWaterSewer: foundProperty.financials.monthlyWaterSewer,
+                        monthlyStreetLights: foundProperty.financials.monthlyStreetLights,
+                        monthlyGas: foundProperty.financials.monthlyGas,
+                        monthlyElectric: foundProperty.financials.monthlyElectric,
+                        monthlyLandscaping: foundProperty.financials.monthlyLandscaping,
+                        monthlyMiscFees: foundProperty.financials.operatingMiscFee,
+                        vacancyRate: foundProperty.financials.vacancyRate,
+                        maintenanceRate: foundProperty.financials.maintenanceRate,
+                        capexRate: foundProperty.financials.capexRate,
+                        managementRate: foundProperty.financials.managementRate,
+                        otherMonthlyIncome: 0
+                    }
                 };
                 const calculations = calculateBrrrrMetrics(inputs);
                 foundProperty.brrrrAnalysis = { inputs, calculations };
@@ -373,7 +417,7 @@ const StrategySelector = ({ activeStrategy, setActiveStrategy }: { activeStrateg
         <div className="bg-white p-2 rounded-xl shadow-sm printable-card">
             <div className="flex flex-col sm:flex-row justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-800 px-4 mb-2 sm:mb-0">Strategy Option</h2>
-                <div className="flex flex-wrap border border-gray-200 rounded-lg p-0.5">
+                <div className="flex flex-wrap justify-center border border-gray-200 rounded-lg p-0.5">
                     {strategies.map(({ name, requiredFeature }) => {
                         const isLocked = requiredFeature ? !featureAccess[requiredFeature] : false;
                         return (
@@ -751,7 +795,7 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
         <div className="bg-white p-6 rounded-xl shadow-sm printable-card">
             <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">Financial Analysis: {activeStrategy.replace('-', ' ')}</h2>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap justify-center items-center gap-2">
                     <div className="no-print">{renderTabs()}</div>
 
                     <ReportLockedTooltip isLocked={!featureAccess.canExportCsv} featureName="Print/Export">
