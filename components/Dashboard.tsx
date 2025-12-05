@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
@@ -8,18 +7,23 @@ import { Property, SubscriptionTier } from '../types';
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
+const truncateAddress = (address: string, limit: number = 25) => {
+    if (address.length <= limit) return address;
+    return address.slice(0, limit) + '...';
+};
+
 const SummaryCard = ({ title, value, icon: Icon, change, changeType, iconBgColor }: { title: string, value: string, icon: React.ElementType, change?: string, changeType?: 'good' | 'bad', iconBgColor: string }) => (
     <div className="bg-white p-5 rounded-xl shadow-sm flex items-center justify-between">
         <div>
             <p className="text-sm text-gray-500">{title}</p>
             <p className="text-2xl font-bold text-gray-800">{value}</p>
             {change && (
-                <p className={`text - xs mt - 1 ${changeType === 'good' ? 'text-green-600' : 'text-red-600'} `}>
+                <p className={`text-xs mt-1 ${changeType === 'good' ? 'text-green-600' : 'text-red-600'}`}>
                     {change}
                 </p>
             )}
         </div>
-        <div className={`p - 3 rounded - full ${iconBgColor} `}>
+        <div className={`p-3 rounded-full ${iconBgColor}`}>
             <Icon className="h-6 w-6 text-white" />
         </div>
     </div>
@@ -38,7 +42,12 @@ interface PropertyRowProps {
 const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelected, onSelect, onDelete, isLocked, userTier, isArchived }) => {
     const navigate = useNavigate();
     const { calculations, recommendation } = property;
-    const recColor = recommendation?.level === 'Worth Pursuing' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+
+    // Risk Color Logic: Orange for High Risk/Avoid
+    let recBadgeColor = 'bg-gray-100 text-gray-800';
+    if (recommendation?.level === 'Worth Pursuing') recBadgeColor = 'bg-green-100 text-green-800';
+    else if (recommendation?.level === 'Moderate Risk') recBadgeColor = 'bg-yellow-100 text-yellow-800';
+    else if (recommendation?.level === 'High Risk' || recommendation?.level === 'Avoid') recBadgeColor = 'bg-orange-100 text-orange-800'; // Changed to Orange
 
     const rowOpacity = isLocked || isArchived ? 'opacity-60 bg-gray-50' : 'hover:bg-gray-50';
     const textColor = isLocked || isArchived ? 'text-gray-500' : 'text-gray-800';
@@ -46,7 +55,7 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
     const isFreeTier = !userTier || userTier === 'Free';
 
     return (
-        <tr className={`border - b border - gray - 200 ${rowOpacity} `}>
+        <tr className={`border-b border-gray-200 ${rowOpacity}`}>
             <td className="py-3 px-4">
                 <div className="flex items-center">
                     {!isArchived && (
@@ -59,17 +68,25 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
                         />
                     )}
                     <div className={isArchived ? 'ml-0' : 'ml-4'}>
-                        <p className={`font - semibold ${textColor} `}>{property.address}</p>
+                        <p className={`font-semibold ${textColor}`} title={property.address}>
+                            {truncateAddress(property.address)}
+                        </p>
                         <p className="text-sm text-gray-500">{property.propertyType}</p>
                     </div>
                 </div>
             </td>
             <td className="py-3 px-4 text-sm text-gray-600">{property.dateAnalyzed}</td>
-            <td className={`py - 3 px - 4 text - sm font - semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-green-600'} `}>{calculations.capRate.toFixed(1)}%</td>
-            <td className={`py - 3 px - 4 text - sm font - semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-gray-700'} `}>{formatCurrency(calculations.monthlyCashFlowNoDebt)}</td>
-            <td className={`py - 3 px - 4 text - sm font - semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-red-600'} `}>{calculations.cashOnCashReturn.toFixed(1)}%</td>
+            {/* Strategy Column */}
             <td className="py-3 px-4">
-                <span className={`px - 2 py - 1 text - xs font - medium rounded - full ${isLocked || isArchived ? 'bg-gray-200 text-gray-500' : recColor} `}>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                    {recommendation?.strategyAnalyzed || 'Rental'}
+                </span>
+            </td>
+            <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-green-600'}`}>{calculations.capRate.toFixed(1)}%</td>
+            <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-gray-700'}`}>{formatCurrency(calculations.monthlyCashFlowNoDebt)}</td>
+            <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-red-600'}`}>{calculations.cashOnCashReturn.toFixed(1)}%</td>
+            <td className="py-3 px-4">
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${isLocked || isArchived ? 'bg-gray-200 text-gray-500' : recBadgeColor}`}>
                     {recommendation?.level}
                 </span>
             </td>
@@ -112,7 +129,7 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
                         <button
                             onClick={() => onDelete(property.id, property.address)}
                             disabled={isFreeTier}
-                            className={`p - 1.5 rounded - md ${isFreeTier ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'} `}
+                            className={`p-1.5 rounded-md ${isFreeTier ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
                             title={isFreeTier ? "Free tier analyses are permanent records. Upgrade to manage portfolio." : "Delete property"}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -146,7 +163,7 @@ const CompareButtonWrapper: React.FC<{ children: React.ReactNode; canCompare: bo
     );
 };
 
-type SortKey = 'capRate' | 'cashFlow' | 'cashOnCash' | 'recommendation';
+type SortKey = 'capRate' | 'cashFlow' | 'cashOnCash' | 'recommendation' | 'strategy';
 type SortDirection = 'asc' | 'desc';
 
 import MobileDashboard from './MobileDashboard';
@@ -237,7 +254,7 @@ const Dashboard = () => {
 
     const handleCompare = () => {
         if (selectedPropertyIds.length < 2 || !featureAccess.canCompare) return;
-        navigate(`/ compare ? ids = ${selectedPropertyIds.join(',')} `);
+        navigate(`/compare?ids=${selectedPropertyIds.join(',')}`);
     };
 
     // --- Sorting and Filtering Logic ---
@@ -287,6 +304,10 @@ const Dashboard = () => {
                         valA = recommendationRank[a.recommendation.level] || 0;
                         valB = recommendationRank[b.recommendation.level] || 0;
                         break;
+                    case 'strategy':
+                        valA = a.recommendation?.strategyAnalyzed || 'Rental';
+                        valB = b.recommendation?.strategyAnalyzed || 'Rental';
+                        break;
                 }
 
                 if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -324,10 +345,10 @@ const Dashboard = () => {
 
     const renderTableContent = () => {
         if (loading) {
-            return <tr><td colSpan={7} className="text-center py-12 text-gray-500">Loading properties...</td></tr>;
+            return <tr><td colSpan={8} className="text-center py-12 text-gray-500">Loading properties...</td></tr>;
         }
         if (error) {
-            return <tr><td colSpan={7} className="text-center py-12 text-red-500">{error}</td></tr>;
+            return <tr><td colSpan={8} className="text-center py-12 text-red-500">{error}</td></tr>;
         }
         if (processedProperties.length > 0) {
             return processedProperties.map((prop) =>
@@ -344,7 +365,7 @@ const Dashboard = () => {
         }
         return (
             <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                     <div className="text-center py-12 text-gray-500">
                         <p>No active properties match your criteria.</p>
                         {filterRecommendation !== 'All' && (
@@ -380,8 +401,8 @@ const Dashboard = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <SummaryCard title="Properties Analyzed" value={activeProperties.length.toString()} icon={ChartBarIcon} iconBgColor="bg-blue-500" />
-                <SummaryCard title="Avg Cap Rate" value={`${avgCapRate.toFixed(1)}% `} icon={ArrowTrendingUpIcon} change="Good" changeType="good" iconBgColor="bg-green-500" />
-                <SummaryCard title="Total Monthly Cash Flow" value={`$${Math.round(activeProperties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0))} `} icon={BanknotesIcon} iconBgColor="bg-purple-500" />
+                <SummaryCard title="Avg Cap Rate" value={`${avgCapRate.toFixed(1)}%`} icon={ArrowTrendingUpIcon} change="Good" changeType="good" iconBgColor="bg-green-500" />
+                <SummaryCard title="Total Monthly Cash Flow" value={`$${Math.round(activeProperties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0))}`} icon={BanknotesIcon} iconBgColor="bg-purple-500" />
                 <SummaryCard title="High-Risk Properties" value={highRiskProperties.toString()} icon={ExclamationTriangleIcon} iconBgColor="bg-orange-500" />
             </div>
 
@@ -427,6 +448,7 @@ const Dashboard = () => {
                                 <tr>
                                     <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Property</th>
                                     <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Date Analyzed</th>
+                                    <SortableHeader label="Strategy" columnKey="strategy" />
                                     <SortableHeader label="Cap Rate" columnKey="capRate" />
                                     <SortableHeader label="Cash Flow (No-Debt)" columnKey="cashFlow" />
                                     <SortableHeader label="Cash-on-Cash" columnKey="cashOnCash" />
@@ -468,6 +490,7 @@ const Dashboard = () => {
                                         <tr>
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Property</th>
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Date Analyzed</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Strategy</th>
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cap Rate</th>
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cash Flow</th>
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cash-on-Cash</th>
@@ -508,7 +531,7 @@ const Dashboard = () => {
                                 <span className="font-bold text-green-600">{avgCapRate.toFixed(1)}%</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(100, (avgCapRate / 8) * 100)}% ` }}></div>
+                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(100, (avgCapRate / 8) * 100)}%` }}></div>
                             </div>
                             <p className="text-xs text-gray-500 mt-1">Target: 8% cap rate</p>
                         </div>

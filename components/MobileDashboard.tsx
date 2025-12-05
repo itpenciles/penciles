@@ -31,11 +31,34 @@ const MobileDashboard = () => {
 
     const riskData = Object.entries(riskDistribution).map(([name, value]) => {
         let color = '#D1D5DB'; // Default Gray
-        if (name === 'High Risk' || name === 'Avoid') color = '#F97316'; // Orange
+        if (name === 'High Risk') color = '#F97316'; // Orange
+        if (name === 'Avoid') color = '#EF4444'; // Red
         if (name === 'Moderate Risk' || name === 'Hold') color = '#F59E0B'; // Amber
-        if (name === 'Buy' || name === 'Strong Buy') color = '#10B981'; // Emerald
+        if (name === 'Buy' || name === 'Strong Buy' || name === 'Worth Pursuing') color = '#10B981'; // Emerald
         return { name, value, color };
     });
+
+    // --- Data for Strategy Chart ---
+    const strategyDistribution = activeProperties.reduce((acc, p) => {
+        const strategy = p.recommendation?.strategyAnalyzed || 'Rental';
+        acc[strategy] = (acc[strategy] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const strategyData = Object.entries(strategyDistribution).map(([name, value]) => {
+        let color = '#3B82F6'; // Default Blue
+        if (name === 'Rental') color = '#3B82F6';
+        if (name === 'BRRRR') color = '#8B5CF6'; // Purple
+        if (name === 'Wholesale') color = '#F59E0B'; // Amber
+        if (name === 'Subject-To') color = '#10B981'; // Emerald
+        if (name === 'Seller Financing') color = '#EC4899'; // Pink
+        return { name, value, color };
+    });
+
+    // If no data, show a placeholder
+    if (strategyData.length === 0) {
+        strategyData.push({ name: 'No Data', value: 1, color: '#E5E7EB' });
+    }
 
     // If no data, show a placeholder
     if (riskData.length === 0) {
@@ -156,6 +179,13 @@ const MobileDashboard = () => {
                     data={riskData}
                     centerText={`${activeProperties.length}`}
                     subText="Active Properties"
+                />
+
+                <ChartCard
+                    title="Strategies"
+                    data={strategyData}
+                    centerText={`${activeProperties.length}`}
+                    subText="By Strategy"
                 />
             </div>
         </div>
