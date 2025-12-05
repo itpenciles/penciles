@@ -82,12 +82,12 @@ export const calculateWholesaleMetrics = (inputs: WholesaleInputs): WholesaleCal
 
 export const calculateSubjectToMetrics = (inputs: SubjectToInputs): SubjectToCalculations => {
   const {
-    existingLoanBalance, existingLoanRate, monthlyPITI,
+    existingLoanBalance, monthlyPITI,
     reinstatementNeeded, sellerCashNeeded, sellerSecondNoteAmount, sellerSecondNoteRate, sellerSecondNoteTerm,
     closingCosts, liensJudgments, hoaFees, pastDueTaxes, escrowShortage,
     marketRent, otherMonthlyIncome, vacancyRate,
     monthlyTaxes, monthlyInsurance, maintenanceRate, managementRate, capexRate, monthlyUtilities,
-    asIsValue, arv, rehabCost,
+    rehabCost,
     privateMoneyAmount, privateMoneyRate, wholesaleFee,
     exitPlanType, salePrice, resaleCostsPercent, agentFeesPercent,
     trustSetupFees
