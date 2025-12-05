@@ -450,7 +450,7 @@ const RecommendationBadge = ({ level }: { level: Property['recommendation']['lev
         'High Risk': 'bg-red-100 text-red-800',
         'Avoid': 'bg-red-100 text-red-800',
     };
-    return <div className={`px-3 py-1 text-sm font-medium rounded-full ${colors[level]}`}>{level}</div>;
+    return <div className={`px-6 py-2 text-xl font-bold uppercase tracking-wide rounded-full shadow-sm ${colors[level]}`}>{level}</div>;
 };
 
 const PropertyDetailsCard = ({ property }: { property: Property }) => (
@@ -496,11 +496,11 @@ const InvestmentRecommendationCard = ({ property }: { property: Property }) => {
             <div className="flex items-start mb-2">
                 <CheckCircleIcon className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
                 <div>
-                    <h2 className="text-xl font-bold text-gray-800">Investment Recommendation</h2>
+                    <h2 className="text-xl font-bold text-gray-800">Deal Audit</h2>
                     <p className="text-sm text-gray-500">{strategyText}</p>
                 </div>
             </div>
-            <div className="mb-4 ml-9">
+            <div className="mb-6 mt-4 flex justify-center">
                 <RecommendationBadge level={property.recommendation.level} />
             </div>
 
@@ -697,8 +697,8 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
             rows.push(
                 [],
                 ['--- Subject-To Metrics ---'],
-                ['Monthly Spread', sub.calculations.monthlySpread.toFixed(2)],
-                ['Cash Needed', sub.calculations.cashNeeded.toFixed(2)],
+                ['Monthly Cash Flow', sub.calculations.monthlyCashFlow.toFixed(2)],
+                ['Total Entry Fee', sub.calculations.totalEntryFee.toFixed(2)],
                 ['Cash on Cash Return', `${sub.calculations.cashOnCashReturn.toFixed(2)}%`],
             );
         }
@@ -1084,29 +1084,56 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <MetricBox label="Total Cash Needed" value={formatCurrency(calcs.cashNeeded)} description="Upfront cash to close the deal" color="blue" />
-                <MetricBox label="Monthly Spread" value={formatCurrency(calcs.monthlySpread)} description="Market Rent minus existing PITI" color={calcs.monthlySpread > 0 ? 'green' : 'red'} />
-                <MetricBox label="Blended CoC Return" value={`${calcs.cashOnCashReturn.toFixed(1)}%`} description="Annualized return on cash needed" color={calcs.cashOnCashReturn > 0 ? 'green' : 'red'} />
+                <MetricBox label="Total Entry Fee" value={formatCurrency(calcs.totalEntryFee)} description="Cash needed to close" color="blue" />
+                <MetricBox label="Monthly Cash Flow" value={formatCurrency(calcs.monthlyCashFlow)} description="Net after all expenses & debt" color={calcs.monthlyCashFlow > 0 ? 'green' : 'red'} />
+                <MetricBox label="CoC Return" value={`${calcs.cashOnCashReturn.toFixed(1)}%`} description="Annualized return on investment" color={calcs.cashOnCashReturn > 8 ? 'green' : 'red'} />
             </div>
 
             <div className="p-4 border rounded-lg bg-gray-50/50">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Cash Needed Breakdown</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Entry Fee Breakdown</h3>
                 <div className="space-y-2 text-sm">
                     <CalculationRow label="Reinstatement Needed" value={formatCurrency(inputs.reinstatementNeeded)} />
                     <CalculationRow label="Seller Cash Needed" value={formatCurrency(inputs.sellerCashNeeded)} />
                     <CalculationRow label="Closing Costs" value={formatCurrency(inputs.closingCosts)} />
-                    <CalculationRow label="Total Cash Needed to Close" value={formatCurrency(calcs.cashNeeded)} isTotal={true} />
+                    <CalculationRow label="Liens / Judgments" value={formatCurrency(inputs.liensJudgments)} />
+                    <CalculationRow label="HOA Fees" value={formatCurrency(inputs.hoaFees)} />
+                    <CalculationRow label="Past Due Taxes" value={formatCurrency(inputs.pastDueTaxes)} />
+                    <CalculationRow label="Escrow Shortage" value={formatCurrency(inputs.escrowShortage)} />
+                    <CalculationRow label="Wholesale Fee" value={formatCurrency(inputs.wholesaleFee)} />
+                    <CalculationRow label="Trust Setup Fees" value={formatCurrency(inputs.trustSetupFees)} />
+                    <CalculationRow label="Total Entry Fee" value={formatCurrency(calcs.totalEntryFee)} isTotal={true} />
+                    <CalculationRow label="Total Investment (incl. Rehab)" value={formatCurrency(calcs.totalInvestment)} isSubTotal={true} />
                 </div>
             </div>
 
             <div className="p-4 border rounded-lg bg-gray-50/50">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Monthly Spread Breakdown</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Monthly Cash Flow Breakdown</h3>
                 <div className="space-y-2 text-sm">
-                    <CalculationRow label="Market Rent" value={formatCurrency(inputs.marketRent)} />
-                    <CalculationRow label="Less: Existing Monthly PITI" value={formatCurrency(inputs.monthlyPITI)} isNegative={true} />
-                    <CalculationRow label="Net Monthly Spread" value={formatCurrency(calcs.monthlySpread)} isTotal={true} color={calcs.monthlySpread > 0 ? 'green' : 'red'} />
+                    <CalculationRow label="Gross Income" value={formatCurrency(calcs.grossIncome)} />
+                    <CalculationRow label="Vacancy Loss" value={formatCurrency(calcs.vacancyLoss)} isNegative={true} />
+                    <CalculationRow label="Effective Income" value={formatCurrency(calcs.effectiveIncome)} isSubTotal={true} />
+
+                    <CalculationRow label="Total Expenses" value={formatCurrency(calcs.totalExpenses)} isNegative={true} />
+                    <CalculationRow label="Net Operating Income (NOI)" value={formatCurrency(calcs.netOperatingIncome)} isSubTotal={true} />
+
+                    <CalculationRow label="Existing Loan Payment" value={formatCurrency(calcs.existingLoanPayment)} isNegative={true} />
+                    <CalculationRow label="Seller Second Payment" value={formatCurrency(calcs.sellerSecondPayment)} isNegative={true} />
+                    <CalculationRow label="Private Money Payment" value={formatCurrency(calcs.privateMoneyPayment)} isNegative={true} />
+
+                    <CalculationRow label="Net Monthly Cash Flow" value={formatCurrency(calcs.monthlyCashFlow)} isTotal={true} color={calcs.monthlyCashFlow > 0 ? 'green' : 'red'} />
                 </div>
             </div>
+
+            {inputs.exitPlanType === 'Flip' && (
+                <div className="p-4 border rounded-lg bg-blue-50/50">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Flip Exit Analysis</h3>
+                    <div className="space-y-2 text-sm">
+                        <CalculationRow label="Projected Sale Price" value={formatCurrency(inputs.salePrice)} />
+                        <CalculationRow label="Projected Profit" value={formatCurrency(calcs.projectedProfit)} isTotal={true} color="green" />
+                        <CalculationRow label="ROI" value={`${calcs.roi.toFixed(1)}%`} isTotal={true} color="green" />
+                    </div>
+                </div>
+            )}
 
             <div className="screen-only">
                 <ExitStrategyGuide title="Subject-To Exit Options" strategies={SUBJECT_TO_EXIT_STRATEGIES} />
@@ -1126,16 +1153,124 @@ const SubjectToParamsTab = ({ property, setProperty, onSave, onReset, hasChanges
         setProperty({ ...property, subjectToAnalysis: { inputs: newInputs, calculations: newCalculations } });
     };
 
+    const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        const newInputs = { ...inputs, [name]: value };
+        const newCalculations = calculateSubjectToMetrics(newInputs);
+        setProperty({ ...property, subjectToAnalysis: { inputs: newInputs, calculations: newCalculations } });
+    };
+
+    const handleSliderChange = (name: string, value: number) => {
+        const newInputs = { ...inputs, [name]: value };
+        const newCalculations = calculateSubjectToMetrics(newInputs);
+        setProperty({ ...property, subjectToAnalysis: { inputs: newInputs, calculations: newCalculations } });
+    };
+
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Existing Loan Balance ($)" name="existingLoanBalance" value={inputs.existingLoanBalance} onChange={handleInputChange} />
-                <InputField label="Existing Loan Rate (%)" name="existingLoanRate" value={inputs.existingLoanRate} onChange={handleInputChange} />
-                <InputField label="Monthly PITI ($)" name="monthlyPITI" value={inputs.monthlyPITI} onChange={handleInputChange} />
-                <InputField label="Reinstatement Needed ($)" name="reinstatementNeeded" value={inputs.reinstatementNeeded} onChange={handleInputChange} />
-                <InputField label="Seller Cash Needed ($)" name="sellerCashNeeded" value={inputs.sellerCashNeeded} onChange={handleInputChange} />
-                <InputField label="Closing Costs ($)" name="closingCosts" value={inputs.closingCosts} onChange={handleInputChange} />
-                <InputField label="Market Rent ($)" name="marketRent" value={inputs.marketRent} onChange={handleInputChange} />
+            {/* 1. Loan & Seller Inputs */}
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Loan & Seller Terms</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Existing Loan Balance ($)" name="existingLoanBalance" value={inputs.existingLoanBalance} onChange={handleInputChange} />
+                    <InputField label="Existing Loan Rate (%)" name="existingLoanRate" value={inputs.existingLoanRate} onChange={handleInputChange} />
+                    <InputField label="Monthly PITI ($)" name="monthlyPITI" value={inputs.monthlyPITI} onChange={handleInputChange} />
+                    <InputField label="Reinstatement Needed ($)" name="reinstatementNeeded" value={inputs.reinstatementNeeded} onChange={handleInputChange} />
+                    <InputField label="Seller Cash Needed ($)" name="sellerCashNeeded" value={inputs.sellerCashNeeded} onChange={handleInputChange} />
+                    <InputField label="Closing Costs ($)" name="closingCosts" value={inputs.closingCosts} onChange={handleInputChange} />
+                </div>
+                <h5 className="font-semibold text-gray-600 text-sm pt-2 -mb-2">Seller Second Note (if applicable)</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="Amount ($)" name="sellerSecondNoteAmount" value={inputs.sellerSecondNoteAmount || 0} onChange={handleInputChange} />
+                    <InputField label="Rate (%)" name="sellerSecondNoteRate" value={inputs.sellerSecondNoteRate || 0} onChange={handleInputChange} />
+                    <InputField label="Term (Years)" name="sellerSecondNoteTerm" value={inputs.sellerSecondNoteTerm || 0} onChange={handleInputChange} />
+                </div>
+                <h5 className="font-semibold text-gray-600 text-sm pt-2 -mb-2">Other Liens & Fees</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Liens / Judgments ($)" name="liensJudgments" value={inputs.liensJudgments || 0} onChange={handleInputChange} />
+                    <InputField label="HOA Fees Due ($)" name="hoaFees" value={inputs.hoaFees || 0} onChange={handleInputChange} />
+                    <InputField label="Past Due Taxes ($)" name="pastDueTaxes" value={inputs.pastDueTaxes || 0} onChange={handleInputChange} />
+                    <InputField label="Escrow Shortage ($)" name="escrowShortage" value={inputs.escrowShortage || 0} onChange={handleInputChange} />
+                </div>
+            </div>
+
+            {/* 2. Income */}
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Income</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Market Rent ($)" name="marketRent" value={inputs.marketRent} onChange={handleInputChange} />
+                    <InputField label="Other Monthly Income ($)" name="otherMonthlyIncome" value={inputs.otherMonthlyIncome || 0} onChange={handleInputChange} />
+                </div>
+            </div>
+
+            {/* 3. Expenses */}
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Operating Expenses</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <SliderField label="Vacancy Rate" name="vacancyRate" value={inputs.vacancyRate || 0} onChange={(v) => handleSliderChange('vacancyRate', v)} min={0} max={20} step={0.5} unit="%" />
+                    <SliderField label="Maintenance" name="maintenanceRate" value={inputs.maintenanceRate || 0} onChange={(v) => handleSliderChange('maintenanceRate', v)} min={0} max={20} step={0.5} unit="%" />
+                    <SliderField label="Management" name="managementRate" value={inputs.managementRate || 0} onChange={(v) => handleSliderChange('managementRate', v)} min={0} max={20} step={0.5} unit="%" />
+                    <SliderField label="CapEx" name="capexRate" value={inputs.capexRate || 0} onChange={(v) => handleSliderChange('capexRate', v)} min={0} max={20} step={0.5} unit="%" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="Monthly Taxes ($)" name="monthlyTaxes" value={inputs.monthlyTaxes || 0} onChange={handleInputChange} />
+                    <InputField label="Monthly Insurance ($)" name="monthlyInsurance" value={inputs.monthlyInsurance || 0} onChange={handleInputChange} />
+                    <InputField label="Monthly Utilities ($)" name="monthlyUtilities" value={inputs.monthlyUtilities || 0} onChange={handleInputChange} />
+                </div>
+            </div>
+
+            {/* 4. Rehab & Value */}
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Rehab & Value</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="As-Is Value ($)" name="asIsValue" value={inputs.asIsValue || 0} onChange={handleInputChange} />
+                    <InputField label="ARV ($)" name="arv" value={inputs.arv || 0} onChange={handleInputChange} />
+                    <InputField label="Rehab Cost ($)" name="rehabCost" value={inputs.rehabCost || 0} onChange={handleInputChange} />
+                </div>
+            </div>
+
+            {/* 5. Investor Capital */}
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Investor Capital</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="Private Money Amount ($)" name="privateMoneyAmount" value={inputs.privateMoneyAmount || 0} onChange={handleInputChange} />
+                    <InputField label="Private Money Rate (%)" name="privateMoneyRate" value={inputs.privateMoneyRate || 0} onChange={handleInputChange} />
+                    <InputField label="Wholesale Fee ($)" name="wholesaleFee" value={inputs.wholesaleFee || 0} onChange={handleInputChange} />
+                </div>
+            </div>
+
+            {/* 6. Exit Strategy */}
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Exit Strategy</h4>
+                <SelectField
+                    label="Exit Plan Type"
+                    name="exitPlanType"
+                    value={inputs.exitPlanType}
+                    onChange={handleSelectChange}
+                    options={['Rental', 'Wrap', 'Flip', 'Wholesale']}
+                />
+                {inputs.exitPlanType === 'Flip' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                        <InputField label="Projected Sale Price ($)" name="salePrice" value={inputs.salePrice || 0} onChange={handleInputChange} />
+                        <InputField label="Resale Costs (%)" name="resaleCostsPercent" value={inputs.resaleCostsPercent || 0} onChange={handleInputChange} />
+                        <InputField label="Agent Fees (%)" name="agentFeesPercent" value={inputs.agentFeesPercent || 0} onChange={handleInputChange} />
+                    </div>
+                )}
+            </div>
+
+            {/* 7. Legal & Risk */}
+            <div className="p-4 border rounded-lg space-y-4">
+                <h4 className="font-semibold text-gray-700 -mb-2">Legal & Risk</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <SelectField
+                        label="Due-on-Sale Risk"
+                        name="dueOnSaleRisk"
+                        value={inputs.dueOnSaleRisk}
+                        onChange={handleSelectChange}
+                        options={['Low', 'Medium', 'High']}
+                    />
+                    <InputField label="Trust Setup / Legal Fees ($)" name="trustSetupFees" value={inputs.trustSetupFees || 0} onChange={handleInputChange} />
+                </div>
             </div>
             <SaveChangesFooter onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />
         </div>

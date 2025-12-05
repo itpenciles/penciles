@@ -81,11 +81,80 @@ export const calculateWholesaleMetrics = (inputs: WholesaleInputs): WholesaleCal
 };
 
 export const calculateSubjectToMetrics = (inputs: SubjectToInputs): SubjectToCalculations => {
-  const { marketRent, monthlyPITI, reinstatementNeeded, sellerCashNeeded, closingCosts } = inputs;
-  const monthlySpread = marketRent - monthlyPITI;
-  const cashNeeded = reinstatementNeeded + sellerCashNeeded + closingCosts;
-  const cashOnCashReturn = cashNeeded > 0 ? ((monthlySpread * 12) / cashNeeded) * 100 : 0;
-  return { monthlySpread, cashNeeded, cashOnCashReturn };
+  const {
+    existingLoanBalance, existingLoanRate, monthlyPITI,
+    reinstatementNeeded, sellerCashNeeded, sellerSecondNoteAmount, sellerSecondNoteRate, sellerSecondNoteTerm,
+    closingCosts, liensJudgments, hoaFees, pastDueTaxes, escrowShortage,
+    marketRent, otherMonthlyIncome, vacancyRate,
+    monthlyTaxes, monthlyInsurance, maintenanceRate, managementRate, capexRate, monthlyUtilities,
+    asIsValue, arv, rehabCost,
+    privateMoneyAmount, privateMoneyRate, wholesaleFee,
+    exitPlanType, salePrice, resaleCostsPercent, agentFeesPercent,
+    trustSetupFees
+  } = inputs;
+
+  // 1. Upfront Costs (Entry Fee)
+  const totalEntryFee = reinstatementNeeded + sellerCashNeeded + closingCosts + liensJudgments + hoaFees + pastDueTaxes + escrowShortage + wholesaleFee + trustSetupFees;
+  const totalInvestment = totalEntryFee + rehabCost;
+
+  // 2. Monthly Income
+  const grossIncome = marketRent + (otherMonthlyIncome || 0);
+  const vacancyLoss = grossIncome * ((vacancyRate || 0) / 100);
+  const effectiveIncome = grossIncome - vacancyLoss;
+
+  // 3. Monthly Expenses
+  const maintenanceCost = grossIncome * ((maintenanceRate || 0) / 100);
+  const managementCost = grossIncome * ((managementRate || 0) / 100);
+  const capexCost = grossIncome * ((capexRate || 0) / 100);
+  const totalExpenses = (monthlyTaxes || 0) + (monthlyInsurance || 0) + (monthlyUtilities || 0) + maintenanceCost + managementCost + capexCost;
+
+  const netOperatingIncome = effectiveIncome - totalExpenses;
+
+  // 4. Debt Service
+  const existingLoanPayment = monthlyPITI;
+
+  // Seller Second Note (Amortized or Interest Only? Assuming Amortized for now, or simple interest if term is short? Let's assume Amortized)
+  let sellerSecondPayment = 0;
+  if (sellerSecondNoteAmount > 0 && sellerSecondNoteRate > 0 && sellerSecondNoteTerm > 0) {
+    const r = (sellerSecondNoteRate / 100) / 12;
+    const n = sellerSecondNoteTerm * 12;
+    sellerSecondPayment = (sellerSecondNoteAmount * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  }
+
+  // Private Money (Interest Only usually)
+  let privateMoneyPayment = 0;
+  if (privateMoneyAmount > 0 && privateMoneyRate > 0) {
+    privateMoneyPayment = (privateMoneyAmount * (privateMoneyRate / 100)) / 12;
+  }
+
+  const totalDebtService = existingLoanPayment + sellerSecondPayment + privateMoneyPayment;
+
+  // 5. Cash Flow
+  const monthlyCashFlow = netOperatingIncome - totalDebtService;
+  const cashOnCashReturn = totalInvestment > 0 ? ((monthlyCashFlow * 12) / totalInvestment) * 100 : 0;
+
+  // 6. Exit Strategy Metrics
+  let projectedProfit = 0;
+  let roi = 0;
+
+  if (exitPlanType === 'Flip') {
+    const saleProceeds = salePrice * (1 - ((resaleCostsPercent + agentFeesPercent) / 100));
+    const totalPayoff = existingLoanBalance + sellerSecondNoteAmount + privateMoneyAmount;
+    projectedProfit = saleProceeds - totalPayoff - totalInvestment; // Simplified flip profit
+    roi = totalInvestment > 0 ? (projectedProfit / totalInvestment) * 100 : 0;
+  } else {
+    // For Rental/Wrap, ROI is typically CoC or IRR. We'll use CoC for now.
+    projectedProfit = monthlyCashFlow * 12; // Annual Cash Flow
+    roi = cashOnCashReturn;
+  }
+
+  return {
+    totalEntryFee, totalInvestment,
+    grossIncome, vacancyLoss, effectiveIncome, totalExpenses, netOperatingIncome,
+    existingLoanPayment, sellerSecondPayment, privateMoneyPayment, totalDebtService,
+    monthlyCashFlow, cashOnCashReturn,
+    projectedProfit, roi
+  };
 };
 
 export const calculateSellerFinancingMetrics = (inputs: SellerFinancingInputs): SellerFinancingCalculations => {

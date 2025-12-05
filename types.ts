@@ -164,20 +164,82 @@ export interface WholesaleCalculations {
 }
 
 // --- Subject-To Strategy ---
+// --- Subject-To Strategy ---
 export interface SubjectToInputs {
+  // Loan & Seller Inputs
   existingLoanBalance: number;
   existingLoanRate: number;
   monthlyPITI: number;
   reinstatementNeeded: number;
   sellerCashNeeded: number;
+  sellerSecondNoteAmount: number;
+  sellerSecondNoteRate: number;
+  sellerSecondNoteTerm: number;
   closingCosts: number;
+  liensJudgments: number;
+  hoaFees: number;
+  pastDueTaxes: number;
+  escrowShortage: number;
+
+  // Income
   marketRent: number;
+  otherMonthlyIncome: number;
+  vacancyRate: number;
+
+  // Expenses
+  monthlyTaxes: number;
+  monthlyInsurance: number;
+  maintenanceRate: number;
+  managementRate: number;
+  capexRate: number;
+  monthlyUtilities: number;
+
+  // Rehab & Value
+  asIsValue: number;
+  arv: number;
+  rehabCost: number;
+
+  // Investor Capital
+  privateMoneyAmount: number;
+  privateMoneyRate: number;
+  wholesaleFee: number;
+
+  // Exit Strategy
+  exitPlanType: 'Rental' | 'Wrap' | 'Flip' | 'Wholesale';
+  salePrice: number; // if flipping
+  resaleCostsPercent: number;
+  agentFeesPercent: number;
+
+  // Legal & Risk
+  dueOnSaleRisk: 'Low' | 'Medium' | 'High';
+  trustSetupFees: number;
 }
 
 export interface SubjectToCalculations {
-  monthlySpread: number;
-  cashNeeded: number;
+  // Upfront
+  totalEntryFee: number; // Cash needed to close
+  totalInvestment: number; // Entry fee + Rehab
+
+  // Monthly
+  grossIncome: number;
+  vacancyLoss: number;
+  effectiveIncome: number;
+  totalExpenses: number;
+  netOperatingIncome: number;
+
+  // Debt Service
+  existingLoanPayment: number; // PITI
+  sellerSecondPayment: number;
+  privateMoneyPayment: number;
+  totalDebtService: number;
+
+  // Cash Flow
+  monthlyCashFlow: number;
   cashOnCashReturn: number;
+
+  // Flip/Exit Metrics (if applicable)
+  projectedProfit: number;
+  roi: number;
 }
 
 // --- Seller Financing Strategy ---

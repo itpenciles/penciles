@@ -290,8 +290,26 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
                     calculations: { mao: 0, potentialFees: 0, isEligible: false }
                 },
                 subjectToAnalysis: {
-                    inputs: { existingLoanBalance: 0, existingLoanRate: 0, monthlyPITI: 0, reinstatementNeeded: 0, sellerCashNeeded: 0, closingCosts: 0, marketRent: totalMarketRent },
-                    calculations: { monthlySpread: 0, cashNeeded: 0, cashOnCashReturn: 0 }
+                    inputs: {
+                        existingLoanBalance: 0, existingLoanRate: 0, monthlyPITI: 0,
+                        reinstatementNeeded: 0, sellerCashNeeded: 0,
+                        sellerSecondNoteAmount: 0, sellerSecondNoteRate: 0, sellerSecondNoteTerm: 0,
+                        closingCosts: 0, liensJudgments: 0, hoaFees: 0, pastDueTaxes: 0, escrowShortage: 0,
+                        marketRent: totalMarketRent, otherMonthlyIncome: 0, vacancyRate: 8,
+                        monthlyTaxes: data.financials.monthlyTaxes, monthlyInsurance: data.financials.monthlyInsurance,
+                        maintenanceRate: 8, managementRate: 10.5, capexRate: 8, monthlyUtilities: 0,
+                        asIsValue: data.financials.estimatedValue, arv: data.financials.estimatedValue, rehabCost: 0,
+                        privateMoneyAmount: 0, privateMoneyRate: 0, wholesaleFee: 0,
+                        exitPlanType: 'Rental', salePrice: 0, resaleCostsPercent: 8, agentFeesPercent: 6,
+                        dueOnSaleRisk: 'Low', trustSetupFees: 0
+                    },
+                    calculations: {
+                        totalEntryFee: 0, totalInvestment: 0,
+                        grossIncome: 0, vacancyLoss: 0, effectiveIncome: 0, totalExpenses: 0, netOperatingIncome: 0,
+                        existingLoanPayment: 0, sellerSecondPayment: 0, privateMoneyPayment: 0, totalDebtService: 0,
+                        monthlyCashFlow: 0, cashOnCashReturn: 0,
+                        projectedProfit: 0, roi: 0
+                    }
                 },
                 sellerFinancingAnalysis: {
                     inputs: {
