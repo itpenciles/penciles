@@ -14,12 +14,12 @@ const SummaryCard = ({ title, value, icon: Icon, change, changeType, iconBgColor
             <p className="text-sm text-gray-500">{title}</p>
             <p className="text-2xl font-bold text-gray-800">{value}</p>
             {change && (
-                <p className={`text-xs mt-1 ${changeType === 'good' ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`text - xs mt - 1 ${changeType === 'good' ? 'text-green-600' : 'text-red-600'} `}>
                     {change}
                 </p>
             )}
         </div>
-        <div className={`p-3 rounded-full ${iconBgColor}`}>
+        <div className={`p - 3 rounded - full ${iconBgColor} `}>
             <Icon className="h-6 w-6 text-white" />
         </div>
     </div>
@@ -42,11 +42,11 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
 
     const rowOpacity = isLocked || isArchived ? 'opacity-60 bg-gray-50' : 'hover:bg-gray-50';
     const textColor = isLocked || isArchived ? 'text-gray-500' : 'text-gray-800';
-    
+
     const isFreeTier = !userTier || userTier === 'Free';
 
     return (
-        <tr className={`border-b border-gray-200 ${rowOpacity}`}>
+        <tr className={`border - b border - gray - 200 ${rowOpacity} `}>
             <td className="py-3 px-4">
                 <div className="flex items-center">
                     {!isArchived && (
@@ -59,17 +59,17 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
                         />
                     )}
                     <div className={isArchived ? 'ml-0' : 'ml-4'}>
-                        <p className={`font-semibold ${textColor}`}>{property.address}</p>
+                        <p className={`font - semibold ${textColor} `}>{property.address}</p>
                         <p className="text-sm text-gray-500">{property.propertyType}</p>
                     </div>
                 </div>
             </td>
             <td className="py-3 px-4 text-sm text-gray-600">{property.dateAnalyzed}</td>
-            <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-green-600'}`}>{calculations.capRate.toFixed(1)}%</td>
-            <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-gray-700'}`}>{formatCurrency(calculations.monthlyCashFlowNoDebt)}</td>
-            <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-red-600'}`}>{calculations.cashOnCashReturn.toFixed(1)}%</td>
+            <td className={`py - 3 px - 4 text - sm font - semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-green-600'} `}>{calculations.capRate.toFixed(1)}%</td>
+            <td className={`py - 3 px - 4 text - sm font - semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-gray-700'} `}>{formatCurrency(calculations.monthlyCashFlowNoDebt)}</td>
+            <td className={`py - 3 px - 4 text - sm font - semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-red-600'} `}>{calculations.cashOnCashReturn.toFixed(1)}%</td>
             <td className="py-3 px-4">
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${isLocked || isArchived ? 'bg-gray-200 text-gray-500' : recColor}`}>
+                <span className={`px - 2 py - 1 text - xs font - medium rounded - full ${isLocked || isArchived ? 'bg-gray-200 text-gray-500' : recColor} `}>
                     {recommendation?.level}
                 </span>
             </td>
@@ -81,8 +81,8 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
                 ) : (
                     <div className="flex items-center space-x-2">
                         {isLocked ? (
-                            <button 
-                                onClick={() => navigate('/upgrade')} 
+                            <button
+                                onClick={() => navigate('/upgrade')}
                                 className="p-1.5 text-gray-400 hover:text-brand-blue hover:bg-blue-50 rounded-md group relative"
                                 title="Upgrade to view"
                             >
@@ -92,15 +92,15 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
                                 </span>
                             </button>
                         ) : (
-                            <button onClick={() => navigate(`/property/${property.id}`)} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-md">
+                            <button onClick={() => navigate(`/ property / ${property.id} `)} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-md">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
                             </button>
                         )}
-                        
-                        <button 
-                            onClick={() => onDelete(property.id, property.address)} 
+
+                        <button
+                            onClick={() => onDelete(property.id, property.address)}
                             disabled={isFreeTier}
-                            className={`p-1.5 rounded-md ${isFreeTier ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
+                            className={`p - 1.5 rounded - md ${isFreeTier ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'} `}
                             title={isFreeTier ? "Free tier analyses are permanent records. Upgrade to manage portfolio." : "Delete property"}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -124,10 +124,10 @@ const CompareButtonWrapper: React.FC<{ children: React.ReactNode; canCompare: bo
                 <h4 className="font-bold">Property Comparison is a Starter feature</h4>
                 <p className="mt-1">Upgrade your plan to compare properties side-by-side.</p>
                 <button
-                  onClick={() => navigate('/pricing')}
-                  className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
+                    onClick={() => navigate('/pricing')}
+                    className="mt-2 w-full bg-brand-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-700 pointer-events-auto"
                 >
-                  View Plans
+                    View Plans
                 </button>
             </div>
         </div>
@@ -142,7 +142,7 @@ const Dashboard = () => {
     const { properties, deleteProperty, loading, error } = useProperties();
     const { user, featureAccess } = useAuth();
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
-    
+
     // Sorting and Filtering State
     const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: null, direction: 'desc' });
     const [filterRecommendation, setFilterRecommendation] = useState<string>('All');
@@ -198,19 +198,19 @@ const Dashboard = () => {
             }
         });
     }, []);
-    
+
     const handleDelete = useCallback(async (idToDelete: string, address: string) => {
         if (!idToDelete) return;
 
         // Explicit warning about credits not being restored
-        const warningMessage = `Are you sure you want to delete the property at ${address}?\n\nIMPORTANT: Deleting this property removes it from your active dashboard, but it will remain in your archive as proof of usage. Usage credits ARE NOT REFUNDED.`;
+        const warningMessage = `Are you sure you want to delete the property at ${address}?\n\nIMPORTANT: Deleting this property removes it from your active dashboard, but it will remain in your archive as proof of usage.Usage credits ARE NOT REFUNDED.`;
 
         if (window.confirm(warningMessage)) {
             try {
                 await deleteProperty(idToDelete);
                 setSelectedPropertyIds(prev => prev.filter(id => id !== idToDelete));
             } catch (err) {
-                alert(`Failed to delete property: ${err}`);
+                alert(`Failed to delete property: ${err} `);
             }
         }
     }, [deleteProperty]);
@@ -218,7 +218,7 @@ const Dashboard = () => {
 
     const handleCompare = () => {
         if (selectedPropertyIds.length < 2 || !featureAccess.canCompare) return;
-        navigate(`/compare?ids=${selectedPropertyIds.join(',')}`);
+        navigate(`/ compare ? ids = ${selectedPropertyIds.join(',')} `);
     };
 
     // --- Sorting and Filtering Logic ---
@@ -282,7 +282,7 @@ const Dashboard = () => {
 
     const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
         if (sortConfig.key !== columnKey) {
-             return <span className="ml-1 text-gray-300 text-[10px]">⇅</span>; // Inactive
+            return <span className="ml-1 text-gray-300 text-[10px]">⇅</span>; // Inactive
         }
         return (
             <span className="ml-1 text-brand-blue text-xs">
@@ -292,7 +292,7 @@ const Dashboard = () => {
     };
 
     const SortableHeader = ({ label, columnKey }: { label: string, columnKey: SortKey }) => (
-        <th 
+        <th
             className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100 hover:text-brand-blue transition-colors select-none"
             onClick={() => handleSort(columnKey)}
         >
@@ -311,10 +311,10 @@ const Dashboard = () => {
             return <tr><td colSpan={7} className="text-center py-12 text-red-500">{error}</td></tr>;
         }
         if (processedProperties.length > 0) {
-            return processedProperties.map((prop, index) => 
-                <PropertyRow 
-                    key={prop.id} 
-                    property={prop} 
+            return processedProperties.map((prop, index) =>
+                <PropertyRow
+                    key={prop.id}
+                    property={prop}
                     isSelected={selectedPropertyIds.includes(prop.id)}
                     onSelect={handleSelectProperty}
                     onDelete={handleDelete}
@@ -329,12 +329,12 @@ const Dashboard = () => {
                     <div className="text-center py-12 text-gray-500">
                         <p>No active properties match your criteria.</p>
                         {filterRecommendation !== 'All' && (
-                             <button onClick={() => setFilterRecommendation('All')} className="mt-2 text-brand-blue font-semibold">
+                            <button onClick={() => setFilterRecommendation('All')} className="mt-2 text-brand-blue font-semibold">
                                 Clear Filter
                             </button>
                         )}
                         {activeProperties.length === 0 && (
-                             <button onClick={() => navigate('/add-property')} className="mt-2 text-brand-blue font-semibold">
+                            <button onClick={() => navigate('/add-property')} className="mt-2 text-brand-blue font-semibold">
                                 Analyze your first property
                             </button>
                         )}
@@ -361,8 +361,8 @@ const Dashboard = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <SummaryCard title="Properties Analyzed" value={activeProperties.length.toString()} icon={ChartBarIcon} iconBgColor="bg-blue-500" />
-                <SummaryCard title="Avg Cap Rate" value={`${avgCapRate.toFixed(1)}%`} icon={ArrowTrendingUpIcon} change="Good" changeType="good" iconBgColor="bg-green-500" />
-                <SummaryCard title="Avg Monthly Cash Flow" value={`$${Math.round(avgMonthlyCashFlow)}`} icon={BanknotesIcon} iconBgColor="bg-purple-500" />
+                <SummaryCard title="Avg Cap Rate" value={`${avgCapRate.toFixed(1)}% `} icon={ArrowTrendingUpIcon} change="Good" changeType="good" iconBgColor="bg-green-500" />
+                <SummaryCard title="Avg Monthly Cash Flow" value={`$${Math.round(avgMonthlyCashFlow)} `} icon={BanknotesIcon} iconBgColor="bg-purple-500" />
                 <SummaryCard title="High-Risk Properties" value={highRiskProperties.toString()} icon={ExclamationTriangleIcon} iconBgColor="bg-orange-500" />
             </div>
 
@@ -370,13 +370,13 @@ const Dashboard = () => {
                 <div className="flex-grow">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h2 className="text-xl font-bold text-gray-800">Active Property Analyses</h2>
-                        
+
                         <div className="flex items-center gap-4 w-full sm:w-auto">
-                             {/* Filter Dropdown */}
+                            {/* Filter Dropdown */}
                             <div className="flex items-center">
                                 <span className="text-sm text-gray-600 mr-2">Filter:</span>
-                                <select 
-                                    value={filterRecommendation} 
+                                <select
+                                    value={filterRecommendation}
                                     onChange={(e) => setFilterRecommendation(e.target.value)}
                                     className="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:ring-brand-blue focus:border-brand-blue bg-white"
                                 >
@@ -390,8 +390,8 @@ const Dashboard = () => {
 
                             {selectedPropertyIds.length >= 2 && (
                                 <CompareButtonWrapper canCompare={featureAccess.canCompare}>
-                                    <button 
-                                        onClick={handleCompare} 
+                                    <button
+                                        onClick={handleCompare}
                                         className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-purple-700 transition-colors flex items-center disabled:bg-purple-300 disabled:cursor-not-allowed ml-auto sm:ml-0"
                                         disabled={!featureAccess.canCompare}
                                     >
@@ -402,7 +402,7 @@ const Dashboard = () => {
                             )}
                         </div>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+                    <div className="bg-white rounded-xl shadow-sm overflow-x-auto mb-8">
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr>
@@ -420,18 +420,18 @@ const Dashboard = () => {
                             </tbody>
                         </table>
                     </div>
-                    
+
                     {activeProperties.length > propertyLimit && (
-                         <div className="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800 flex items-center justify-between">
+                        <div className="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800 flex items-center justify-between">
                             <div className="flex items-center">
                                 <LockClosedIcon className="h-5 w-5 mr-2 text-blue-600" />
                                 <span>
-                                    You have <strong>{activeProperties.length - propertyLimit}</strong> older analyses locked. 
+                                    You have <strong>{activeProperties.length - propertyLimit}</strong> older analyses locked.
                                     Upgrade your plan to unlock all your historical data.
                                 </span>
                             </div>
-                            <button 
-                                onClick={() => navigate('/upgrade')} 
+                            <button
+                                onClick={() => navigate('/upgrade')}
                                 className="text-blue-700 font-bold hover:underline"
                             >
                                 Upgrade Now
@@ -443,7 +443,7 @@ const Dashboard = () => {
                     {archivedProperties.length > 0 && (
                         <div className="mt-8">
                             <h2 className="text-lg font-bold text-gray-600 mb-2">Archived / Deleted History (Credits Used)</h2>
-                             <div className="bg-gray-50 rounded-xl shadow-sm overflow-hidden border border-gray-200 opacity-80">
+                            <div className="bg-gray-50 rounded-xl shadow-sm overflow-hidden border border-gray-200 opacity-80">
                                 <table className="w-full text-left">
                                     <thead className="bg-gray-100 border-b border-gray-200">
                                         <tr>
@@ -458,12 +458,12 @@ const Dashboard = () => {
                                     </thead>
                                     <tbody>
                                         {archivedProperties.map((prop) => (
-                                            <PropertyRow 
-                                                key={prop.id} 
-                                                property={prop} 
+                                            <PropertyRow
+                                                key={prop.id}
+                                                property={prop}
                                                 isSelected={false}
-                                                onSelect={() => {}}
-                                                onDelete={() => {}}
+                                                onSelect={() => { }}
+                                                onDelete={() => { }}
                                                 isLocked={false} // Always unlocked but read-only visually
                                                 userTier={tier}
                                                 isArchived={true}
@@ -472,7 +472,7 @@ const Dashboard = () => {
                                     </tbody>
                                 </table>
                             </div>
-                             <p className="text-xs text-gray-400 mt-2 italic">
+                            <p className="text-xs text-gray-400 mt-2 italic">
                                 * These records are preserved for audit purposes and count towards your analysis usage limits.
                             </p>
                         </div>
@@ -480,35 +480,35 @@ const Dashboard = () => {
                 </div>
 
                 <aside className="w-full lg:w-80 flex-shrink-0">
-                     <div className="bg-white p-6 rounded-xl shadow-sm">
+                    <div className="bg-white p-6 rounded-xl shadow-sm">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Investment Summary</h3>
-                        
+
                         <div className="mb-6">
                             <div className="flex justify-between text-sm mb-1">
                                 <span className="font-semibold text-gray-700">Average Cap Rate</span>
                                 <span className="font-bold text-green-600">{avgCapRate.toFixed(1)}%</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(100, (avgCapRate / 8) * 100)}%` }}></div>
+                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(100, (avgCapRate / 8) * 100)}% ` }}></div>
                             </div>
                             <p className="text-xs text-gray-500 mt-1">Target: 8% cap rate</p>
                         </div>
 
-                         <div className="mb-6">
+                        <div className="mb-6">
                             <div className="flex justify-between items-center text-sm mb-1">
                                 <span className="font-semibold text-gray-700">Total Monthly Cash Flow</span>
                                 <span className="font-bold text-green-600 text-lg">
                                     {formatCurrency(activeProperties.reduce((sum, p) => sum + p.calculations.monthlyCashFlowWithDebt, 0))}
                                 </span>
                             </div>
-                             <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500">
                                 {totalProperties > 0 ? `${positiveCashFlowCount} of ${totalProperties} properties with positive cash flow` : 'No properties analyzed yet.'}
                             </p>
                         </div>
-                        
+
                         <div>
                             <h4 className="font-semibold text-gray-700 mb-2">Recommendation Breakdown</h4>
-                             <div className="space-y-2 text-sm">
+                            <div className="space-y-2 text-sm">
                                 {totalProperties > 0 ? (
                                     Object.entries(recommendationCounts).map(([level, count]) => {
                                         const percentage = totalProperties > 0 ? ((Number(count) / totalProperties) * 100).toFixed(0) : 0;

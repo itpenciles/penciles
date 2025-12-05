@@ -3,6 +3,7 @@ import React from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import { PropertyProvider } from './contexts/PropertyContext';
+import { Bars3Icon } from './constants';
 
 // Layouts
 import Sidebar from './components/Sidebar';
@@ -30,41 +31,61 @@ import AdminSetup from './components/AdminSetup';
 
 // A component to protect routes that require authentication.
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
-    const { user, isAuthEnabled, isLoading } = useAuth();
-    const location = useLocation();
+  const { user, isAuthEnabled, isLoading } = useAuth();
+  const location = useLocation();
 
-    if (isLoading) {
-        return <div>Loading...</div>;
-    }
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
-    if (isAuthEnabled && !user) {
-        return <Navigate to="/login" replace />;
-    }
-    
-    if (adminOnly && user?.role !== 'admin') {
-        return <Navigate to="/dashboard" replace />;
-    }
+  if (isAuthEnabled && !user) {
+    return <Navigate to="/login" replace />;
+  }
 
-    // If user is logged in but hasn't selected a subscription, redirect them.
-    if (user && !user.subscriptionTier && !adminOnly) {
-        // Allow access only to the subscription and checkout pages
-        if (location.pathname !== '/subscribe' && !location.pathname.startsWith('/checkout')) {
-            return <Navigate to="/subscribe" replace />;
-        }
-    }
+  if (adminOnly && user?.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
-    return <Outlet />;
+  // If user is logged in but hasn't selected a subscription, redirect them.
+  if (user && !user.subscriptionTier && !adminOnly) {
+    // Allow access only to the subscription and checkout pages
+    if (location.pathname !== '/subscribe' && !location.pathname.startsWith('/checkout')) {
+      return <Navigate to="/subscribe" replace />;
+    }
+  }
+
+  return <Outlet />;
 };
 
 // The main layout for the core application with the sidebar
-const MainLayout = () => (
-  <div className="flex h-screen bg-gray-100 font-sans app-layout">
-    <Sidebar />
-    <main className="flex-1 overflow-y-auto">
-      <Outlet />
-    </main>
-  </div>
-);
+const MainLayout = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+
+  return (
+    <div className="flex h-screen bg-gray-100 font-sans app-layout">
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile Header */}
+        <header className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="text-gray-500 hover:text-gray-700 mr-3 focus:outline-none"
+            >
+              <Bars3Icon className="h-6 w-6" />
+            </button>
+            <span className="text-lg font-bold text-gray-800">It Pencils</span>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   return (
@@ -87,7 +108,7 @@ const App: React.FC = () => {
               {/* Routes WITHOUT the main sidebar layout */}
               <Route path="/subscribe" element={<SubscriptionPage />} />
               <Route path="/checkout/:tier" element={<CheckoutPage />} />
-              
+
               {/* Routes WITH the main sidebar layout */}
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -98,15 +119,15 @@ const App: React.FC = () => {
                 <Route path="/faq" element={<FAQPage />} />
               </Route>
             </Route>
-            
+
             {/* Admin Route */}
-             <Route element={<ProtectedRoute adminOnly={true} />}>
-                <Route element={<MainLayout />}>
-                    <Route path="/admin" element={<AdminDashboard />} />
-                    <Route path="/admin/setup" element={<AdminSetup />} />
-                </Route>
-             </Route>
-            
+            <Route element={<ProtectedRoute adminOnly={true} />}>
+              <Route element={<MainLayout />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/setup" element={<AdminSetup />} />
+              </Route>
+            </Route>
+
             {/* Fallback for any unknown routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
