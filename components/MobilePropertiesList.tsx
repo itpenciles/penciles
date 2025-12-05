@@ -130,12 +130,12 @@ const MobilePropertiesList = () => {
                                 </div>
 
                                 {/* Recommendation Badge (Bottom Right or separate) */}
-                                <div className={`flex-shrink-0 px-2 py-1 rounded-full text-[10px] font-bold mt-8 ${property.recommendation?.level === 'Worth Pursuing' ? 'bg-green-100 text-green-700' :
-                                    property.recommendation?.level === 'Moderate Risk' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-orange-100 text-orange-700' // Changed to Orange for risk
+                                <div className={`flex-shrink-0 px-2 py-1 rounded-full text-[10px] font-bold mt-8 ${['Worth Pursuing', 'Strong'].includes(property.recommendation?.level) ? 'bg-green-100 text-green-700' :
+                                        property.recommendation?.level === 'Moderate Risk' ? 'bg-yellow-100 text-yellow-700' :
+                                            ['High Risk', 'Avoid'].includes(property.recommendation?.level) ? 'bg-red-100 text-red-700' :
+                                                'bg-gray-100 text-gray-700'
                                     }`}>
-                                    {property.recommendation?.level === 'Worth Pursuing' ? 'Good' :
-                                        property.recommendation?.level === 'Moderate Risk' ? 'Okay' : 'Risk'}
+                                    {property.recommendation?.level || 'Unknown'}
                                 </div>
                             </div>
                         </div>
