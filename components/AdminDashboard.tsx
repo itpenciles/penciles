@@ -377,16 +377,17 @@ const AdminDashboard = () => {
                                                             userDetailStats.properties.map((property) => {
                                                                 const isInactive = !!property.deletedAt;
                                                                 const status = isInactive ? 'Inactive' : 'Active';
+                                                                const truncatedAddress = property.address.length > 15 ? property.address.substring(0, 15) + '...' : property.address;
                                                                 return (
                                                                     <tr key={property.id}>
-                                                                        <td className="px-4 py-3 text-gray-900 font-medium">{property.address}</td>
-                                                                        <td className="px-4 py-3 text-gray-500">{property.dateAnalyzed}</td>
+                                                                        <td className="px-4 py-3 text-gray-900 font-medium" title={property.address}>{truncatedAddress}</td>
+                                                                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{property.dateAnalyzed}</td>
                                                                         <td className="px-4 py-3">
                                                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${!isInactive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                                                                                 {status}
                                                                             </span>
                                                                         </td>
-                                                                        <td className="px-4 py-3">
+                                                                        <td className="px-4 py-3 text-right">
                                                                             <button
                                                                                 onClick={() => handleTogglePropertyStatus(property.id, status)}
                                                                                 className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-2 ${!isInactive ? 'bg-green-500' : 'bg-gray-200'}`}
