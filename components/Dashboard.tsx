@@ -149,11 +149,24 @@ const CompareButtonWrapper: React.FC<{ children: React.ReactNode; canCompare: bo
 type SortKey = 'capRate' | 'cashFlow' | 'cashOnCash' | 'recommendation';
 type SortDirection = 'asc' | 'desc';
 
+import MobileDashboard from './MobileDashboard';
+
 const Dashboard = () => {
     const navigate = useNavigate();
     const { properties, deleteProperty, loading, error } = useProperties();
     const { user, featureAccess } = useAuth();
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    React.useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    if (isMobile) {
+        return <MobileDashboard />;
+    }
 
     // Sorting and Filtering State
     const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: null, direction: 'desc' });

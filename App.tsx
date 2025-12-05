@@ -7,6 +7,7 @@ import { Bars3Icon } from './constants';
 
 // Layouts
 import Sidebar from './components/Sidebar';
+import BottomNav from './components/BottomNav';
 import PublicLayout from './components/PublicLayout';
 
 // Public Pages
@@ -28,6 +29,14 @@ import UpgradePage from './components/UpgradePage';
 import FAQPage from './components/FAQPage';
 import AdminDashboard from './components/AdminDashboard';
 import AdminSetup from './components/AdminSetup';
+
+import MobilePropertiesList from './components/MobilePropertiesList';
+import { useMobile } from './hooks/useMobile';
+
+const PropertiesRoute = () => {
+  const isMobile = useMobile();
+  return isMobile ? <MobilePropertiesList /> : <Navigate to="/dashboard" replace />;
+};
 
 // A component to protect routes that require authentication.
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
@@ -65,23 +74,27 @@ const MainLayout = () => {
     <div className="flex h-screen bg-gray-100 font-sans app-layout">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile Header */}
-        <header className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Mobile Header - Teal Design */}
+        <header className="md:hidden bg-teal-600 text-white p-4 flex items-center justify-between flex-shrink-0 shadow-md z-10">
           <div className="flex items-center">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="text-gray-500 hover:text-gray-700 mr-3 focus:outline-none"
+              className="text-white hover:text-teal-100 mr-3 focus:outline-none"
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
-            <span className="text-lg font-bold text-gray-800">It Pencils</span>
+            <span className="text-lg font-bold">It Pencils</span>
           </div>
+          {/* Optional: Add profile or notification icon here if needed */}
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           <Outlet />
         </main>
+
+        {/* Mobile Bottom Navigation */}
+        <BottomNav />
       </div>
     </div>
   );
@@ -112,6 +125,7 @@ const App: React.FC = () => {
               {/* Routes WITH the main sidebar layout */}
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/properties" element={<PropertiesRoute />} />
                 <Route path="/add-property" element={<AddProperty />} />
                 <Route path="/property/:id" element={<PropertyDetail />} />
                 <Route path="/compare" element={<ComparisonPage />} />
