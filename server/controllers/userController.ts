@@ -173,11 +173,53 @@ export const purchaseCredits = async (req: any, res: any) => {
 export const getUserProfile = async (req: any, res: any) => {
     const userId = req.user?.id;
     try {
-        const result = await query('SELECT id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, credits, role, created_at FROM users WHERE id = $1', [userId]);
+        let result = await query('SELECT id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, credits, role, created_at FROM users WHERE id = $1', [userId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
-        const dbUser = result.rows[0];
+        let dbUser = result.rows[0];
+
+        // --- SYNC ANALYSIS COUNT (Self-Healing) ---
+        // Ensure the analysis_count matches the actual number of properties in the DB.
+        // This fixes issues where the count gets out of sync due to errors or manual changes.
+        try {
+            const isFreeTier = !dbUser.subscription_tier || dbUser.subscription_tier === 'Free';
+            let actualCount = 0;
+            let shouldUpdate = false;
+
+            if (isFreeTier) {
+                const countResult = await query('SELECT COUNT(*) FROM properties WHERE user_id = $1', [userId]);
+                actualCount = parseInt(countResult.rows[0].count || '0');
+                if (parseInt(dbUser.analysis_count) !== actualCount) shouldUpdate = true;
+            } else {
+                // Paid Tier: Count properties since the start of the current cycle
+                if (dbUser.analysis_limit_reset_at) {
+                    const resetDate = new Date(dbUser.analysis_limit_reset_at);
+                    const cycleStartDate = new Date(resetDate);
+                    cycleStartDate.setMonth(cycleStartDate.getMonth() - 1);
+
+                    const countResult = await query(
+                        'SELECT COUNT(*) FROM properties WHERE user_id = $1 AND created_at >= $2',
+                        [userId, cycleStartDate]
+                    );
+                    actualCount = parseInt(countResult.rows[0].count || '0');
+                    if (parseInt(dbUser.analysis_count) !== actualCount) shouldUpdate = true;
+                }
+            }
+
+            if (shouldUpdate) {
+                console.log(`[UserProfile] Syncing analysis_count for ${dbUser.email}. Old: ${dbUser.analysis_count}, New: ${actualCount}`);
+                const updateRes = await query(
+                    'UPDATE users SET analysis_count = $1 WHERE id = $2 RETURNING analysis_count',
+                    [actualCount, userId]
+                );
+                dbUser.analysis_count = updateRes.rows[0].analysis_count;
+            }
+        } catch (syncError) {
+            console.error('[UserProfile] Failed to sync analysis count:', syncError);
+            // Continue serving the profile even if sync fails
+        }
+        // ------------------------------------------
 
         // Fetch billing history
         const historyResult = await query(
