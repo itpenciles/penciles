@@ -489,10 +489,11 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
             break;
         case 'Rental':
         default:
+            const downPayment = property.financials.downPaymentPercent || 25;
             recommendationLogic = `
 - **Your recommendation must be based on a balanced assessment of both financial metrics and location quality for the 'Rental' strategy.**
 - **Financial Health & Cash Flow (CRITICAL):**
-    - **"Positive Cash Flow" Definition:** You must explicitly define "Positive Cash Flow" as **Net Monthly Cash Flow AFTER Debt Service** (assuming a standard 20-25% down payment loan). Do NOT confuse this with Net Operating Income (NOI).
+    - **"Positive Cash Flow" Definition:** You must explicitly define "Positive Cash Flow" as **Net Monthly Cash Flow AFTER Debt Service** (using the provided ${downPayment}% down payment). Do NOT confuse this with Net Operating Income (NOI).
     - **'Worth Pursuing'**: Strong financials are the primary driver. Look for:
         - **Cash-on-Cash Return (CoC):** > 8-10%
         - **DSCR:** > 1.25
@@ -505,7 +506,7 @@ const buildReevaluationPrompt = (property: Property, strategy: Strategy): string
         - **Negative Cash Flow:** Any property with negative cash flow after debt service is automatically 'High Risk' or 'Avoid' unless there is a massive value-add opportunity.
         - **Unsafe Area:** Safety Score < 40 is 'High Risk' regardless of financials.
     - **'Avoid'**: Severe negative cash flow, dangerous location (< 20 Safety), or structural issues.
-- **Required Output:** In your \`additionalNotes\`, you MUST explicitly state: "Cash flow calculated assuming a [X]% down payment loan."`;
+- **Required Output:** In your \`additionalNotes\`, you MUST explicitly state: "Cash flow calculated assuming a ${downPayment}% down payment."`;
             break;
     }
 
