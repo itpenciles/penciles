@@ -29,6 +29,7 @@ import UpgradePage from './components/UpgradePage';
 import FAQPage from './components/FAQPage';
 import AdminDashboard from './components/AdminDashboard';
 import AdminSetup from './components/AdminSetup';
+import UserProfile from './components/UserProfile';
 
 import MobilePropertiesList from './components/MobilePropertiesList';
 import { useMobile } from './hooks/useMobile';
@@ -130,6 +131,7 @@ const App: React.FC = () => {
                 <Route path="/property/:id" element={<PropertyDetail />} />
                 <Route path="/compare" element={<ComparisonPage />} />
                 <Route path="/upgrade" element={<UpgradePage />} />
+                <Route path="/profile" element={<UserProfile />} />
                 <Route path="/faq" element={<FAQPage />} />
               </Route>
             </Route>

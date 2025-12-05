@@ -150,19 +150,14 @@ type SortKey = 'capRate' | 'cashFlow' | 'cashOnCash' | 'recommendation';
 type SortDirection = 'asc' | 'desc';
 
 import MobileDashboard from './MobileDashboard';
+import { useMobile } from '../hooks/useMobile';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const { properties, deleteProperty, loading, error } = useProperties();
     const { user, featureAccess } = useAuth();
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-    React.useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    const isMobile = useMobile();
 
     if (isMobile) {
         return <MobileDashboard />;
@@ -177,7 +172,6 @@ const Dashboard = () => {
     const archivedProperties = useMemo(() => properties.filter(p => p.deletedAt), [properties]);
 
     const avgCapRate = activeProperties.length > 0 ? activeProperties.reduce((acc, p) => acc + p.calculations.capRate, 0) / activeProperties.length : 0;
-    const avgMonthlyCashFlow = activeProperties.length > 0 ? activeProperties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0) / activeProperties.length : 0;
     const highRiskProperties = activeProperties.filter(p => p.recommendation?.level === 'High Risk' || p.recommendation?.level === 'Avoid').length;
 
     const totalProperties = activeProperties.length;
@@ -336,7 +330,7 @@ const Dashboard = () => {
             return <tr><td colSpan={7} className="text-center py-12 text-red-500">{error}</td></tr>;
         }
         if (processedProperties.length > 0) {
-            return processedProperties.map((prop, index) =>
+            return processedProperties.map((prop) =>
                 <PropertyRow
                     key={prop.id}
                     property={prop}
@@ -387,7 +381,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <SummaryCard title="Properties Analyzed" value={activeProperties.length.toString()} icon={ChartBarIcon} iconBgColor="bg-blue-500" />
                 <SummaryCard title="Avg Cap Rate" value={`${avgCapRate.toFixed(1)}% `} icon={ArrowTrendingUpIcon} change="Good" changeType="good" iconBgColor="bg-green-500" />
-                <SummaryCard title="Avg Monthly Cash Flow" value={`$${Math.round(avgMonthlyCashFlow)} `} icon={BanknotesIcon} iconBgColor="bg-purple-500" />
+                <SummaryCard title="Total Monthly Cash Flow" value={`$${Math.round(activeProperties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0))} `} icon={BanknotesIcon} iconBgColor="bg-purple-500" />
                 <SummaryCard title="High-Risk Properties" value={highRiskProperties.toString()} icon={ExclamationTriangleIcon} iconBgColor="bg-orange-500" />
             </div>
 

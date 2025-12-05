@@ -19,27 +19,27 @@ export const updateUserSubscription = async (req: any, res: any) => {
         if (currentUserResult.rows.length === 0) {
             return res.status(404).json({ message: 'User not found.' });
         }
-        
+
         const oldTier = currentUserResult.rows[0].subscription_tier || 'Free';
         let result;
-        
+
         // Fetch Pricing logic from DB
         let oldPrice = 0;
         let newPrice = 0;
 
         const plansRes = await query('SELECT key, monthly_price FROM plans WHERE key IN ($1, $2)', [oldTier, tier]);
         const planMap = new Map(plansRes.rows.map((r: any) => [r.key, r.monthly_price]));
-        
+
         if (planMap.has(oldTier)) oldPrice = Number(planMap.get(oldTier));
         if (planMap.has(tier)) newPrice = Number(planMap.get(tier));
-        
+
         // Fallback if DB fetch fails (legacy hardcoded)
         if (plansRes.rows.length === 0) {
-             const TIER_PRICES = { 'Free': 0, 'Starter': 9, 'Pro': 29, 'Team': 79, 'PayAsYouGo': 0 };
-             // @ts-ignore
-             oldPrice = TIER_PRICES[oldTier] || 0;
-             // @ts-ignore
-             newPrice = TIER_PRICES[tier] || 0;
+            const TIER_PRICES = { 'Free': 0, 'Starter': 9, 'Pro': 29, 'Team': 79, 'PayAsYouGo': 0 };
+            // @ts-ignore
+            oldPrice = TIER_PRICES[oldTier] || 0;
+            // @ts-ignore
+            newPrice = TIER_PRICES[tier] || 0;
         }
 
         const isMonthlyPlan = tier !== 'Free' && tier !== 'PayAsYouGo';
@@ -56,18 +56,18 @@ export const updateUserSubscription = async (req: any, res: any) => {
         // We count ALL properties (including deleted ones) because deleting a property
         // does not refund the analysis credit. Usage is based on "analyses performed".
         const countResult = await query(
-            `SELECT COUNT(*) FROM properties WHERE user_id = $1`, 
+            `SELECT COUNT(*) FROM properties WHERE user_id = $1`,
             [userId]
         );
         const totalHistoricalCount = parseInt(countResult.rows[0].count || '0');
 
         if (tier === 'PayAsYouGo') {
-             // Initial Retainer logic: User switching to PAYG pays $35 immediately and gets credits.
-             revenueImpact = PAYG_RETAINER;
-             changeType = 'new'; 
-             
-             // Add the credits immediately and set tier
-             result = await query(
+            // Initial Retainer logic: User switching to PAYG pays $35 immediately and gets credits.
+            revenueImpact = PAYG_RETAINER;
+            changeType = 'new';
+
+            // Add the credits immediately and set tier
+            result = await query(
                 'UPDATE users SET subscription_tier = $1, updated_at = now(), analysis_count = $2, analysis_limit_reset_at = NULL, credits = credits + $3 WHERE id = $4 RETURNING id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, role, credits',
                 [tier, totalHistoricalCount, PAYG_RETAINER, userId]
             );
@@ -93,7 +93,7 @@ export const updateUserSubscription = async (req: any, res: any) => {
 
         // Log to history
         if (oldTier !== tier || tier === 'PayAsYouGo') {
-             await query(
+            await query(
                 `INSERT INTO subscription_history (user_id, old_tier, new_tier, change_type, amount) VALUES ($1, $2, $3, $4, $5)`,
                 [userId, oldTier, tier, changeType, revenueImpact]
             );
@@ -114,18 +114,18 @@ export const updateUserSubscription = async (req: any, res: any) => {
 
         // Issue a new token with the updated subscription tier and usage data
         const newToken = jwt.sign(
-            { 
-                id: updatedUser.id, 
-                name: updatedUser.name, 
-                email: updatedUser.email, 
+            {
+                id: updatedUser.id,
+                name: updatedUser.name,
+                email: updatedUser.email,
                 profilePictureUrl: updatedUser.profilePictureUrl,
                 subscriptionTier: updatedUser.subscriptionTier,
                 analysisCount: updatedUser.analysisCount,
                 analysisLimitResetAt: updatedUser.analysisLimitResetAt,
                 credits: updatedUser.credits,
                 role: updatedUser.role
-            }, 
-            process.env.JWT_SECRET!, 
+            },
+            process.env.JWT_SECRET!,
             { expiresIn: '7d' }
         );
 
@@ -164,7 +164,7 @@ export const purchaseCredits = async (req: any, res: any) => {
         const updatedCredits = Number(result.rows[0].credits);
         res.status(200).json({ credits: updatedCredits, message: 'Credits added successfully.' });
     } catch (error) {
-         console.error('Error purchasing credits:', error);
+        console.error('Error purchasing credits:', error);
         res.status(500).json({ message: 'Failed to purchase credits.' });
     }
 };
@@ -173,12 +173,27 @@ export const purchaseCredits = async (req: any, res: any) => {
 export const getUserProfile = async (req: any, res: any) => {
     const userId = req.user?.id;
     try {
-        const result = await query('SELECT id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, credits, role FROM users WHERE id = $1', [userId]);
+        const result = await query('SELECT id, name, email, profile_picture_url, subscription_tier, analysis_count, analysis_limit_reset_at, credits, role, created_at FROM users WHERE id = $1', [userId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
         const dbUser = result.rows[0];
-        const user: User = {
+
+        // Fetch billing history
+        const historyResult = await query(
+            'SELECT id, created_at as date, amount, change_type, new_tier FROM subscription_history WHERE user_id = $1 ORDER BY created_at DESC',
+            [userId]
+        );
+
+        const billingHistory = historyResult.rows.map((row: any) => ({
+            id: row.id,
+            date: new Date(row.date).toLocaleDateString(),
+            amount: Number(row.amount),
+            description: row.change_type === 'credit_purchase' ? 'Credit Purchase' : `${row.new_tier} Subscription`,
+            status: 'Paid' // Assuming all logged history is paid for now
+        }));
+
+        const user = {
             id: dbUser.id,
             name: dbUser.name,
             email: dbUser.email,
@@ -187,9 +202,11 @@ export const getUserProfile = async (req: any, res: any) => {
             analysisCount: dbUser.analysis_count || 0,
             analysisLimitResetAt: dbUser.analysis_limit_reset_at || null,
             credits: Number(dbUser.credits || 0),
-            role: dbUser.role || 'user'
+            role: dbUser.role || 'user',
+            createdAt: dbUser.created_at,
+            billingHistory
         };
-        
+
         res.json(user);
     } catch (error) {
         console.error('Error fetching user profile:', error);
@@ -209,7 +226,7 @@ export const trackUserAction = async (req: any, res: any) => {
         if (action === 'export_csv') {
             await query('UPDATE users SET csv_export_count = COALESCE(csv_export_count, 0) + 1 WHERE id = $1', [userId]);
         } else if (action === 'print_report') {
-             await query('UPDATE users SET report_download_count = COALESCE(report_download_count, 0) + 1 WHERE id = $1', [userId]);
+            await query('UPDATE users SET report_download_count = COALESCE(report_download_count, 0) + 1 WHERE id = $1', [userId]);
         }
         res.status(200).json({ success: true });
     } catch (error) {

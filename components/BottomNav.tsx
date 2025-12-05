@@ -7,7 +7,7 @@ const BottomNav = () => {
         { name: 'Home', href: '/dashboard', icon: HomeIcon },
         { name: 'Properties', href: '/properties', icon: ListBulletIcon }, // We might need to create this route or map it to something
         { name: 'Add', href: '/add-property', icon: PlusIcon },
-        { name: 'Profile', href: '/upgrade', icon: UserCircleIcon }, // Using Upgrade/Profile as placeholder
+        { name: 'Profile', href: '/profile', icon: UserCircleIcon },
     ];
 
     return (
