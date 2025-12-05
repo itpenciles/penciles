@@ -1147,6 +1147,11 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
     const calcs = property.sellerFinancingAnalysis?.calculations;
     if (!calcs || !inputs) return null;
 
+    // Fallback calculations for display if missing from DB (backward compatibility)
+    const grossIncome = calcs.grossIncome || (inputs.marketRent + (inputs.otherMonthlyIncome || 0));
+    const vacancyLoss = calcs.vacancyLoss || (grossIncome * ((inputs.expenses?.vacancyRate || 0) / 100));
+    const effectiveIncome = calcs.effectiveIncome || (grossIncome - vacancyLoss);
+
     const loanAmount = inputs.purchasePrice - inputs.downPayment;
 
     return (
@@ -1177,8 +1182,8 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
                     <div className="space-y-2 text-sm">
                         <CalculationRow label="Gross Rent" value={formatCurrency(inputs.marketRent)} />
                         <CalculationRow label="Other Income" value={formatCurrency(inputs.otherMonthlyIncome || 0)} />
-                        <CalculationRow label="Less: Vacancy Loss" value={formatCurrency(calcs.vacancyLoss || 0)} isNegative={true} />
-                        <CalculationRow label="Effective Gross Income" value={formatCurrency(calcs.effectiveIncome || 0)} isTotal={true} />
+                        <CalculationRow label="Less: Vacancy Loss" value={formatCurrency(vacancyLoss)} isNegative={true} />
+                        <CalculationRow label="Effective Gross Income" value={formatCurrency(effectiveIncome)} isTotal={true} />
                     </div>
                 </div>
 
@@ -1187,9 +1192,9 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
                     <div className="space-y-2 text-sm">
                         <CalculationRow label="Property Taxes" value={formatCurrency(inputs.expenses?.monthlyTaxes || 0)} />
                         <CalculationRow label="Insurance" value={formatCurrency(inputs.expenses?.monthlyInsurance || 0)} />
-                        <CalculationRow label="Maintenance" value={formatCurrency((calcs.effectiveIncome || 0) * ((inputs.expenses?.maintenanceRate || 0) / 100))} />
-                        <CalculationRow label="Management" value={formatCurrency((calcs.effectiveIncome || 0) * ((inputs.expenses?.managementRate || 0) / 100))} />
-                        <CalculationRow label="CapEx" value={formatCurrency((calcs.effectiveIncome || 0) * ((inputs.expenses?.capexRate || 0) / 100))} />
+                        <CalculationRow label="Maintenance" value={formatCurrency(grossIncome * ((inputs.expenses?.maintenanceRate || 0) / 100))} />
+                        <CalculationRow label="Management" value={formatCurrency(grossIncome * ((inputs.expenses?.managementRate || 0) / 100))} />
+                        <CalculationRow label="CapEx" value={formatCurrency(grossIncome * ((inputs.expenses?.capexRate || 0) / 100))} />
                         <CalculationRow label="Utilities & Other" value={formatCurrency(
                             (inputs.expenses?.monthlyWaterSewer || 0) +
                             (inputs.expenses?.monthlyStreetLights || 0) +
@@ -1207,7 +1212,7 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
             <div className="p-4 border rounded-lg bg-blue-50/50">
                 <h3 className="text-lg font-semibold text-blue-900 mb-3">Net Cash Flow</h3>
                 <div className="space-y-2 text-sm">
-                    <CalculationRow label="Effective Gross Income" value={formatCurrency(calcs.effectiveIncome || 0)} />
+                    <CalculationRow label="Effective Gross Income" value={formatCurrency(effectiveIncome)} />
                     <CalculationRow label="Less: Operating Expenses" value={formatCurrency(calcs.operatingExpenses || 0)} isNegative={true} />
                     <CalculationRow label="Net Operating Income (NOI)" value={formatCurrency(calcs.netOperatingIncome || 0)} isSubTotal={true} />
                     <CalculationRow label="Less: Seller Financing Payment" value={formatCurrency(calcs.monthlyPayment || 0)} isNegative={true} />
