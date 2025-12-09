@@ -298,7 +298,6 @@ const PropertyDetail = () => {
                                     isLoading={isReevaluating}
                                     error={saveError}
                                 />
-                                {activeStrategy === 'Rental' && <InvestmentSummaryBreakdown property={editedProperty} />}
                             </div>
                             <div className="w-full lg:w-96 flex-shrink-0 space-y-8">
                                 <InvestmentRecommendationCard property={editedProperty} />
@@ -789,7 +788,14 @@ const FinancialAnalysisCard = ({ property, setProperty, activeStrategy, onSave, 
                 return null;
             case 'Rental':
             default:
-                if (activeTab === 'Metrics') return <MetricsTab property={property} />;
+                if (activeTab === 'Metrics') return (
+                    <>
+                        <MetricsTab property={property} />
+                        <div className="mt-8">
+                            <InvestmentSummaryBreakdown property={property} />
+                        </div>
+                    </>
+                );
                 if (activeTab === 'Expenses') return <ExpensesTab property={property} />;
                 if (activeTab === 'Adjust') return <AdjustTab property={property} setProperty={setProperty} onSave={onSave} onReset={onReset} hasChanges={hasChanges} isLoading={isLoading} error={error} />;
                 if (activeTab === 'Projections') return <ProjectionsTab financials={property.financials} />;
