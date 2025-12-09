@@ -2,7 +2,7 @@ import React from 'react';
 
 interface LogoProps {
     className?: string;
-    variant?: 'dark' | 'light'; // dark = dark text (for light bg), light = white text (for dark bg)
+    variant?: 'dark' | 'light' | 'outline-white';
     size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
@@ -17,9 +17,30 @@ export const Logo: React.FC<LogoProps> = ({ className = "", variant = 'dark', si
     // - Box: bg-white (matches Pencils)
     // - It: text-gray-900 (contrasts with box)
 
-    const boxColor = variant === 'dark' ? 'bg-gray-800' : 'bg-white';
-    const textColorIt = variant === 'dark' ? 'text-white' : 'text-gray-900';
-    const textColorPencils = variant === 'dark' ? 'text-gray-800' : 'text-white';
+    // In 'outline-white' variant (dark background, outline style):
+    // - Pencils: text-white
+    // - Box: border-2 border-white bg-transparent
+    // - It: text-white
+
+    let boxColor = '';
+    let textColorIt = '';
+    let textColorPencils = '';
+    let borderClass = '';
+
+    if (variant === 'dark') {
+        boxColor = 'bg-gray-800';
+        textColorIt = 'text-white';
+        textColorPencils = 'text-gray-800';
+    } else if (variant === 'light') {
+        boxColor = 'bg-white';
+        textColorIt = 'text-gray-900';
+        textColorPencils = 'text-white';
+    } else if (variant === 'outline-white') {
+        boxColor = 'bg-transparent';
+        textColorIt = 'text-white';
+        textColorPencils = 'text-white';
+        borderClass = 'border-2 border-white';
+    }
 
     let textSize = 'text-xl';
     let padding = 'px-2 py-0.5';
@@ -38,7 +59,7 @@ export const Logo: React.FC<LogoProps> = ({ className = "", variant = 'dark', si
 
     return (
         <div className={`flex items-center ${className}`}>
-            <div className={`flex items-center justify-center ${boxColor} rounded-lg ${padding} mr-2`}>
+            <div className={`flex items-center justify-center ${boxColor} ${borderClass} rounded-lg ${padding} mr-2`}>
                 <span className={`font-bold ${textSize} ${textColorIt} leading-none`}>It</span>
             </div>
             <span className={`font-bold ${textSize} ${textColorPencils} leading-none`}>Pencils</span>

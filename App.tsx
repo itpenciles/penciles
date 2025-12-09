@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import { PropertyProvider } from './contexts/PropertyContext';
 import { Bars3Icon } from './constants';
+import { Logo } from './components/common/Logo';
 
 // Layouts
 import Sidebar from './components/Sidebar';
@@ -85,7 +86,7 @@ const MainLayout = () => {
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
-            <span className="text-lg font-bold">It Pencils</span>
+            <Logo variant="outline-white" size="lg" />
           </div>
           {/* Optional: Add profile or notification icon here if needed */}
         </header>
