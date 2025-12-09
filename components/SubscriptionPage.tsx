@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckIcon, BuildingOfficeIcon } from '../constants';
+import { CheckIcon } from '../constants';
 import Loader from './Loader';
 import apiClient from '../services/apiClient';
 import { Plan } from '../types';
+import { Logo } from './common/Logo';
 
 interface PlanCardProps {
     plan: Plan;
@@ -78,10 +79,9 @@ const SubscriptionPage = () => {
 
     return (
         <div className="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-4">
-             <div className="text-center max-w-screen-2xl w-full">
+            <div className="text-center max-w-screen-2xl w-full">
                 <div className="flex justify-center items-center mb-4 mt-8">
-                    <BuildingOfficeIcon className="h-10 w-10 text-brand-blue" />
-                    <h1 className="ml-3 text-3xl font-bold text-gray-800">Welcome to It Pencils</h1>
+                    <Logo size="xl" />
                 </div>
 
                 <h2 className="text-4xl font-extrabold text-brand-gray-900">Choose Your Plan</h2>
@@ -97,7 +97,7 @@ const SubscriptionPage = () => {
                             {monthlyPlans.map(plan => <PlanCard key={plan.key} plan={plan} isLoading={isLoading} onSelect={handleSelectPlan} />)}
                         </div>
                         {paygPlans.length > 0 && (
-                             <div className="max-w-5xl mx-auto text-left">
+                            <div className="max-w-5xl mx-auto text-left">
                                 <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Pay As You Go</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-3 justify-center gap-8 items-stretch">
                                     <div className="md:col-start-2">
@@ -108,7 +108,7 @@ const SubscriptionPage = () => {
                         )}
                     </>
                 )}
-             </div>
+            </div>
         </div>
     );
 };

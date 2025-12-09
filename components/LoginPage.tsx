@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { BuildingOfficeIcon, ExclamationTriangleIcon } from '../constants';
+import { ExclamationTriangleIcon } from '../constants';
+import { Logo } from './common/Logo';
 
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -11,7 +12,7 @@ const DatabaseMismatchErrorDisplay: React.FC<{ details: { host: string; database
         <p className="mt-1">
             Your login failed because the application is connected to a database with an outdated table structure. This is the final step to fix it!
         </p>
-        
+
         <div className="mt-3 pt-3 border-t border-yellow-200">
             <p className="font-bold text-xs">The application server reports it is connected to:</p>
             <div className="mt-1 font-mono bg-yellow-100 text-yellow-900 p-2 rounded text-xs">
@@ -41,7 +42,7 @@ const DatabaseErrorDisplay = () => (
         <p className="mt-1">
             The login is failing because the server is connected to a database where the `users` table has the wrong structure. Let's verify exactly what the server sees.
         </p>
-        
+
         <div className="mt-3 pt-3 border-t border-yellow-200">
             <h4 className="font-bold">The Definitive Database Check:</h4>
             <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
@@ -49,7 +50,7 @@ const DatabaseErrorDisplay = () => (
                     Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
                 </li>
                 <li>
-                    Look for a message block at the top of your logs that starts with:<br/>
+                    Look for a message block at the top of your logs that starts with:<br />
                     <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">--- [DB Inspector] ---</code>
                 </li>
                 <li>
@@ -59,7 +60,7 @@ const DatabaseErrorDisplay = () => (
                     <strong>Check if `google_id (character varying)` is in that list.</strong>
                 </li>
                 <li>
-                    <strong>If `google_id` is MISSING from the log:</strong> This is definitive proof your application is connected to a database with an outdated schema. 
+                    <strong>If `google_id` is MISSING from the log:</strong> This is definitive proof your application is connected to a database with an outdated schema.
                     You must run the `ALTER TABLE` commands from the `README.md` file on the correct database instance that your `DATABASE_URL` is pointing to.
                 </li>
                 <li>
@@ -97,7 +98,7 @@ const LoginPage: React.FC = () => {
                         callback: handleGoogleLogin,
                         use_fedcm_for_prompt: true,
                     });
-    
+
                     if (googleButtonRef.current && googleButtonRef.current.childElementCount === 0) {
                         window.google.accounts.id.renderButton(
                             googleButtonRef.current,
@@ -135,7 +136,7 @@ const LoginPage: React.FC = () => {
         return () => clearInterval(intervalId);
 
     }, [isAuthEnabled, isLoading, user, handleGoogleLogin]);
-    
+
     const finalError = authError?.response?.data?.message || authError?.message || gsiError;
     const errorType = authError?.response?.data?.type;
     const errorDetails = authError?.response?.data?.details;
@@ -147,7 +148,7 @@ const LoginPage: React.FC = () => {
             <p className="mt-1">
                 The server is rejecting the login. This almost always means the server is using a different (likely outdated) Client ID than the one on this page, even if you've updated it in Render.
             </p>
-            
+
             <div className="mt-3 pt-3 border-t border-yellow-200">
                 <h4 className="font-bold">Final Debugging Checklist:</h4>
                 <ol className="list-decimal list-inside text-xs mt-2 space-y-2">
@@ -155,11 +156,11 @@ const LoginPage: React.FC = () => {
                         Go to your service on your <strong>Render Dashboard</strong> and click the <strong>"Logs"</strong> tab.
                     </li>
                     <li>
-                        Look for a message block at the top of your logs that says:<br/>
+                        Look for a message block at the top of your logs that says:<br />
                         <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">--- SERVER STARTUP ---</code>
                     </li>
                     <li>
-                        Inside that block, find the line:<br/>
+                        Inside that block, find the line:<br />
                         <code className="bg-yellow-100 text-yellow-900 p-1 rounded text-[10px]">Server will use Client ID ending in: ...xxxxxxxxxxxxxxx</code>
                     </li>
                     <li>
@@ -182,8 +183,7 @@ const LoginPage: React.FC = () => {
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
             <div className="max-w-md w-full mx-auto">
                 <div className="flex justify-center items-center mb-6">
-                    <BuildingOfficeIcon className="h-10 w-10 text-brand-blue" />
-                    <h1 className="ml-3 text-3xl font-bold text-gray-800">It Pencils</h1>
+                    <Logo size="xl" />
                 </div>
                 <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
                     <div className="text-center">
@@ -212,16 +212,16 @@ const LoginPage: React.FC = () => {
                                 </div>
                             </div>
                         )}
-                        
+
                         {isLoading ? (
                             <div className="flex items-center justify-center py-3 text-gray-600">
                                 <div className="w-5 h-5 border-2 border-gray-300 border-t-brand-blue rounded-full animate-spin mr-2"></div>
                                 <span>Loading Login...</span>
                             </div>
                         ) : (
-                             <div ref={googleButtonRef} className="flex justify-center"></div>
+                            <div ref={googleButtonRef} className="flex justify-center"></div>
                         )}
-                       
+
                     </div>
 
                     <div className="mt-6">

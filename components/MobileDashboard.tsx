@@ -2,6 +2,7 @@ import React from 'react';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowTrendingUpIcon, BanknotesIcon } from '../constants';
+import { Logo } from './common/Logo';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const MobileDashboard = () => {

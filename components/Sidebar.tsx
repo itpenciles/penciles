@@ -1,10 +1,11 @@
 
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { BuildingOfficeIcon, ArrowRightOnRectangleIcon, ChartBarIcon, LockClosedIcon } from '../constants';
+import { ArrowRightOnRectangleIcon, ChartBarIcon, LockClosedIcon } from '../constants';
 import { SIDEBAR_LINKS } from '../constants';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
+import { Logo } from './common/Logo';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -117,8 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       `}>
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
           <div className="flex items-center">
-            <BuildingOfficeIcon className="h-8 w-8 text-brand-blue" />
-            <span className="ml-2 text-xl font-bold text-gray-800">It Pencils</span>
+            <Logo />
           </div>
           {/* Mobile Close Button */}
           <button onClick={onClose} className="md:hidden text-gray-500 hover:text-gray-700">
