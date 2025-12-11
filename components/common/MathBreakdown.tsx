@@ -6,61 +6,60 @@ interface MathItemProps {
     calculation: string;
     result: string | number;
     description?: string;
-    resultColor?: string;
+    variant?: 'green' | 'red' | 'blue' | 'gray';
 }
 
-const MathItem: React.FC<MathItemProps> = ({ label, formula, calculation, result, description, resultColor }) => {
+const MathItem: React.FC<MathItemProps> = ({ label, formula, calculation, result, description, variant = 'gray' }) => {
     const [isOpen, setIsOpen] = useState(false);
 
-    // Determine color: use explicit prop if available, otherwise default to green for strings or red/green for numbers
-    const colorClass = resultColor
-        ? resultColor
-        : (typeof result === 'number' && result < 0 ? 'text-red-600' : 'text-green-700');
+    const colorClasses = {
+        green: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+        red: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+        blue: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+        gray: { bg: 'bg-white', text: 'text-gray-800', border: 'border-gray-200' }
+    };
+
+    const c = colorClasses[variant] || colorClasses.gray;
 
     return (
-        <div className="border border-gray-200 rounded-lg p-3 bg-white hover:shadow-sm transition-shadow">
+        <div className={`border rounded-lg p-4 ${c.bg} ${c.border} hover:shadow-sm transition-shadow`}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full flex justify-between items-center text-left"
             >
                 <div>
-                    <h4 className="font-semibold text-gray-800 text-sm whitespace-pre-line">{label}</h4>
-                    <p className={`text-lg font-bold ${colorClass}`}>
+                    <h4 className="text-sm text-gray-500 whitespace-pre-line mb-1">{label}</h4>
+                    <p className={`text-2xl font-bold ${c.text}`}>
                         {result}
                     </p>
                 </div>
-                <div className="text-gray-400">
-                    {isOpen ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                        </svg>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                        </svg>
-                    )}
-                </div>
+                {isOpen ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                    </svg>
+                ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                )}
             </button>
 
             {isOpen && (
-                <div className="mt-3 pt-3 border-t border-gray-100 text-sm space-y-2">
+                <div className="mt-4 pt-4 border-t border-gray-200/60 space-y-3">
                     {description && (
-                        <p className="text-gray-500 italic text-xs mb-2">{description}</p>
+                        <p className="text-sm text-gray-600 italic">{description}</p>
                     )}
 
-                    {formula && (
-                        <div>
-                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Formula</span>
-                            <div className="font-mono text-gray-700 bg-gray-50 p-1.5 rounded mt-0.5 text-xs overflow-x-auto">
-                                {formula}
+                    <div className="bg-white/50 p-3 rounded text-sm font-mono text-gray-700">
+                        {formula && (
+                            <div className="flex justify-between mb-1">
+                                <span className="text-gray-500">Formula:</span>
+                                <span>{formula}</span>
                             </div>
-                        </div>
-                    )}
-
-                    <div>
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Math</span>
-                        <div className="font-mono text-gray-700 bg-gray-50 p-1.5 rounded mt-0.5 text-xs overflow-x-auto">
-                            {calculation} = <span className="font-bold">{result}</span>
+                        )}
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">Calc:</span>
+                            <span>{calculation} = <span className="font-bold">{result}</span></span>
                         </div>
                     </div>
                 </div>

@@ -905,14 +905,14 @@ const MetricsTab = ({ property }: { property: Property }) => {
         financials.purchasePrice
     );
 
-    const breakdownItems = [
+    const breakdownItems: any[] = [
         {
             label: "Monthly Cash Flow (No Debt)\nGross Profit (NOI)",
             formula: "Effective Income - Operating Expenses",
             calculation: `$${Math.round(grossMonthlyIncome).toLocaleString()} - $${Math.round(operatingExpensesMonthly).toLocaleString()}`,
             result: formatCurrency(calcs.netOperatingIncome),
             description: "Net Operating Income (Monthly)",
-            resultColor: 'text-green-600', // Usually positive or neutral
+            variant: 'green',
             isPercent: false
         },
         {
@@ -921,17 +921,8 @@ const MetricsTab = ({ property }: { property: Property }) => {
             calculation: `$${Math.round(calcs.netOperatingIncome).toLocaleString()} - $${Math.round(monthlyDebtService).toLocaleString()}`,
             result: formatCurrency(calcs.monthlyCashFlowWithDebt),
             description: "Monthly Cash Flow after all expenses and loans",
-            resultColor: calcs.monthlyCashFlowWithDebt > 0 ? 'text-green-600' : 'text-red-600',
+            variant: calcs.monthlyCashFlowWithDebt > 0 ? 'green' : 'red',
             isPercent: false
-        },
-        {
-            label: "Operating Expense Ratio",
-            formula: "(OpEx / Gross Income) * 100",
-            calculation: `($${Math.round(operatingExpensesAnnual).toLocaleString()} / $${Math.round(grossAnnualIncome).toLocaleString()}) * 100`,
-            result: `${oer.toFixed(1)}%`,
-            description: "Percentage of income spent on operating the property",
-            resultColor: 'text-gray-800', // Informational
-            isPercent: true
         },
         {
             label: "Cash on Cash Return\nROI",
@@ -939,7 +930,16 @@ const MetricsTab = ({ property }: { property: Property }) => {
             calculation: `($${Math.round(cashFlowAnnual).toLocaleString()} / $${Math.round(calcs.totalCashToClose).toLocaleString()}) * 100`,
             result: `${cocRoi.toFixed(1)}%`,
             description: "First year return on your cash investment",
-            resultColor: calcs.cashOnCashReturn >= 8 ? 'text-green-600' : 'text-red-600',
+            variant: calcs.cashOnCashReturn >= 8 ? 'green' : 'red',
+            isPercent: true
+        },
+        {
+            label: "Operating Expense Ratio",
+            formula: "(OpEx / Gross Income) * 100",
+            calculation: `($${Math.round(operatingExpensesAnnual).toLocaleString()} / $${Math.round(grossAnnualIncome).toLocaleString()}) * 100`,
+            result: `${oer.toFixed(1)}%`,
+            description: "Percentage of income spent on operating the property",
+            variant: 'gray',
             isPercent: true
         },
         {
@@ -948,7 +948,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
             calculation: `Based on 3% appreciation & sale at Year 5`,
             result: `${irrResult.irr.toFixed(1)}%`,
             description: "Total annual return including cash flow + equity growth",
-            resultColor: irrResult.irr >= 10 ? 'text-green-600' : 'text-gray-800',
+            variant: irrResult.irr >= 10 ? 'green' : 'gray',
             isPercent: true
         }
     ];
