@@ -1093,13 +1093,14 @@ const WholesaleMetricsTab = ({ property }: { property: Property }) => {
 
     const grossOfferPrice = inputs.arv * (inputs.maoPercentOfArv / 100);
 
-    const mathItems = [
+    const mathItems: any[] = [
         {
             label: "Gross Profit (Spread)",
             formula: "MAO - Seller Ask",
             calculation: `$${Math.round(calcs.mao).toLocaleString()} - $${Math.round(inputs.sellerAsk).toLocaleString()}`,
             result: formatCurrency(calcs.potentialFees),
             description: "Your potential assignment fee",
+            variant: calcs.potentialFees > 0 ? 'green' : 'red',
             isPercent: false
         },
         {
@@ -1108,6 +1109,7 @@ const WholesaleMetricsTab = ({ property }: { property: Property }) => {
             calculation: `$${Math.round(calcs.potentialFees).toLocaleString()}`,
             result: formatCurrency(calcs.potentialFees),
             description: "Net profit if deal closes as planned",
+            variant: calcs.potentialFees > 0 ? 'green' : 'red',
             isPercent: false
         },
         {
@@ -1116,12 +1118,15 @@ const WholesaleMetricsTab = ({ property }: { property: Property }) => {
             calculation: "Infinite (if $0 down)",
             result: "Infinite%",
             description: "Wholesaling typically requires little to no capital",
+            variant: 'green',
             isPercent: true
         }
     ];
 
     return (
         <div className="space-y-6">
+            <MathBreakdown items={mathItems} title="Wholesale Math Breakdown" />
+
             <div className="p-4 border rounded-lg bg-gray-50/50">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">MAO Calculation Breakdown</h3>
                 <div className="space-y-2 text-sm">
@@ -1146,7 +1151,7 @@ const WholesaleMetricsTab = ({ property }: { property: Property }) => {
                 </div>
             </div>
 
-            <MathBreakdown items={mathItems} title="Wholesale Math Breakdown" />
+
 
             <div className="screen-only">
                 <ExitStrategyGuide title="Wholesale Exit Options" strategies={WHOLESALE_EXIT_STRATEGIES} />
