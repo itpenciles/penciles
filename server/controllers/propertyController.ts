@@ -1,5 +1,6 @@
 
 import { query } from '../db.js';
+import crypto from 'crypto';
 import { Property } from '../../types';
 import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
 
