@@ -1245,6 +1245,7 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
 
     return (
         <div className="space-y-6">
+            <MathBreakdown items={mathItems} title="Subject-To Math Breakdown" />
 
             <div className="p-4 border rounded-lg bg-gray-50/50">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Entry Fee Breakdown</h3>
@@ -1281,7 +1282,7 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
                 </div>
             </div>
 
-            <MathBreakdown items={mathItems} title="Subject-To Math Breakdown" />
+
 
             {inputs.exitPlanType === 'Flip' && (
                 <div className="p-4 border rounded-lg bg-blue-50/50">
