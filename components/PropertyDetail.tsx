@@ -907,7 +907,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
 
     const breakdownItems = [
         {
-            label: "Gross Profit (NOI)",
+            label: "Monthly Cash Flow (No Debt) / Gross Profit (NOI)",
             formula: "Effective Income - Operating Expenses",
             calculation: `$${Math.round(grossMonthlyIncome).toLocaleString()} - $${Math.round(operatingExpensesMonthly).toLocaleString()}`,
             result: formatCurrency(calcs.netOperatingIncome),
@@ -915,7 +915,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
             isPercent: false
         },
         {
-            label: "Net Profit (Cash Flow)",
+            label: "Cash Flow (With Debt) / Net Profit",
             formula: "NOI - Debt Service",
             calculation: `$${Math.round(calcs.netOperatingIncome).toLocaleString()} - $${Math.round(monthlyDebtService).toLocaleString()}`,
             result: formatCurrency(calcs.monthlyCashFlowWithDebt),
@@ -931,7 +931,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
             isPercent: true
         },
         {
-            label: "ROI (Cash-on-Cash)",
+            label: "Cash on Cash Return / ROI",
             formula: "(Annual Cash Flow / Total Cash Invested) * 100",
             calculation: `($${Math.round(cashFlowAnnual).toLocaleString()} / $${Math.round(calcs.totalCashToClose).toLocaleString()}) * 100`,
             result: `${cocRoi.toFixed(1)}%`,
