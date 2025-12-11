@@ -17,8 +17,12 @@ import attomRoutes from './routes/attomRoutes.js';
 // Load environment variables
 dotenv.config();
 
+import { runAutoMigration } from './utils/automigrate.js';
+
 // --- STARTUP DIAGNOSTICS ---
 console.log('--- SERVER STARTUP ---');
+await runAutoMigration(); // Ensure DB schema is up to date
+
 const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
 if (clientId && clientId !== 'undefined' && !clientId.includes('YOUR_GOOGLE_CLIENT_ID_HERE')) {
     console.log(`✅ VITE_GOOGLE_CLIENT_ID loaded successfully.`);
