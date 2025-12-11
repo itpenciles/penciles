@@ -217,7 +217,7 @@ const PropertyDetail = () => {
         if (!editedProperty?.id) return;
         try {
             const res = await apiClient.post(`/properties/${editedProperty.id}/share`, {});
-            const { shareToken } = res.data;
+            const { shareToken } = res;
             const shareUrl = `${window.location.origin}/#/share/${shareToken}`;
 
             await navigator.clipboard.writeText(shareUrl);
