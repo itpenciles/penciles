@@ -906,8 +906,9 @@ const MetricsTab = ({ property }: { property: Property }) => {
     );
 
     const breakdownItems = [
+    const breakdownItems = [
         {
-            label: "Monthly Cash Flow (No Debt) / Gross Profit (NOI)",
+            label: "Monthly Cash Flow (No Debt)\nGross Profit (NOI)",
             formula: "Effective Income - Operating Expenses",
             calculation: `$${Math.round(grossMonthlyIncome).toLocaleString()} - $${Math.round(operatingExpensesMonthly).toLocaleString()}`,
             result: formatCurrency(calcs.netOperatingIncome),
@@ -915,7 +916,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
             isPercent: false
         },
         {
-            label: "Cash Flow (With Debt) / Net Profit",
+            label: "Cash Flow (With Debt)\nNet Profit",
             formula: "NOI - Debt Service",
             calculation: `$${Math.round(calcs.netOperatingIncome).toLocaleString()} - $${Math.round(monthlyDebtService).toLocaleString()}`,
             result: formatCurrency(calcs.monthlyCashFlowWithDebt),
@@ -931,7 +932,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
             isPercent: true
         },
         {
-            label: "Cash on Cash Return / ROI",
+            label: "Cash on Cash Return\nROI",
             formula: "(Annual Cash Flow / Total Cash Invested) * 100",
             calculation: `($${Math.round(cashFlowAnnual).toLocaleString()} / $${Math.round(calcs.totalCashToClose).toLocaleString()}) * 100`,
             result: `${cocRoi.toFixed(1)}%`,
@@ -957,28 +958,10 @@ const MetricsTab = ({ property }: { property: Property }) => {
                 <MetricBox label="Cap Rate" value={`${calcs.capRate.toFixed(1)}%`} description="Annual return on purchase price" color="green" />
                 <MetricBox label="All-in Cap Rate" value={`${calcs.allInCapRate.toFixed(1)}%`} description="Annual return including rehab costs" color="green" />
                 <MetricBox
-                    label="Cash-on-Cash Return"
-                    value={`${calcs.cashOnCashReturn.toFixed(1)}%`}
-                    description="Return on total cash invested (incl. rehab)"
-                    color={calcs.cashOnCashReturn >= 8 ? 'green' : 'red'}
-                />
-                <MetricBox
-                    label="Cash Flow (With Debt)"
-                    value={formatCurrency(calcs.monthlyCashFlowWithDebt)}
-                    description="Net monthly cash after debt service"
-                    color={calcs.monthlyCashFlowWithDebt > 0 ? 'green' : 'red'}
-                />
-                <MetricBox
                     label="DSCR"
                     value={dscrValue}
                     description="Debt Service Coverage Ratio"
                     color={dscrColor}
-                />
-                <MetricBox
-                    label="Monthly Cash Flow (No Debt)"
-                    value={formatCurrency(calcs.monthlyCashFlowNoDebt)}
-                    description="Net monthly income before debt"
-                    color="green"
                 />
             </div>
 

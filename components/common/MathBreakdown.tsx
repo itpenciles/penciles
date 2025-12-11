@@ -18,7 +18,7 @@ const MathItem: React.FC<MathItemProps> = ({ label, formula, calculation, result
                 className="w-full flex justify-between items-center text-left"
             >
                 <div>
-                    <h4 className="font-semibold text-gray-800 text-sm">{label}</h4>
+                    <h4 className="font-semibold text-gray-800 text-sm whitespace-pre-line">{label}</h4>
                     <p className={`text-lg font-bold ${typeof result === 'number' && result < 0 ? 'text-red-600' : 'text-green-700'}`}>
                         {result}
                     </p>
