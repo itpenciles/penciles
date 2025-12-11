@@ -1197,6 +1197,15 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
 
     const mathItems: any[] = [
         {
+            label: "Entry Fee\nTotal To Close",
+            formula: "Sum of Entry Costs",
+            calculation: "Reinstatement + Seller Cash + Closing Costs + Fees",
+            result: formatCurrency(calcs.totalEntryFee),
+            description: "Total cash required to close",
+            variant: 'blue',
+            isPercent: false
+        },
+        {
             label: "Monthly Cash Flow (No Debt)\nGross Profit (NOI)",
             formula: "Effective Income - Operating Expenses",
             calculation: `$${Math.round(calcs.effectiveIncome).toLocaleString()} - $${Math.round(calcs.totalExpenses).toLocaleString()}`,
