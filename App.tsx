@@ -117,8 +117,9 @@ const App: React.FC = () => {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/share/:token" element={<PublicPropertyPage />} />
+
             </Route>
+            <Route path="/share/:token" element={<PublicPropertyPage />} />
 
             {/* Protected app routes */}
             <Route element={<ProtectedRoute />}>
