@@ -1195,22 +1195,33 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
     // We will use the calculateIRR based on entry fee.
     const irrResult = calculateIRR(calcs.totalInvestment, calcs.monthlyCashFlow * 12, inputs.arv || inputs.asIsValue || 0);
 
-    const mathItems = [
+    const mathItems: any[] = [
         {
             label: "Gross Profit (NOI)",
             formula: "Effective Income - Operating Expenses",
             calculation: `$${Math.round(calcs.effectiveIncome).toLocaleString()} - $${Math.round(calcs.totalExpenses).toLocaleString()}`,
             result: formatCurrency(calcs.netOperatingIncome),
             description: "Net Operating Income (Monthly)",
+            variant: 'green',
             isPercent: false
         },
         {
-            label: "Net Profit (Cash Flow)",
+            label: "Net Profit\nMonthly Cash Flow",
             formula: "NOI - Total Debt Service",
             calculation: `$${Math.round(calcs.netOperatingIncome).toLocaleString()} - $${Math.round(calcs.totalDebtService).toLocaleString()}`,
             result: formatCurrency(calcs.monthlyCashFlow),
             description: "Monthly Cash Flow",
+            variant: calcs.monthlyCashFlow > 0 ? 'green' : 'red',
             isPercent: false
+        },
+        {
+            label: "CoC Return\nROI",
+            formula: "(Annual Cash Flow / Total Invested) * 100",
+            calculation: `($${Math.round(calcs.monthlyCashFlow * 12).toLocaleString()} / $${Math.round(calcs.totalInvestment).toLocaleString()}) * 100`,
+            result: `${calcs.cashOnCashReturn.toFixed(1)}%`,
+            description: "Return on cash invested",
+            variant: calcs.cashOnCashReturn > 8 ? 'green' : 'red',
+            isPercent: true
         },
         {
             label: "Operating Expense Ratio",
@@ -1218,14 +1229,7 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
             calculation: `($${Math.round(calcs.totalExpenses).toLocaleString()} / $${Math.round(calcs.grossIncome).toLocaleString()}) * 100`,
             result: `${operatingExpenseRatio.toFixed(1)}%`,
             description: "Ratio of expenses to income",
-            isPercent: true
-        },
-        {
-            label: "ROI (Cash-on-Cash)",
-            formula: "(Annual Cash Flow / Total Invested) * 100",
-            calculation: `($${Math.round(calcs.monthlyCashFlow * 12).toLocaleString()} / $${Math.round(calcs.totalInvestment).toLocaleString()}) * 100`,
-            result: `${calcs.cashOnCashReturn.toFixed(1)}%`,
-            description: "Return on cash invested",
+            variant: 'gray',
             isPercent: true
         },
         {
@@ -1234,17 +1238,13 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
             calculation: "Based on 3% growth",
             result: irrResult.irr === Infinity ? "Infinite" : `${irrResult.irr.toFixed(1)}%`,
             description: "Total return over 5 years",
+            variant: typeof irrResult.irr === 'number' && irrResult.irr >= 10 ? 'green' : 'gray',
             isPercent: true
         }
     ];
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <MetricBox label="Total Entry Fee" value={formatCurrency(calcs.totalEntryFee)} description="Cash needed to close" color="blue" />
-                <MetricBox label="Monthly Cash Flow" value={formatCurrency(calcs.monthlyCashFlow)} description="Net after all expenses & debt" color={calcs.monthlyCashFlow > 0 ? 'green' : 'red'} />
-                <MetricBox label="CoC Return" value={`${calcs.cashOnCashReturn.toFixed(1)}%`} description="Annualized return on investment" color={calcs.cashOnCashReturn > 8 ? 'green' : 'red'} />
-            </div>
 
             <div className="p-4 border rounded-lg bg-gray-50/50">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Entry Fee Breakdown</h3>
