@@ -906,13 +906,13 @@ const MetricsTab = ({ property }: { property: Property }) => {
     );
 
     const breakdownItems = [
-    const breakdownItems = [
         {
             label: "Monthly Cash Flow (No Debt)\nGross Profit (NOI)",
             formula: "Effective Income - Operating Expenses",
             calculation: `$${Math.round(grossMonthlyIncome).toLocaleString()} - $${Math.round(operatingExpensesMonthly).toLocaleString()}`,
             result: formatCurrency(calcs.netOperatingIncome),
             description: "Net Operating Income (Monthly)",
+            resultColor: 'text-green-600', // Usually positive or neutral
             isPercent: false
         },
         {
@@ -921,6 +921,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
             calculation: `$${Math.round(calcs.netOperatingIncome).toLocaleString()} - $${Math.round(monthlyDebtService).toLocaleString()}`,
             result: formatCurrency(calcs.monthlyCashFlowWithDebt),
             description: "Monthly Cash Flow after all expenses and loans",
+            resultColor: calcs.monthlyCashFlowWithDebt > 0 ? 'text-green-600' : 'text-red-600',
             isPercent: false
         },
         {
@@ -929,6 +930,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
             calculation: `($${Math.round(operatingExpensesAnnual).toLocaleString()} / $${Math.round(grossAnnualIncome).toLocaleString()}) * 100`,
             result: `${oer.toFixed(1)}%`,
             description: "Percentage of income spent on operating the property",
+            resultColor: 'text-gray-800', // Informational
             isPercent: true
         },
         {
@@ -937,6 +939,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
             calculation: `($${Math.round(cashFlowAnnual).toLocaleString()} / $${Math.round(calcs.totalCashToClose).toLocaleString()}) * 100`,
             result: `${cocRoi.toFixed(1)}%`,
             description: "First year return on your cash investment",
+            resultColor: calcs.cashOnCashReturn >= 8 ? 'text-green-600' : 'text-red-600',
             isPercent: true
         },
         {
@@ -945,6 +948,7 @@ const MetricsTab = ({ property }: { property: Property }) => {
             calculation: `Based on 3% appreciation & sale at Year 5`,
             result: `${irrResult.irr.toFixed(1)}%`,
             description: "Total annual return including cash flow + equity growth",
+            resultColor: irrResult.irr >= 10 ? 'text-green-600' : 'text-gray-800',
             isPercent: true
         }
     ];

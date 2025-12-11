@@ -6,10 +6,16 @@ interface MathItemProps {
     calculation: string;
     result: string | number;
     description?: string;
+    resultColor?: string;
 }
 
-const MathItem: React.FC<MathItemProps> = ({ label, formula, calculation, result, description }) => {
+const MathItem: React.FC<MathItemProps> = ({ label, formula, calculation, result, description, resultColor }) => {
     const [isOpen, setIsOpen] = useState(false);
+
+    // Determine color: use explicit prop if available, otherwise default to green for strings or red/green for numbers
+    const colorClass = resultColor
+        ? resultColor
+        : (typeof result === 'number' && result < 0 ? 'text-red-600' : 'text-green-700');
 
     return (
         <div className="border border-gray-200 rounded-lg p-3 bg-white hover:shadow-sm transition-shadow">
@@ -19,7 +25,7 @@ const MathItem: React.FC<MathItemProps> = ({ label, formula, calculation, result
             >
                 <div>
                     <h4 className="font-semibold text-gray-800 text-sm whitespace-pre-line">{label}</h4>
-                    <p className={`text-lg font-bold ${typeof result === 'number' && result < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                    <p className={`text-lg font-bold ${colorClass}`}>
                         {result}
                     </p>
                 </div>
