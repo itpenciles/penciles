@@ -195,7 +195,7 @@ const PublicPropertyPage = () => {
                 // Remove /api prefix if using a proxy, or keep it if base URL is relative.
                 // Assuming apiClient handles base URL, but for public route we might want direct fetch or generic client.
                 // Let's use fetch to be safe/simple for public routes, or axios.
-                const response = await axios.get(`http://localhost:3001/api/properties/public/${token}`);
+                const response = await axios.get(`/api/properties/public/${token}`);
                 // NOTE: Hardcoding localhost for dev, in prod this should be relative or env var. 
                 // I will use relative path '/api/properties/public/${token}' assuming deployed on same origin.
                 // Actually, let's try relative path.
