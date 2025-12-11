@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
 import { Property, Strategy, AttomFilters } from '../types';
-import { calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics, calculateBrrrrMetrics } from '../contexts/PropertyContext';
+import { calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics, calculateBrrrrMetrics, calculateIRR } from '../contexts/PropertyContext';
+import { MathBreakdown } from './common/MathBreakdown';
 import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
 import apiClient from '../services/apiClient';
 import { AdjustTab } from './AdjustTab';
@@ -865,39 +866,123 @@ const MetricBox = ({ label, value, description, color }: { label: string, value:
 
 const MetricsTab = ({ property }: { property: Property }) => {
     const calcs = property.calculations;
+    const financials = property.financials;
     const { monthlyDebtService, dscr } = calcs;
+
+    // --- Math Calculation Prep ---
+    const grossAnnualIncome = calcs.effectiveGrossIncome;
+    const grossMonthlyIncome = grossAnnualIncome / 12;
+
+    const operatingExpensesAnnual = calcs.totalOperatingExpenses * 12;
+    const operatingExpensesMonthly = calcs.totalOperatingExpenses;
+
+    const annualDebtService = monthlyDebtService * 12;
+
+    // 1. Gross Profit (NOI)
+    // Formula: Effective Gross Income - Operating Expenses
+    const noiAnnual = calcs.netOperatingIncome * 12;
+
+    // 2. Net Profit (Cash Flow)
+    // Formula: NOI - Debt Service
+    const cashFlowAnnual = noiAnnual - annualDebtService;
+
+    // 3. Operating Expense Ratio (OER)
+    // Formula: (Total Expenses / Effective Gross Income) * 100
+    const oer = grossAnnualIncome > 0 ? (operatingExpensesAnnual / grossAnnualIncome) * 100 : 0;
+
+    // 4. ROI (Cash on Cash for Year 1)
+    // Formula: (Annual Cash Flow / Total Cash Invested) * 100
+    const cocRoi = calcs.cashOnCashReturn;
+
+    // 5. IRR (Projected 5-Year)
+    // Using the helper we defined in calculations.ts (need to ensure it's imported or available via context logic if strictly separated, 
+    // but since we imported calculateIRR from context/utils, we can use it here if we had the raw investment numbers.
+    // However, calculateIRR is a pure function. Let's use it.)
+
+    const irrResult = calculateIRR(
+        calcs.totalCashToClose,
+        cashFlowAnnual,
+        financials.purchasePrice
+    );
+
+    const breakdownItems = [
+        {
+            label: "Gross Profit (NOI)",
+            formula: "Effective Income - Operating Expenses",
+            calculation: `$${Math.round(grossMonthlyIncome).toLocaleString()} - $${Math.round(operatingExpensesMonthly).toLocaleString()}`,
+            result: formatCurrency(calcs.netOperatingIncome),
+            description: "Net Operating Income (Monthly)",
+            isPercent: false
+        },
+        {
+            label: "Net Profit (Cash Flow)",
+            formula: "NOI - Debt Service",
+            calculation: `$${Math.round(calcs.netOperatingIncome).toLocaleString()} - $${Math.round(monthlyDebtService).toLocaleString()}`,
+            result: formatCurrency(calcs.monthlyCashFlowWithDebt),
+            description: "Monthly Cash Flow after all expenses and loans",
+            isPercent: false
+        },
+        {
+            label: "Operating Expense Ratio",
+            formula: "(OpEx / Gross Income) * 100",
+            calculation: `($${Math.round(operatingExpensesAnnual).toLocaleString()} / $${Math.round(grossAnnualIncome).toLocaleString()}) * 100`,
+            result: `${oer.toFixed(1)}%`,
+            description: "Percentage of income spent on operating the property",
+            isPercent: true
+        },
+        {
+            label: "ROI (Cash-on-Cash)",
+            formula: "(Annual Cash Flow / Total Cash Invested) * 100",
+            calculation: `($${Math.round(cashFlowAnnual).toLocaleString()} / $${Math.round(calcs.totalCashToClose).toLocaleString()}) * 100`,
+            result: `${cocRoi.toFixed(1)}%`,
+            description: "First year return on your cash investment",
+            isPercent: true
+        },
+        {
+            label: "IRR (5-Year Projection)",
+            formula: "Internal Rate of Return (5yr Hold)",
+            calculation: `Based on 3% appreciation & sale at Year 5`,
+            result: `${irrResult.irr.toFixed(1)}%`,
+            description: "Total annual return including cash flow + equity growth",
+            isPercent: true
+        }
+    ];
 
     const dscrValue = monthlyDebtService > 0 ? dscr.toFixed(2) : 'N/A';
     const dscrColor = monthlyDebtService === 0 || dscr >= 1.2 ? 'green' : 'red';
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MetricBox label="Cap Rate" value={`${calcs.capRate.toFixed(1)}%`} description="Annual return on purchase price" color="green" />
-            <MetricBox label="All-in Cap Rate" value={`${calcs.allInCapRate.toFixed(1)}%`} description="Annual return including rehab costs" color="green" />
-            <MetricBox
-                label="Cash-on-Cash Return"
-                value={`${calcs.cashOnCashReturn.toFixed(1)}%`}
-                description="Return on total cash invested (incl. rehab)"
-                color={calcs.cashOnCashReturn >= 8 ? 'green' : 'red'}
-            />
-            <MetricBox
-                label="Cash Flow (With Debt)"
-                value={formatCurrency(calcs.monthlyCashFlowWithDebt)}
-                description="Net monthly cash after debt service"
-                color={calcs.monthlyCashFlowWithDebt > 0 ? 'green' : 'red'}
-            />
-            <MetricBox
-                label="DSCR"
-                value={dscrValue}
-                description="Debt Service Coverage Ratio"
-                color={dscrColor}
-            />
-            <MetricBox
-                label="Monthly Cash Flow (No Debt)"
-                value={formatCurrency(calcs.monthlyCashFlowNoDebt)}
-                description="Net monthly income before debt"
-                color="green"
-            />
+        <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MetricBox label="Cap Rate" value={`${calcs.capRate.toFixed(1)}%`} description="Annual return on purchase price" color="green" />
+                <MetricBox label="All-in Cap Rate" value={`${calcs.allInCapRate.toFixed(1)}%`} description="Annual return including rehab costs" color="green" />
+                <MetricBox
+                    label="Cash-on-Cash Return"
+                    value={`${calcs.cashOnCashReturn.toFixed(1)}%`}
+                    description="Return on total cash invested (incl. rehab)"
+                    color={calcs.cashOnCashReturn >= 8 ? 'green' : 'red'}
+                />
+                <MetricBox
+                    label="Cash Flow (With Debt)"
+                    value={formatCurrency(calcs.monthlyCashFlowWithDebt)}
+                    description="Net monthly cash after debt service"
+                    color={calcs.monthlyCashFlowWithDebt > 0 ? 'green' : 'red'}
+                />
+                <MetricBox
+                    label="DSCR"
+                    value={dscrValue}
+                    description="Debt Service Coverage Ratio"
+                    color={dscrColor}
+                />
+                <MetricBox
+                    label="Monthly Cash Flow (No Debt)"
+                    value={formatCurrency(calcs.monthlyCashFlowNoDebt)}
+                    description="Net monthly income before debt"
+                    color="green"
+                />
+            </div>
+
+            <MathBreakdown items={breakdownItems} title="Rental Math Breakdown" />
         </div>
     );
 };
@@ -1021,6 +1106,33 @@ const WholesaleMetricsTab = ({ property }: { property: Property }) => {
 
     const grossOfferPrice = inputs.arv * (inputs.maoPercentOfArv / 100);
 
+    const mathItems = [
+        {
+            label: "Gross Profit (Spread)",
+            formula: "MAO - Seller Ask",
+            calculation: `$${Math.round(calcs.mao).toLocaleString()} - $${Math.round(inputs.sellerAsk).toLocaleString()}`,
+            result: formatCurrency(calcs.potentialFees),
+            description: "Your potential assignment fee",
+            isPercent: false
+        },
+        {
+            label: "Net Profit",
+            formula: "Potential Fee (assuming no marketing costs)",
+            calculation: `$${Math.round(calcs.potentialFees).toLocaleString()}`,
+            result: formatCurrency(calcs.potentialFees),
+            description: "Net profit if deal closes as planned",
+            isPercent: false
+        },
+        {
+            label: "Return on Inv. (ROI)",
+            formula: "(Net Profit / Marketing Cost) * 100",
+            calculation: "Infinite (if $0 down)",
+            result: "Infinite%",
+            description: "Wholesaling typically requires little to no capital",
+            isPercent: true
+        }
+    ];
+
     return (
         <div className="space-y-6">
             <div className="p-4 border rounded-lg bg-gray-50/50">
@@ -1046,6 +1158,9 @@ const WholesaleMetricsTab = ({ property }: { property: Property }) => {
                     <span className="font-bold text-lg">{calcs.isEligible ? 'This deal is eligible!' : 'This deal is NOT eligible based on your MAO.'}</span>
                 </div>
             </div>
+
+            <MathBreakdown items={mathItems} title="Wholesale Math Breakdown" />
+
             <div className="screen-only">
                 <ExitStrategyGuide title="Wholesale Exit Options" strategies={WHOLESALE_EXIT_STRATEGIES} />
             </div>
@@ -1087,6 +1202,55 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
     const inputs = property.subjectToAnalysis?.inputs;
     const calcs = property.subjectToAnalysis?.calculations;
     if (!calcs || !inputs) return null;
+    const operatingExpenseRatio = calcs.grossIncome > 0 ? (calcs.totalExpenses / calcs.grossIncome) * 100 : 0;
+
+    // For SubTo, IRR is complex as it's often an infinite return scenario or very high leverage.
+    // We will use the calculateIRR based on entry fee.
+    const irrResult = calculateIRR(calcs.totalInvestment, calcs.monthlyCashFlow * 12, inputs.arv || inputs.asIsValue || 0);
+
+    const mathItems = [
+        {
+            label: "Gross Profit (NOI)",
+            formula: "Effective Income - Operating Expenses",
+            calculation: `$${Math.round(calcs.effectiveIncome).toLocaleString()} - $${Math.round(calcs.totalExpenses).toLocaleString()}`,
+            result: formatCurrency(calcs.netOperatingIncome),
+            description: "Net Operating Income (Monthly)",
+            isPercent: false
+        },
+        {
+            label: "Net Profit (Cash Flow)",
+            formula: "NOI - Total Debt Service",
+            calculation: `$${Math.round(calcs.netOperatingIncome).toLocaleString()} - $${Math.round(calcs.totalDebtService).toLocaleString()}`,
+            result: formatCurrency(calcs.monthlyCashFlow),
+            description: "Monthly Cash Flow",
+            isPercent: false
+        },
+        {
+            label: "Operating Expense Ratio",
+            formula: "(OpEx / Gross Income) * 100",
+            calculation: `($${Math.round(calcs.totalExpenses).toLocaleString()} / $${Math.round(calcs.grossIncome).toLocaleString()}) * 100`,
+            result: `${operatingExpenseRatio.toFixed(1)}%`,
+            description: "Ratio of expenses to income",
+            isPercent: true
+        },
+        {
+            label: "ROI (Cash-on-Cash)",
+            formula: "(Annual Cash Flow / Total Invested) * 100",
+            calculation: `($${Math.round(calcs.monthlyCashFlow * 12).toLocaleString()} / $${Math.round(calcs.totalInvestment).toLocaleString()}) * 100`,
+            result: `${calcs.cashOnCashReturn.toFixed(1)}%`,
+            description: "Return on cash invested",
+            isPercent: true
+        },
+        {
+            label: "IRR (5-Year)",
+            formula: "5-Yr Internal Rate of Return",
+            calculation: "Based on 3% growth",
+            result: irrResult.irr === Infinity ? "Infinite" : `${irrResult.irr.toFixed(1)}%`,
+            description: "Total return over 5 years",
+            isPercent: true
+        }
+    ];
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1129,6 +1293,8 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
                     <CalculationRow label="Net Monthly Cash Flow" value={formatCurrency(calcs.monthlyCashFlow)} isTotal={true} color={calcs.monthlyCashFlow > 0 ? 'green' : 'red'} />
                 </div>
             </div>
+
+            <MathBreakdown items={mathItems} title="Subject-To Math Breakdown" />
 
             {inputs.exitPlanType === 'Flip' && (
                 <div className="p-4 border rounded-lg bg-blue-50/50">
@@ -1297,6 +1463,55 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
 
     const loanAmount = inputs.purchasePrice - inputs.downPayment;
 
+    const totalCashInvested = inputs.downPayment + (inputs.rehabCost || 0);
+    const operatingExpenseRatio = grossIncome > 0 ? ((calcs.operatingExpenses || 0) / grossIncome) * 100 : 0;
+
+    // IRR Helper
+    const irrResult = calculateIRR(totalCashInvested, (calcs.cashFlow || 0) * 12, inputs.purchasePrice);
+
+    const mathItems = [
+        {
+            label: "Gross Profit (NOI)",
+            formula: "Effective Income - Operating Expenses",
+            calculation: `$${Math.round(effectiveIncome).toLocaleString()} - $${Math.round(calcs.operatingExpenses || 0).toLocaleString()}`,
+            result: formatCurrency(calcs.netOperatingIncome || 0),
+            description: "Net Operating Income (Monthly)",
+            isPercent: false
+        },
+        {
+            label: "Net Profit (Cash Flow)",
+            formula: "NOI - Monthly Payment",
+            calculation: `$${Math.round(calcs.netOperatingIncome || 0).toLocaleString()} - $${Math.round(calcs.monthlyPayment || 0).toLocaleString()}`,
+            result: formatCurrency(calcs.cashFlow || 0),
+            description: "Monthly Cash Flow",
+            isPercent: false
+        },
+        {
+            label: "Operating Expense Ratio",
+            formula: "(OpEx / Gross Income) * 100",
+            calculation: `($${Math.round(calcs.operatingExpenses || 0).toLocaleString()} / $${Math.round(grossIncome).toLocaleString()}) * 100`,
+            result: `${operatingExpenseRatio.toFixed(1)}%`,
+            description: "Ratio of expenses to income",
+            isPercent: true
+        },
+        {
+            label: "ROI (Cash-on-Cash)",
+            formula: "(Annual Cash Flow / Total Invested) * 100",
+            calculation: `($${Math.round((calcs.cashFlow || 0) * 12).toLocaleString()} / $${Math.round(totalCashInvested).toLocaleString()}) * 100`,
+            result: `${(calcs.cashOnCashReturn || 0).toFixed(1)}%`,
+            description: "Annual return on cash invested",
+            isPercent: true
+        },
+        {
+            label: "IRR (5-Year)",
+            formula: "5-Yr Internal Rate of Return",
+            calculation: "Based on 3% growth",
+            result: irrResult.irr === Infinity ? "Infinite" : `${irrResult.irr.toFixed(1)}%`,
+            description: "Total return over 5 years",
+            isPercent: true
+        }
+    ];
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1362,6 +1577,8 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
                     <CalculationRow label="Net Monthly Cash Flow" value={formatCurrency(calcs.cashFlow || 0)} isTotal={true} color={(calcs.cashFlow || 0) > 0 ? 'green' : 'red'} />
                 </div>
             </div>
+
+            <MathBreakdown items={mathItems} title="Seller Financing Math Breakdown" />
 
             <div className="screen-only">
                 <ExitStrategyGuide title="Seller Financing Exit Options" strategies={SELLER_FINANCING_EXIT_STRATEGIES} />

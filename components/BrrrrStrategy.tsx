@@ -1,7 +1,8 @@
 import React from 'react';
 import { Property } from '../types';
-import { calculateBrrrrMetrics } from '../contexts/PropertyContext';
+import { calculateBrrrrMetrics, calculateIRR } from '../contexts/PropertyContext';
 import { InputField, ToggleField, SliderField } from './common/FormFields';
+import { MathBreakdown } from './common/MathBreakdown';
 
 const formatCurrency = (amount: number, precision = 0) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: precision, maximumFractionDigits: precision }).format(amount);
 
@@ -203,6 +204,52 @@ export const BrrrrMetricsTab = ({ property }: { property: Property }) => {
                     {formatCurrency(monthlyCashFlowPostRefi)}
                 </div>
             </div>
+
+            <MathBreakdown
+                items={[
+                    {
+                        label: "Gross Profit (NOI)",
+                        formula: "Effective Income - Operating Expenses",
+                        calculation: `$${Math.round(breakdown.revenue.effectiveIncome).toLocaleString()} - $${Math.round(breakdown.expenses.totalOperatingExpenses).toLocaleString()}`,
+                        result: formatCurrency(breakdown.revenue.effectiveIncome - breakdown.expenses.totalOperatingExpenses),
+                        description: "Net Operating Income (Post-Refinance)",
+                        isPercent: false
+                    },
+                    {
+                        label: "Net Profit (Cash Flow)",
+                        formula: "NOI - Debt Service",
+                        calculation: `$${Math.round(breakdown.revenue.effectiveIncome - breakdown.expenses.totalOperatingExpenses).toLocaleString()} - $${Math.round(breakdown.expenses.debtService).toLocaleString()}`,
+                        result: formatCurrency(monthlyCashFlowPostRefi),
+                        description: "Monthly Cash Flow after Refinance",
+                        isPercent: false
+                    },
+                    {
+                        label: "Operating Expense Ratio",
+                        formula: "(Total Expenses / Effective Income) * 100",
+                        calculation: `($${Math.round(breakdown.expenses.totalOperatingExpenses).toLocaleString()} / $${Math.round(breakdown.revenue.effectiveIncome).toLocaleString()}) * 100`,
+                        result: `${((breakdown.expenses.totalOperatingExpenses / breakdown.revenue.effectiveIncome) * 100).toFixed(1)}%`,
+                        description: "Efficiency of the property operations",
+                        isPercent: true
+                    },
+                    {
+                        label: "ROI (Cash-on-Cash)",
+                        formula: "(Annual Cash Flow / Cash Left) * 100",
+                        calculation: cashLeftInDeal <= 0 ? "Infinite" : `($${Math.round(monthlyCashFlowPostRefi * 12).toLocaleString()} / $${Math.round(cashLeftInDeal).toLocaleString()}) * 100`,
+                        result: isInfiniteReturn ? "Infinite%" : `${roi.toFixed(1)}%`,
+                        description: "Return on capital left in the deal",
+                        isPercent: true
+                    },
+                    {
+                        label: "IRR (5-Year)",
+                        formula: "5-Yr Internal Rate of Return",
+                        calculation: "Includes Equity Capture from Refi + Appreciation",
+                        result: isInfiniteReturn ? "Infinite" : `${calculateIRR(cashLeftInDeal > 0 ? cashLeftInDeal : 0, monthlyCashFlowPostRefi * 12, brrrr.inputs.arv).irr.toFixed(1)}%`,
+                        description: "Total return projection",
+                        isPercent: true
+                    }
+                ]}
+                title="BRRRR Math Breakdown"
+            />
         </div >
     );
 };

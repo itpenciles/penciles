@@ -335,3 +335,67 @@ export const calculateBrrrrMetrics = (inputs: BrrrrInputs): BrrrrCalculations =>
     isInfiniteReturn
   } as any;
 };
+
+// --- HELPER METRICS ---
+
+/**
+ * Calculates a simplified 5-Year Internal Rate of Return (IRR).
+ * Assumptions:
+ * - 5 Year Hold Period
+ * - 3% Annual Appreciation
+ * - 3% Annual Rent/Expense Increase
+ * - Sale at end of Year 5
+ */
+export const calculateIRR = (
+  initialInvestment: number,
+  year1CashFlow: number,
+  initialPropertyValue: number,
+  sellingCostsPercent: number = 6,
+  annualGrowthRate: number = 0.03
+): { irr: number; totalProfit: number; equityMultiple: number } => {
+
+  if (initialInvestment <= 0) return { irr: Infinity, totalProfit: 0, equityMultiple: Infinity };
+
+  const cashFlows: number[] = [-initialInvestment]; // Year 0
+  let totalCashFlow = 0;
+
+  // Simulate Years 1-5
+  let currentCashFlow = year1CashFlow;
+  for (let i = 1; i <= 5; i++) {
+    cashFlows.push(currentCashFlow);
+    totalCashFlow += currentCashFlow;
+    currentCashFlow *= (1 + annualGrowthRate); // Grow NOI/CashFlow
+  }
+
+  // Sale Event at Year 5
+  const projectedSalePrice = initialPropertyValue * Math.pow(1 + annualGrowthRate, 5);
+  // Net Sale Proceeds = Initial Investment + Appreciation - Selling Costs
+  // We approximate the equity return as:
+  // (Sale Price - Init Value) + Init Investment - Selling Costs
+  // This assumes interest-only or that principal paydown is negligible/bonus for this simple metric.
+  const netSaleProceeds = initialInvestment + (projectedSalePrice - initialPropertyValue) - (projectedSalePrice * (sellingCostsPercent / 100));
+
+  // Add reversion to Year 5
+  cashFlows[5] += netSaleProceeds;
+  totalCashFlow += netSaleProceeds - initialInvestment; // Profit only
+
+  // IRR Calculation (Newton-Raphson approximation)
+  let guess = 0.1; // 10%
+  for (let i = 0; i < 20; i++) {
+    const npv = cashFlows.reduce((acc, cf, t) => acc + cf / Math.pow(1 + guess, t), 0);
+    const derivative = cashFlows.reduce((acc, cf, t) => acc - (t * cf) / Math.pow(1 + guess, t + 1), 0);
+    if (Math.abs(derivative) < 1e-6) break;
+    const nextGuess = guess - npv / derivative;
+    if (Math.abs(nextGuess - guess) < 1e-6) {
+      guess = nextGuess;
+      break;
+    }
+    guess = nextGuess;
+  }
+
+  return {
+    irr: guess * 100,
+    totalProfit: totalCashFlow,
+    equityMultiple: (totalCashFlow + initialInvestment) / initialInvestment
+  };
+};
