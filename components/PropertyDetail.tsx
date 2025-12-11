@@ -1197,7 +1197,7 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
 
     const mathItems: any[] = [
         {
-            label: "Gross Profit (NOI)",
+            label: "Monthly Cash Flow (No Debt)\nGross Profit (NOI)",
             formula: "Effective Income - Operating Expenses",
             calculation: `$${Math.round(calcs.effectiveIncome).toLocaleString()} - $${Math.round(calcs.totalExpenses).toLocaleString()}`,
             result: formatCurrency(calcs.netOperatingIncome),
@@ -1206,7 +1206,7 @@ const SubjectToMetricsTab = ({ property }: { property: Property }) => {
             isPercent: false
         },
         {
-            label: "Net Profit\nMonthly Cash Flow",
+            label: "Monthly Cash Flow (With Debt)\nNet Profit",
             formula: "NOI - Total Debt Service",
             calculation: `$${Math.round(calcs.netOperatingIncome).toLocaleString()} - $${Math.round(calcs.totalDebtService).toLocaleString()}`,
             result: formatCurrency(calcs.monthlyCashFlow),
