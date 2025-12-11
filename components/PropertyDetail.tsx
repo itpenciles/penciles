@@ -1457,22 +1457,33 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
     // IRR Helper
     const irrResult = calculateIRR(totalCashInvested, (calcs.cashFlow || 0) * 12, inputs.purchasePrice);
 
-    const mathItems = [
+    const mathItems: any[] = [
         {
-            label: "Gross Profit (NOI)",
+            label: "Monthly Cash Flow (No Debt)\nGross Profit (NOI)",
             formula: "Effective Income - Operating Expenses",
             calculation: `$${Math.round(effectiveIncome).toLocaleString()} - $${Math.round(calcs.operatingExpenses || 0).toLocaleString()}`,
             result: formatCurrency(calcs.netOperatingIncome || 0),
             description: "Net Operating Income (Monthly)",
+            variant: 'green',
             isPercent: false
         },
         {
-            label: "Net Profit (Cash Flow)",
+            label: "Monthly Cash Flow (With Debt)\nNet Profit",
             formula: "NOI - Monthly Payment",
             calculation: `$${Math.round(calcs.netOperatingIncome || 0).toLocaleString()} - $${Math.round(calcs.monthlyPayment || 0).toLocaleString()}`,
             result: formatCurrency(calcs.cashFlow || 0),
             description: "Monthly Cash Flow",
+            variant: (calcs.cashFlow || 0) > 0 ? 'green' : 'red',
             isPercent: false
+        },
+        {
+            label: "CoC Return\nROI",
+            formula: "(Annual Cash Flow / Total Invested) * 100",
+            calculation: `($${Math.round((calcs.cashFlow || 0) * 12).toLocaleString()} / $${Math.round(totalCashInvested).toLocaleString()}) * 100`,
+            result: `${(calcs.cashOnCashReturn || 0).toFixed(1)}%`,
+            description: "Annual return on cash invested",
+            variant: (calcs.cashOnCashReturn || 0) > 8 ? 'green' : 'red',
+            isPercent: true
         },
         {
             label: "Operating Expense Ratio",
@@ -1480,14 +1491,7 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
             calculation: `($${Math.round(calcs.operatingExpenses || 0).toLocaleString()} / $${Math.round(grossIncome).toLocaleString()}) * 100`,
             result: `${operatingExpenseRatio.toFixed(1)}%`,
             description: "Ratio of expenses to income",
-            isPercent: true
-        },
-        {
-            label: "ROI (Cash-on-Cash)",
-            formula: "(Annual Cash Flow / Total Invested) * 100",
-            calculation: `($${Math.round((calcs.cashFlow || 0) * 12).toLocaleString()} / $${Math.round(totalCashInvested).toLocaleString()}) * 100`,
-            result: `${(calcs.cashOnCashReturn || 0).toFixed(1)}%`,
-            description: "Annual return on cash invested",
+            variant: 'gray',
             isPercent: true
         },
         {
@@ -1496,18 +1500,14 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
             calculation: "Based on 3% growth",
             result: irrResult.irr === Infinity ? "Infinite" : `${irrResult.irr.toFixed(1)}%`,
             description: "Total return over 5 years",
+            variant: typeof irrResult.irr === 'number' && irrResult.irr >= 10 ? 'green' : 'gray',
             isPercent: true
         }
     ];
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <MetricBox label="Monthly Payment" value={formatCurrency(calcs.monthlyPayment || 0)} description="Payment to the seller" color="blue" />
-                <MetricBox label="Net Operating Income" value={formatCurrency(calcs.netOperatingIncome || 0)} description="Income after expenses" color={(calcs.netOperatingIncome || 0) > 0 ? 'green' : 'red'} />
-                <MetricBox label="Monthly Cash Flow" value={formatCurrency(calcs.cashFlow || 0)} description="NOI minus Debt Service" color={(calcs.cashFlow || 0) > 0 ? 'green' : 'red'} />
-                <MetricBox label="Cash-on-Cash Return" value={`${(calcs.cashOnCashReturn || 0).toFixed(1)}%`} description="Annualized return on cash invested" color={(calcs.cashOnCashReturn || 0) > 8 ? 'green' : 'red'} />
-            </div>
+            <MathBreakdown items={mathItems} title="Seller Financing Math Breakdown" />
 
             <div className="p-4 border rounded-lg bg-gray-50/50">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Monthly Payment Calculation</h3>
@@ -1566,7 +1566,7 @@ const SellerFinancingMetricsTab = ({ property }: { property: Property }) => {
                 </div>
             </div>
 
-            <MathBreakdown items={mathItems} title="Seller Financing Math Breakdown" />
+
 
             <div className="screen-only">
                 <ExitStrategyGuide title="Seller Financing Exit Options" strategies={SELLER_FINANCING_EXIT_STRATEGIES} />
