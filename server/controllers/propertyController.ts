@@ -158,3 +158,82 @@ export const deleteProperty = async (req: any, res: any) => {
         res.status(500).json({ message: 'Failed to delete property.' });
     }
 };
+
+// Generate a unique share link for a property
+export const generateShareLink = async (req: any, res: any) => {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    try {
+        // 1. Check if property exists and belongs to user
+        const checkResult = await query(
+            'SELECT id, share_token, is_public FROM properties WHERE id = $1 AND user_id = $2',
+            [id, userId]
+        );
+
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Property not found.' });
+        }
+
+        const existingToken = checkResult.rows[0].share_token;
+
+        // 2. If token already exists, just ensure it's public and return it
+        if (existingToken) {
+            if (!checkResult.rows[0].is_public) {
+                await query('UPDATE properties SET is_public = TRUE WHERE id = $1', [id]);
+            }
+            return res.json({ shareToken: existingToken });
+        }
+
+        // 3. Otherwise, generate a new UUID
+        // We use pgcrypto's gen_random_uuid() if available, or we can let Postgres handle it if we modify the migration.
+        // Actually, easiest is to generate in JS if we don't want to rely on pgcrypto extension being installed.
+        // Using crypto.randomUUID() (Node 14.17+)
+        const shareToken = crypto.randomUUID();
+
+        await query(
+            'UPDATE properties SET share_token = $1, is_public = TRUE WHERE id = $2',
+            [shareToken, id]
+        );
+
+        res.json({ shareToken });
+    } catch (error) {
+        console.error('Error generating share link:', error);
+        res.status(500).json({ message: 'Failed to generate share link.' });
+    }
+};
+
+// Get a public property by its share token (No Auth Required)
+export const getPublicProperty = async (req: any, res: any) => {
+    const { token } = req.params;
+
+    try {
+        const result = await query(
+            'SELECT id, property_data, created_at, share_token FROM properties WHERE share_token = $1 AND is_public = TRUE',
+            [token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Property not found or link is disabled.' });
+        }
+
+        const row = result.rows[0];
+
+        // Construct the property object. 
+        // IMPORTANT: We might want to sanitize this if it contains sensitive user info, 
+        // but currently property_data is just the analysis.
+        const property = {
+            ...row.property_data,
+            id: row.id.toString(),
+            createdAt: row.created_at,
+            shareToken: row.share_token,
+            isPublic: true,
+            isReadOnly: true // Flag for frontend to disable editing
+        };
+
+        res.json(property);
+    } catch (error) {
+        console.error('Error fetching public property:', error);
+        res.status(500).json({ message: 'Failed to fetch property.' });
+    }
+};

@@ -14,6 +14,8 @@ export interface Property {
   dateAnalyzed: string;
   deletedAt?: string; // New field for Soft Delete audit trail
   createdAt?: string; // Reliable timestamp from backend DB
+  shareToken?: string; // UUID for public sharing
+  isPublic?: boolean; // Whether the property is shareable
 
   coordinates?: {
     lat: number;

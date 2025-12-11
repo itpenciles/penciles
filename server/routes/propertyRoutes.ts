@@ -1,14 +1,21 @@
 import { Router } from 'express';
-import { getProperties, addProperty, updateProperty, deleteProperty } from '../controllers/propertyController.js';
+import { getProperties, addProperty, updateProperty, deleteProperty, generateShareLink, getPublicProperty } from '../controllers/propertyController.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// All property routes are protected
+// Public route (must be before auth middleware if we want it unprotected, OR separate)
+// Actually, since router.use(authMiddleware) is applied at line 8, all routes defined below are protected.
+// We need to define the public route BEFORE line 8.
+
+router.get('/public/:token', getPublicProperty);
+
+// All property routes below are protected
 router.use(authMiddleware);
 
 router.get('/', getProperties);
 router.post('/', addProperty);
+router.post('/:id/share', generateShareLink); // New Protected Route
 router.put('/:id', updateProperty);
 router.delete('/:id', deleteProperty);
 

@@ -18,6 +18,7 @@ import FeaturesPage from './components/FeaturesPage';
 import PricingPage from './components/PricingPage';
 import ContactPage from './components/ContactPage';
 import LoginPage from './components/LoginPage';
+import PublicPropertyPage from './components/PublicPropertyPage';
 
 // App Pages
 import Dashboard from './components/Dashboard';
@@ -116,6 +117,7 @@ const App: React.FC = () => {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/share/:token" element={<PublicPropertyPage />} />
             </Route>
 
             {/* Protected app routes */}

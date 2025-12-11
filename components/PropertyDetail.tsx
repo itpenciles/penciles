@@ -5,7 +5,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { Property, Strategy, AttomFilters } from '../types';
 import { calculateWholesaleMetrics, calculateSubjectToMetrics, calculateSellerFinancingMetrics, calculateBrrrrMetrics, calculateIRR } from '../contexts/PropertyContext';
 import { MathBreakdown } from './common/MathBreakdown';
-import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon } from '../constants';
+import { ArrowLeftIcon, CheckIcon, DocumentArrowDownIcon, TableCellsIcon, ShareIcon } from '../constants';
+// ... existing imports
+
+
 import apiClient from '../services/apiClient';
 import { AdjustTab } from './AdjustTab';
 import { ProjectionsTab } from './ProjectionsTab';
@@ -210,6 +213,21 @@ const PropertyDetail = () => {
         }
     };
 
+    const handleShare = async () => {
+        if (!editedProperty?.id) return;
+        try {
+            const res = await apiClient.post(`/properties/${editedProperty.id}/share`, {});
+            const { shareToken } = res.data;
+            const shareUrl = `${window.location.origin}/#/share/${shareToken}`;
+
+            await navigator.clipboard.writeText(shareUrl);
+            alert("Public share link copied to clipboard!\n\nUse this link to share a read-only view of this analysis.");
+        } catch (err) {
+            console.error('Failed to share:', err);
+            alert("Failed to generate share link.");
+        }
+    };
+
     if (!editedProperty) return <div className="p-8 text-center">Loading property...</div>;
 
     return (
@@ -232,7 +250,16 @@ const PropertyDetail = () => {
                         <h1 className="text-3xl font-bold text-gray-900">{editedProperty.address}</h1>
                         <p className="text-gray-600">Property Investment Analysis</p>
                     </div>
-                    <RecommendationBadge level={editedProperty.recommendation.level} />
+                    <div className="flex items-center space-x-3">
+                        <button
+                            onClick={handleShare}
+                            className="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm text-sm"
+                        >
+                            <ShareIcon className="h-4 w-4 mr-2" />
+                            Share
+                        </button>
+                        <RecommendationBadge level={editedProperty.recommendation.level} />
+                    </div>
                 </div>
             </header>
 
