@@ -16,7 +16,9 @@ const MobilePropertiesList = () => {
     };
 
     const filteredProperties = properties.filter(p =>
-        viewMode === 'active' ? !p.deletedAt : p.deletedAt
+        viewMode === 'active'
+            ? !p.deletedAt && p.status !== 'Archived'
+            : p.deletedAt || p.status === 'Archived'
     );
 
     const sortedProperties = [...filteredProperties].sort((a, b) => {

@@ -530,16 +530,28 @@ export const PropertyProvider: React.FC<{ children: ReactNode }> = ({ children }
   const updateProperty = async (id: string, propertyData: Property): Promise<Property> => {
     if (!user) throw new Error("User not authenticated");
 
-    let updatedProperty: Property;
+    // 1. Optimistic Update: Update UI immediately
+    const previousProperties = properties; // Capture current state for rollback
+    setProperties(prev => prev.map(p => (p.id === id ? propertyData : p)));
 
-    if (shouldUseLocalStorage()) {
-      updatedProperty = await localPropertyService.updateProperty(user.id, id, propertyData);
-    } else {
-      updatedProperty = await apiClient.put(`/properties/${id}`, propertyData);
+    try {
+      let updatedProperty: Property;
+
+      if (shouldUseLocalStorage()) {
+        updatedProperty = await localPropertyService.updateProperty(user.id, id, propertyData);
+      } else {
+        updatedProperty = await apiClient.put(`/properties/${id}`, propertyData);
+      }
+
+      // 2. Confirmed Update: Update with server response (e.g. updated timestamps)
+      setProperties(prev => prev.map(p => (p.id === id ? updatedProperty : p)));
+      return updatedProperty;
+    } catch (err) {
+      // 3. Rollback on error
+      console.error("Update failed, rolling back optimistic update", err);
+      setProperties(previousProperties);
+      throw err;
     }
-
-    setProperties(prev => prev.map(p => (p.id === id ? updatedProperty : p)));
-    return updatedProperty;
   };
 
   const deleteProperty = async (id: string) => {
