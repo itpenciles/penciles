@@ -263,6 +263,7 @@ export const analyzePropertyWithGemini = async (inputType: 'url' | 'address' | '
             const totalMarketRent = data.financials.monthlyRents.reduce((a: number, b: number) => a + b, 0);
 
             const newProperty: Omit<Property, 'id'> = {
+                status: 'Lead',
                 address: data.address,
                 propertyType: data.propertyType,
                 imageUrl: data.imageUrl,

@@ -37,8 +37,8 @@ export const addProperty = async (req: any, res: any) => {
         // Let the database generate the ID (SERIAL PRIMARY KEY). We don't pass an ID.
         // Default status to 'Lead' if not provided
         const finalPropertyData = {
-            status: 'Lead',
-            ...propertyData
+            ...propertyData,
+            status: propertyData.status || 'Lead'
         };
 
         const result = await query(
