@@ -46,6 +46,17 @@ const MobilePropertiesList = () => {
         return 0;
     });
 
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'Closed': return 'bg-green-100 text-green-800 border-green-200';
+            case 'Under Contract': return 'bg-orange-100 text-orange-800 border-orange-200';
+            case 'Offer Sent': return 'bg-purple-100 text-purple-800 border-purple-200';
+            case 'Analyzing': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case 'Archived': return 'bg-gray-100 text-gray-800 border-gray-200';
+            default: return 'bg-blue-100 text-blue-800 border-blue-200'; // Lead
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
@@ -163,7 +174,7 @@ const MobilePropertiesList = () => {
                                 </div>
                             </div>
 
-                            {viewMode === 'active' && (
+                            {viewMode === 'active' ? (
                                 <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
                                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Status</span>
                                     <div className="relative w-2/3" onClick={(e) => e.stopPropagation()}>
@@ -184,7 +195,8 @@ const MobilePropertiesList = () => {
                                                     updateProperty(property.id, { ...property, status: newStatus });
                                                 }
                                             }}
-                                            className="block w-full rounded-md border-gray-300 py-3 pl-3 pr-10 text-sm focus:border-teal-500 focus:ring-teal-500 bg-white text-gray-900 font-medium shadow-sm transition-shadow hover:border-teal-400"
+                                            className={`block w-full rounded-md border py-2 pl-3 pr-10 text-sm focus:ring-opacity-50 font-bold shadow-sm transition-all cursor-pointer appearance-none ${getStatusColor(property.status || 'Lead')}`}
+                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
                                         >
                                             <option value="Lead">Lead</option>
                                             <option value="Analyzing">Analyzing</option>
@@ -194,6 +206,13 @@ const MobilePropertiesList = () => {
                                             <option value="Archived">Archived</option>
                                         </select>
                                     </div>
+                                </div>
+                            ) : (
+                                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Status</span>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(property.status || 'Archived')}`}>
+                                        {property.status || 'Archived'}
+                                    </span>
                                 </div>
                             )}
                         </div>
