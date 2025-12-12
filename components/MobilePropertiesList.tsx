@@ -8,11 +8,20 @@ const MobilePropertiesList = () => {
     const { properties, loading, error, updateProperty, deleteProperty } = useProperties();
     const navigate = useNavigate();
     const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
-    const [sortBy, setSortBy] = useState<'date' | 'strategy'>('date');
+    const [sortBy, setSortBy] = useState<'date' | 'strategy' | 'status'>('date');
 
     const truncateAddress = (address: string, limit: number = 25) => {
         if (address.length <= limit) return address;
         return address.slice(0, limit) + '...';
+    };
+
+    const StatusOrder: Record<string, number> = {
+        'Lead': 1,
+        'Analyzing': 2,
+        'Offer Sent': 3,
+        'Under Contract': 4,
+        'Closed': 5,
+        'Archived': 6
     };
 
     const filteredProperties = properties.filter(p =>
@@ -26,6 +35,11 @@ const MobilePropertiesList = () => {
             const strategyA = a.recommendation?.strategyAnalyzed || 'Rental';
             const strategyB = b.recommendation?.strategyAnalyzed || 'Rental';
             return strategyA.localeCompare(strategyB);
+        }
+        if (sortBy === 'status') {
+            const statusA = a.status || 'Lead';
+            const statusB = b.status || 'Lead';
+            return (StatusOrder[statusA] || 99) - (StatusOrder[statusB] || 99);
         }
         // Default to date (assuming properties are already sorted by date desc from hook, or we leave as is)
         // If we strictly needed to sort by date string, we'd need to parse "Oct 12, 2023", but usually the API returns sorted.
@@ -77,6 +91,13 @@ const MobilePropertiesList = () => {
                         className={`text-xs font-medium ${sortBy === 'strategy' ? 'text-teal-600' : 'text-gray-500'}`}
                     >
                         Strategy
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button
+                        onClick={() => setSortBy('status')}
+                        className={`text-xs font-medium ${sortBy === 'status' ? 'text-teal-600' : 'text-gray-500'}`}
+                    >
+                        Status
                     </button>
                 </div>
             </div>
