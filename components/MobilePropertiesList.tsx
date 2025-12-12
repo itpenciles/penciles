@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { MapPinIcon, ListBulletIcon, ClockIcon, CalendarDaysIcon } from '../constants';
+import { DealStage } from '../types';
 
 const MobilePropertiesList = () => {
-    const { properties, loading, error } = useProperties();
+    const { properties, loading, error, updateProperty } = useProperties();
     const navigate = useNavigate();
     const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
     const [sortBy, setSortBy] = useState<'date' | 'strategy'>('date');
@@ -131,12 +132,34 @@ const MobilePropertiesList = () => {
 
                                 {/* Recommendation Badge (Bottom Right or separate) */}
                                 <div className={`flex-shrink-0 px-2 py-1 rounded-full text-[10px] font-bold mt-8 ${['Worth Pursuing', 'Strong'].includes(property.recommendation?.level) ? 'bg-green-100 text-green-700' :
-                                        property.recommendation?.level === 'Moderate Risk' ? 'bg-yellow-100 text-yellow-700' :
-                                            ['High Risk', 'Avoid'].includes(property.recommendation?.level) ? 'bg-red-100 text-red-700' :
-                                                'bg-gray-100 text-gray-700'
+                                    property.recommendation?.level === 'Moderate Risk' ? 'bg-yellow-100 text-yellow-700' :
+                                        ['High Risk', 'Avoid'].includes(property.recommendation?.level) ? 'bg-red-100 text-red-700' :
+                                            'bg-gray-100 text-gray-700'
                                     }`}>
                                     {property.recommendation?.level || 'Unknown'}
                                 </div>
+                                {viewMode === 'active' && (
+                                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Status</span>
+                                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                            <select
+                                                value={property.status || 'Lead'}
+                                                onChange={(e) => {
+                                                    const newStatus = e.target.value as DealStage;
+                                                    updateProperty(property.id, { ...property, status: newStatus });
+                                                }}
+                                                className="block w-full rounded-md border-gray-300 py-1 pl-2 pr-8 text-xs focus:border-indigo-500 focus:ring-indigo-500 sm:text-xs bg-gray-50 text-gray-700 font-medium"
+                                            >
+                                                <option value="Lead">Lead</option>
+                                                <option value="Analyzing">Analyzing</option>
+                                                <option value="Offer Sent">Offer Sent</option>
+                                                <option value="Under Contract">Under Contract</option>
+                                                <option value="Closed">Closed</option>
+                                                <option value="Archived">Archived</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))

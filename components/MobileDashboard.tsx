@@ -56,6 +56,31 @@ const MobileDashboard = () => {
         return { name, value, color };
     });
 
+    // --- Data for Lead Status Chart ---
+    const leadStatusDistribution = activeProperties.reduce((acc, p) => {
+        const status = p.status || 'Lead';
+        if (status === 'Archived') return acc; // Skip archived in active pipeline view if desired, or keep. Active properties shouldn't be 'Archived' status usually if checking deletedAt, but 'Archived' status is different.
+        // Wait, user wants "Lead Status".
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const leadStatusData = Object.entries(leadStatusDistribution).map(([name, value]) => {
+        let color = '#9CA3AF';
+        if (name === 'Lead') color = '#60A5FA'; // Blue-400
+        if (name === 'Analyzing') color = '#FACC15'; // Yellow-400
+        if (name === 'Offer Sent') color = '#A78BFA'; // Purple-400
+        if (name === 'Under Contract') color = '#FB923C'; // Orange-400
+        if (name === 'Closed') color = '#4ADE80'; // Green-400
+        if (name === 'Archived') color = '#9CA3AF'; // Gray-400
+        return { name, value, color };
+    });
+
+    // If no data, show a placeholder
+    if (leadStatusData.length === 0) {
+        leadStatusData.push({ name: 'No Data', value: 1, color: '#E5E7EB' });
+    }
+
     // If no data, show a placeholder
     if (strategyData.length === 0) {
         strategyData.push({ name: 'No Data', value: 1, color: '#E5E7EB' });
@@ -180,6 +205,13 @@ const MobileDashboard = () => {
                     data={riskData}
                     centerText={`${activeProperties.length}`}
                     subText="Active Properties"
+                />
+
+                <ChartCard
+                    title="Lead Status"
+                    data={leadStatusData}
+                    centerText={`${activeProperties.length}`}
+                    subText="Total Pipeline"
                 />
 
                 <ChartCard
