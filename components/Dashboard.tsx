@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
-import { PlusIcon, ChartBarIcon, ArrowTrendingUpIcon, BanknotesIcon, ExclamationTriangleIcon, LockClosedIcon, ListBulletIcon, ViewColumnsIcon } from '../constants';
+import { PlusIcon, ChartBarIcon, ArrowTrendingUpIcon, BanknotesIcon, ExclamationTriangleIcon, LockClosedIcon, ListBulletIcon, ViewColumnsIcon, UsersIcon, ScaleIcon, DocumentArrowDownIcon, ShieldCheckIcon } from '../constants';
 import { Property, SubscriptionTier, DealStage } from '../types';
 import KanbanBoard from './KanbanBoard';
 
@@ -416,6 +416,35 @@ const Dashboard = () => {
                 <SummaryCard title="Total Monthly Cash Flow" value={`$${Math.round(activeProperties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0))}`} icon={BanknotesIcon} iconBgColor="bg-purple-500" />
                 <SummaryCard title="High-Risk Properties" value={highRiskProperties.toString()} icon={ExclamationTriangleIcon} iconBgColor="bg-orange-500" />
             </div>
+
+            {viewMode === 'list' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <SummaryCard
+                        title="New Leads"
+                        value={activeProperties.filter(p => (p.status || 'Lead') === 'Lead').length.toString()}
+                        icon={UsersIcon}
+                        iconBgColor="bg-blue-400"
+                    />
+                    <SummaryCard
+                        title="Analyzing"
+                        value={activeProperties.filter(p => p.status === 'Analyzing').length.toString()}
+                        icon={ScaleIcon}
+                        iconBgColor="bg-yellow-400"
+                    />
+                    <SummaryCard
+                        title="Offers Sent"
+                        value={activeProperties.filter(p => p.status === 'Offer Sent').length.toString()}
+                        icon={DocumentArrowDownIcon}
+                        iconBgColor="bg-purple-400"
+                    />
+                    <SummaryCard
+                        title="Under Contract"
+                        value={activeProperties.filter(p => p.status === 'Under Contract').length.toString()}
+                        icon={ShieldCheckIcon}
+                        iconBgColor="bg-orange-400"
+                    />
+                </div>
+            )}
 
             <div className="flex flex-col lg:flex-row gap-8">
                 <div className="flex-grow">

@@ -181,7 +181,7 @@ export const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 export const SIDEBAR_LINKS = [
-  { name: 'Dashboard', href: '/dashboard', icon: ChartBarIcon },
+  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Add Property', href: '/add-property', icon: PlusIcon },
   { name: 'Glossary & FAQ', href: '/faq', icon: QuestionMarkCircleIcon },
 ];
