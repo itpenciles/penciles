@@ -499,6 +499,7 @@ const Dashboard = () => {
                             <KanbanBoard
                                 properties={activeProperties}
                                 onUpdateStatus={handleUpdateStatus}
+                                onDelete={handleDelete}
                             />
                         </div>
                     )}

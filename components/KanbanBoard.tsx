@@ -5,20 +5,25 @@ import { useNavigate } from 'react-router-dom';
 interface KanbanBoardProps {
     properties: Property[];
     onUpdateStatus: (property: Property, newStatus: DealStage) => Promise<void>;
+    onDelete: (id: string, address: string) => Promise<void>;
 }
 
 const STAGES: DealStage[] = ['Lead', 'Analyzing', 'Offer Sent', 'Under Contract', 'Closed', 'Archived'];
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ properties, onUpdateStatus }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ properties, onUpdateStatus, onDelete }) => {
     const navigate = useNavigate();
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [isUpdating, setIsUpdating] = useState(false);
+
+    const [showArchived, setShowArchived] = useState(false);
 
     // Group properties by status
     const columns = STAGES.reduce((acc, stage) => {
         acc[stage] = properties.filter(p => (p.status || 'Lead') === stage);
         return acc;
     }, {} as Record<DealStage, Property[]>);
+
+    const visibleStages = showArchived ? STAGES : STAGES.filter(s => s !== 'Archived');
 
     const handleDragStart = (e: React.DragEvent, id: string) => {
         setDraggedId(id);
@@ -36,7 +41,16 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ properties, onUpdateStatus })
         if (!draggedId) return;
 
         const property = properties.find(p => p.id === draggedId);
-        if (property && property.status !== stage) {
+        if (!property) return;
+
+        // If target is 'Archived', trigger delete flow
+        if (stage === 'Archived') {
+            await onDelete(property.id, property.address);
+            setDraggedId(null);
+            return;
+        }
+
+        if (property.status !== stage) {
             setIsUpdating(true);
             try {
                 await onUpdateStatus(property, stage);
@@ -63,64 +77,74 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ properties, onUpdateStatus })
     };
 
     return (
-        <div className="flex gap-4 overflow-x-auto pb-8 min-h-[600px]">
-            {STAGES.map(stage => (
-                <div
-                    key={stage}
-                    className={`flex-shrink-0 w-72 rounded-xl flex flex-col ${getStageColor(stage)} border`}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, stage)}
+        <div className="flex flex-col gap-4">
+            <div className="flex justify-end">
+                <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="text-xs font-medium text-gray-500 hover:text-brand-blue flex items-center"
                 >
-                    {/* Column Header */}
-                    <div className="p-3 border-b border-gray-200/50 flex justify-between items-center">
-                        <h3 className="font-bold text-gray-700 text-sm">{stage}</h3>
-                        <span className="bg-white/50 text-gray-600 text-xs px-2 py-0.5 rounded-full font-medium">
-                            {columns[stage].length}
-                        </span>
-                    </div>
+                    {showArchived ? 'Hide Archived' : 'Show Archived'}
+                </button>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-8 min-h-[600px]">
+                {visibleStages.map(stage => (
+                    <div
+                        key={stage}
+                        className={`flex-shrink-0 w-72 rounded-xl flex flex-col ${getStageColor(stage)} border`}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, stage)}
+                    >
+                        {/* Column Header */}
+                        <div className="p-3 border-b border-gray-200/50 flex justify-between items-center">
+                            <h3 className="font-bold text-gray-700 text-sm">{stage}</h3>
+                            <span className="bg-white/50 text-gray-600 text-xs px-2 py-0.5 rounded-full font-medium">
+                                {columns[stage].length}
+                            </span>
+                        </div>
 
-                    {/* Cards Container */}
-                    <div className="p-2 flex-grow overflow-y-auto space-y-2">
-                        {columns[stage].map(property => (
-                            <div
-                                key={property.id}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, property.id)}
-                                onClick={() => navigate(`/property/${property.id}`)}
-                                className={`bg-white p-3 rounded-lg shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow group ${isUpdating && draggedId === property.id ? 'opacity-50' : ''
-                                    }`}
-                            >
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="text-xs font-semibold text-gray-500 truncate w-full" title={property.propertyType}>
-                                        {property.propertyType}
-                                    </div>
-                                    <div className={`w-2 h-2 rounded-full ${property.recommendation.level === 'Worth Pursuing' ? 'bg-green-500' :
+                        {/* Cards Container */}
+                        <div className="p-2 flex-grow overflow-y-auto space-y-2">
+                            {columns[stage].map(property => (
+                                <div
+                                    key={property.id}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, property.id)}
+                                    onClick={() => navigate(`/property/${property.id}`)}
+                                    className={`bg-white p-3 rounded-lg shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow group ${isUpdating && draggedId === property.id ? 'opacity-50' : ''
+                                        }`}
+                                >
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="text-xs font-semibold text-gray-500 truncate w-full" title={property.propertyType}>
+                                            {property.propertyType}
+                                        </div>
+                                        <div className={`w-2 h-2 rounded-full ${property.recommendation.level === 'Worth Pursuing' ? 'bg-green-500' :
                                             property.recommendation.level === 'Avoid' ? 'bg-red-500' : 'bg-yellow-500'
-                                        }`}></div>
-                                </div>
+                                            }`}></div>
+                                    </div>
 
-                                <h4 className="font-bold text-gray-800 text-sm leading-tight mb-1 truncate" title={property.address}>
-                                    {property.address.split(',')[0]}
-                                </h4>
-                                <p className="text-xs text-gray-500 mb-2 truncate">
-                                    {property.address.split(',').slice(1).join(',')}
-                                </p>
+                                    <h4 className="font-bold text-gray-800 text-sm leading-tight mb-1 truncate" title={property.address}>
+                                        {property.address.split(',')[0]}
+                                    </h4>
+                                    <p className="text-xs text-gray-500 mb-2 truncate">
+                                        {property.address.split(',').slice(1).join(',')}
+                                    </p>
 
-                                <div className="flex justify-between items-center text-xs mt-2 pt-2 border-t border-gray-100">
-                                    <span className="font-medium text-gray-700">
-                                        ${property.financials.listPrice.toLocaleString()}
-                                    </span>
-                                    {property.calculations?.capRate > 0 && (
-                                        <span className="text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded">
-                                            {property.calculations.capRate.toFixed(1)}% Cap
+                                    <div className="flex justify-between items-center text-xs mt-2 pt-2 border-t border-gray-100">
+                                        <span className="font-medium text-gray-700">
+                                            ${property.financials.listPrice.toLocaleString()}
                                         </span>
-                                    )}
+                                        {property.calculations?.capRate > 0 && (
+                                            <span className="text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded">
+                                                {property.calculations.capRate.toFixed(1)}% Cap
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            ))}
+                ))}
+            </div>
         </div>
     );
 };
