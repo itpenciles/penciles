@@ -2,8 +2,9 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../contexts/AuthContext';
-import { PlusIcon, ChartBarIcon, ArrowTrendingUpIcon, BanknotesIcon, ExclamationTriangleIcon, LockClosedIcon } from '../constants';
-import { Property, SubscriptionTier } from '../types';
+import { PlusIcon, ChartBarIcon, ArrowTrendingUpIcon, BanknotesIcon, ExclamationTriangleIcon, LockClosedIcon, ListBulletIcon, ViewColumnsIcon } from '../constants';
+import { Property, SubscriptionTier, DealStage } from '../types';
+import KanbanBoard from './KanbanBoard';
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
@@ -171,7 +172,8 @@ import { useMobile } from '../hooks/useMobile';
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const { properties, deleteProperty, loading, error } = useProperties();
+    const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
+    const { properties, deleteProperty, updateProperty, loading, error } = useProperties();
     const { user, featureAccess } = useAuth();
     const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
     const isMobile = useMobile();
@@ -251,10 +253,19 @@ const Dashboard = () => {
         }
     }, [deleteProperty]);
 
-
     const handleCompare = () => {
         if (selectedPropertyIds.length < 2 || !featureAccess.canCompare) return;
         navigate(`/compare?ids=${selectedPropertyIds.join(',')}`);
+    };
+
+
+    const handleUpdateStatus = async (property: Property, newStatus: DealStage) => {
+        try {
+            await updateProperty(property.id, { ...property, status: newStatus, skipReevaluation: true } as any);
+        } catch (err) {
+            console.error("Failed to update status", err);
+            alert("Failed to update status");
+        }
     };
 
     // --- Sorting and Filtering Logic ---
@@ -412,6 +423,24 @@ const Dashboard = () => {
                         <h2 className="text-xl font-bold text-gray-800">Active Property Analyses</h2>
 
                         <div className="flex items-center gap-4 w-full sm:w-auto">
+                            {/* View Toggle */}
+                            <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    title="List View"
+                                >
+                                    <ListBulletIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('board')}
+                                    className={`p-1.5 rounded-md transition-all ${viewMode === 'board' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    title="Kanban Board"
+                                >
+                                    <ViewColumnsIcon className="h-4 w-4" />
+                                </button>
+                            </div>
+
                             {/* Filter Dropdown */}
                             <div className="flex items-center">
                                 <span className="text-sm text-gray-600 mr-2">Filter:</span>
@@ -442,25 +471,37 @@ const Dashboard = () => {
                             )}
                         </div>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm overflow-x-auto mb-8">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Property</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Date Analyzed</th>
-                                    <SortableHeader label="Strategy" columnKey="strategy" />
-                                    <SortableHeader label="Cap Rate" columnKey="capRate" />
-                                    <SortableHeader label="Cash Flow (No-Debt)" columnKey="cashFlow" />
-                                    <SortableHeader label="Cash-on-Cash" columnKey="cashOnCash" />
-                                    <SortableHeader label="Recommendation" columnKey="recommendation" />
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {renderTableContent()}
-                            </tbody>
-                        </table>
-                    </div>
+
+
+
+                    {viewMode === 'list' ? (
+                        <div className="bg-white rounded-xl shadow-sm overflow-x-auto mb-8">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Property</th>
+                                        <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Date Analyzed</th>
+                                        <SortableHeader label="Strategy" columnKey="strategy" />
+                                        <SortableHeader label="Cap Rate" columnKey="capRate" />
+                                        <SortableHeader label="Cash Flow (No-Debt)" columnKey="cashFlow" />
+                                        <SortableHeader label="Cash-on-Cash" columnKey="cashOnCash" />
+                                        <SortableHeader label="Recommendation" columnKey="recommendation" />
+                                        <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {renderTableContent()}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="mb-8">
+                            <KanbanBoard
+                                properties={activeProperties}
+                                onUpdateStatus={handleUpdateStatus}
+                            />
+                        </div>
+                    )}
 
                     {activeProperties.length > propertyLimit && (
                         <div className="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800 flex items-center justify-between">
@@ -568,8 +609,8 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </aside>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

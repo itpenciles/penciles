@@ -1,6 +1,8 @@
 
 export type Strategy = 'Rental' | 'Wholesale' | 'Subject-To' | 'Seller Financing' | 'BRRRR';
 
+export type DealStage = 'Lead' | 'Analyzing' | 'Offer Sent' | 'Under Contract' | 'Closed' | 'Archived';
+
 export interface Unit {
   bedrooms: number;
   bathrooms: number;
@@ -9,6 +11,7 @@ export interface Unit {
 export interface Property {
   id: string;
   address: string;
+  status: DealStage; // New CRM Status
   propertyType: string;
   imageUrl: string;
   dateAnalyzed: string;

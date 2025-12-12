@@ -35,9 +35,15 @@ export const addProperty = async (req: any, res: any) => {
 
     try {
         // Let the database generate the ID (SERIAL PRIMARY KEY). We don't pass an ID.
+        // Default status to 'Lead' if not provided
+        const finalPropertyData = {
+            status: 'Lead',
+            ...propertyData
+        };
+
         const result = await query(
             'INSERT INTO properties (user_id, property_data) VALUES ($1, $2) RETURNING id, property_data, created_at',
-            [userId, propertyData]
+            [userId, finalPropertyData]
         );
         // The returned ID from the database is the source of truth.
         const newProperty = {
