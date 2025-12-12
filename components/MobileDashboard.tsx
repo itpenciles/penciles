@@ -9,8 +9,8 @@ const MobileDashboard = () => {
     const { properties } = useProperties();
     const { user, analysisStatus } = useAuth();
 
-    const activeProperties = properties.filter(p => !p.deletedAt);
-    const archivedProperties = properties.filter(p => p.deletedAt);
+    const activeProperties = properties.filter(p => !p.deletedAt && p.status !== 'Archived');
+    const archivedProperties = properties.filter(p => p.deletedAt || p.status === 'Archived');
 
     const avgCapRate = activeProperties.length > 0 ? activeProperties.reduce((acc, p) => acc + p.calculations.capRate, 0) / activeProperties.length : 0;
     const totalCashFlow = activeProperties.reduce((acc, p) => acc + p.calculations.monthlyCashFlowWithDebt, 0);

@@ -198,8 +198,8 @@ const Dashboard = () => {
     const [filterRecommendation, setFilterRecommendation] = useState<string>('All');
 
     // Separate Active vs Archived properties
-    const activeProperties = useMemo(() => properties.filter(p => !p.deletedAt), [properties]);
-    const archivedProperties = useMemo(() => properties.filter(p => p.deletedAt), [properties]);
+    const activeProperties = useMemo(() => properties.filter(p => !p.deletedAt && p.status !== 'Archived'), [properties]);
+    const archivedProperties = useMemo(() => properties.filter(p => p.deletedAt || p.status === 'Archived'), [properties]);
 
     const avgCapRate = activeProperties.length > 0 ? activeProperties.reduce((acc, p) => acc + p.calculations.capRate, 0) / activeProperties.length : 0;
     const highRiskProperties = activeProperties.filter(p => p.recommendation?.level === 'High Risk' || p.recommendation?.level === 'Avoid').length;
