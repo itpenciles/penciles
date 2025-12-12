@@ -5,7 +5,7 @@ import { MapPinIcon, ListBulletIcon, ClockIcon, CalendarDaysIcon } from '../cons
 import { DealStage } from '../types';
 
 const MobilePropertiesList = () => {
-    const { properties, loading, error, updateProperty } = useProperties();
+    const { properties, loading, error, updateProperty, deleteProperty } = useProperties();
     const navigate = useNavigate();
     const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
     const [sortBy, setSortBy] = useState<'date' | 'strategy'>('date');
@@ -138,29 +138,41 @@ const MobilePropertiesList = () => {
                                     }`}>
                                     {property.recommendation?.level || 'Unknown'}
                                 </div>
-                                {viewMode === 'active' && (
-                                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Status</span>
-                                        <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                            <select
-                                                value={property.status || 'Lead'}
-                                                onChange={(e) => {
-                                                    const newStatus = e.target.value as DealStage;
-                                                    updateProperty(property.id, { ...property, status: newStatus });
-                                                }}
-                                                className="block w-full rounded-md border-gray-300 py-1 pl-2 pr-8 text-xs focus:border-indigo-500 focus:ring-indigo-500 sm:text-xs bg-gray-50 text-gray-700 font-medium"
-                                            >
-                                                <option value="Lead">Lead</option>
-                                                <option value="Analyzing">Analyzing</option>
-                                                <option value="Offer Sent">Offer Sent</option>
-                                                <option value="Under Contract">Under Contract</option>
-                                                <option value="Closed">Closed</option>
-                                                <option value="Archived">Archived</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
+
+                            {viewMode === 'active' && (
+                                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Status</span>
+                                    <div className="relative w-2/3" onClick={(e) => e.stopPropagation()}>
+                                        <select
+                                            value={property.status || 'Lead'}
+                                            onChange={async (e) => {
+                                                const newStatus = e.target.value as DealStage;
+                                                if (newStatus === 'Archived') {
+                                                    if (window.confirm('Are you sure you want to delete this property analysis?\n\nThis action cannot be undone immediately, but the property will remain in your history.')) {
+                                                        try {
+                                                            await deleteProperty(property.id);
+                                                        } catch (err) {
+                                                            console.error('Failed to delete property:', err);
+                                                        }
+                                                    }
+                                                    // If cancelled, the value prop didn't change, so it reverts.
+                                                } else {
+                                                    updateProperty(property.id, { ...property, status: newStatus });
+                                                }
+                                            }}
+                                            className="block w-full rounded-md border-gray-300 py-3 pl-3 pr-10 text-sm focus:border-teal-500 focus:ring-teal-500 bg-white text-gray-900 font-medium shadow-sm transition-shadow hover:border-teal-400"
+                                        >
+                                            <option value="Lead">Lead</option>
+                                            <option value="Analyzing">Analyzing</option>
+                                            <option value="Offer Sent">Offer Sent</option>
+                                            <option value="Under Contract">Under Contract</option>
+                                            <option value="Closed">Closed</option>
+                                            <option value="Archived">Archived</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ))
                 )}
