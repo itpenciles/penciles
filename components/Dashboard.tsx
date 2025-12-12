@@ -83,6 +83,17 @@ const PropertyRow: React.FC<PropertyRowProps> = React.memo(({ property, isSelect
                     {recommendation?.strategyAnalyzed || 'Rental'}
                 </span>
             </td>
+            {/* Status Column */}
+            <td className="py-3 px-4">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${property.status === 'Closed' ? 'bg-green-100 text-green-800' :
+                    property.status === 'Under Contract' ? 'bg-orange-100 text-orange-800' :
+                        property.status === 'Offer Sent' ? 'bg-purple-100 text-purple-800' :
+                            property.status === 'Analyzing' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-blue-100 text-blue-800'
+                    }`}>
+                    {property.status || 'Lead'}
+                </span>
+            </td>
             <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-green-600'}`}>{calculations.capRate.toFixed(1)}%</td>
             <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-gray-700'}`}>{formatCurrency(calculations.monthlyCashFlowNoDebt)}</td>
             <td className={`py-3 px-4 text-sm font-semibold ${isLocked || isArchived ? 'text-gray-400' : 'text-red-600'}`}>{calculations.cashOnCashReturn.toFixed(1)}%</td>
@@ -164,7 +175,7 @@ const CompareButtonWrapper: React.FC<{ children: React.ReactNode; canCompare: bo
     );
 };
 
-type SortKey = 'capRate' | 'cashFlow' | 'cashOnCash' | 'recommendation' | 'strategy';
+type SortKey = 'capRate' | 'cashFlow' | 'cashOnCash' | 'recommendation' | 'strategy' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 import MobileDashboard from './MobileDashboard';
@@ -318,6 +329,13 @@ const Dashboard = () => {
                     case 'strategy':
                         valA = a.recommendation?.strategyAnalyzed || 'Rental';
                         valB = b.recommendation?.strategyAnalyzed || 'Rental';
+                        break;
+                    case 'status':
+                        const statusRank: Record<string, number> = {
+                            'Lead': 1, 'Analyzing': 2, 'Offer Sent': 3, 'Under Contract': 4, 'Closed': 5, 'Archived': 6
+                        };
+                        valA = statusRank[a.status || 'Lead'] || 0;
+                        valB = statusRank[b.status || 'Lead'] || 0;
                         break;
                 }
 
@@ -511,10 +529,11 @@ const Dashboard = () => {
                                         <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Property</th>
                                         <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Date Analyzed</th>
                                         <SortableHeader label="Strategy" columnKey="strategy" />
+                                        <SortableHeader label="Status" columnKey="status" />
                                         <SortableHeader label="Cap Rate" columnKey="capRate" />
                                         <SortableHeader label="Cash Flow (No-Debt)" columnKey="cashFlow" />
-                                        <SortableHeader label="Cash-on-Cash" columnKey="cashOnCash" />
-                                        <SortableHeader label="Recommendation" columnKey="recommendation" />
+                                        <SortableHeader label="CoC" columnKey="cashOnCash" />
+                                        <SortableHeader label="Deal Audit" columnKey="recommendation" />
                                         <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
                                     </tr>
                                 </thead>
@@ -562,11 +581,11 @@ const Dashboard = () => {
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Property</th>
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Date Analyzed</th>
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Strategy</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cap Rate</th>
                                             <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cash Flow</th>
-                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Cash-on-Cash</th>
-                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Recommendation</th>
-                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">CoC</th>
+                                            <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Deal Audit</th>
                                         </tr>
                                     </thead>
                                     <tbody>
