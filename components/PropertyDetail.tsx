@@ -246,20 +246,22 @@ const PropertyDetail = () => {
                     <ArrowLeftIcon className="h-5 w-5 mr-2" />
                     Back to Dashboard
                 </button>
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{editedProperty.address}</h1>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{editedProperty.address}</h1>
                         <p className="text-gray-600">Property Investment Analysis</p>
                     </div>
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3 w-full md:w-auto">
                         <button
                             onClick={handleShare}
-                            className="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm text-sm"
+                            className="flex-1 md:flex-none justify-center flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm text-sm"
                         >
                             <ShareIcon className="h-4 w-4 mr-2" />
                             Share
                         </button>
-                        <RecommendationBadge level={editedProperty.recommendation.level} />
+                        <div className="flex-1 md:flex-none text-center">
+                            <RecommendationBadge level={editedProperty.recommendation.level} />
+                        </div>
                     </div>
                 </div>
             </header>
