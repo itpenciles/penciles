@@ -619,3 +619,70 @@ export const reevaluatePropertyWithGemini = async (property: Property, strategy:
 
     throw new Error(finalErrorMessage);
 };
+
+
+export interface OfferParams {
+    offerPrice: number;
+    closingDateDays: number;
+    earnestMoney: number;
+    contingencies: string[];
+    customTerms?: string;
+    strategy: string;
+}
+
+export const generateOfferLetter = async (property: Property, params: OfferParams): Promise<string> => {
+    console.log(`Generating offer letter for ${property.address} with strategy ${params.strategy}`);
+
+    // Choose model
+    const model = 'gemini-2.5-flash';
+
+    const prompt = `
+    You are a professional real estate investor writing a formal offer letter to a seller (or their agent).
+    
+    **Property:**
+    Address: ${property.address}
+    Listing Price: $${property.financials.listPrice.toLocaleString()}
+    
+    **Analysis Context:**
+    - Strategy Analyzed: ${params.strategy}
+    - Market Safety Score: ${property.marketAnalysis.safetyScore}/100
+    - Our Analysis Summary: ${property.recommendation.summary}
+    - Key Factors: ${property.recommendation.keyFactors.join(', ')}
+    
+    **Offer Details:**
+    - Offer Price: $${params.offerPrice.toLocaleString()}
+    - Closing Timeline: ${params.closingDateDays} days
+    - Earnest Money Deposit: $${params.earnestMoney.toLocaleString()}
+    - Contingencies: ${params.contingencies.join(', ') || 'Standard inspection and financing contingencies'}
+    - Custom Terms: ${params.customTerms || 'None'}
+
+    **Goal:**
+    Write a persuasive but professional offer letter. 
+    - If the Offer Price is significantly lower than Listing Price, briefly justify it using the analysis context (e.g., "market conditions", "required repairs", "neighborhood safety/risk factors"). Be polite but firm about the numbers.
+    - Highlight our ability to close (mentioning the earnest money and timeline).
+    - If the strategy is "Wholesale" or "Investor", frame it as a "cash" or "hard money" offer if applicable (implied by short closing times like < 21 days).
+    - If the strategy is "Seller Financing" or "Subject-To", explain the benefits of these terms to the seller (e.g. "We pay your price, you get monthly income...").
+
+    **Format:**
+    Return ONLY the body of the letter in Markdown format. Do not include "Here is your letter:" preambles.
+    Start with "Dear [Seller Name or Owner]," (use placeholders if unknown).
+    End with "Sincerely,\n[Your Name/Company]".
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                temperature: 0.7, // Higher creativity for writing
+            },
+        });
+
+        const letter = response.text ?? '';
+        return letter.trim();
+
+    } catch (error) {
+        console.error("Failed to generate offer letter:", error);
+        throw new Error("Failed to generate offer letter. AI service may be down.");
+    }
+};

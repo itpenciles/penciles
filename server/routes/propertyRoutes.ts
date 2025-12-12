@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getProperties, addProperty, updateProperty, deleteProperty, generateShareLink, getPublicProperty } from '../controllers/propertyController.js';
+import { getProperties, addProperty, updateProperty, deleteProperty, generateShareLink, getPublicProperty, generateOffer } from '../controllers/propertyController.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = Router();
@@ -15,7 +15,8 @@ router.use(authMiddleware);
 
 router.get('/', getProperties);
 router.post('/', addProperty);
-router.post('/:id/share', generateShareLink); // New Protected Route
+router.post('/:id/share', generateShareLink);
+router.post('/:id/offer', generateOffer); // New Smart Offer Route
 router.put('/:id', updateProperty);
 router.delete('/:id', deleteProperty);
 

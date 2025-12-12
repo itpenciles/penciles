@@ -2,7 +2,7 @@
 import { query } from '../db.js';
 import crypto from 'crypto';
 import { Property } from '../../types';
-import { reevaluatePropertyWithGemini } from '../services/geminiService.js';
+import { reevaluatePropertyWithGemini, generateOfferLetter } from '../services/geminiService.js';
 
 // Get all properties for the logged-in user
 export const getProperties = async (req: any, res: any) => {
@@ -62,7 +62,7 @@ export const updateProperty = async (req: any, res: any) => {
     const { id: propertyId, ...dataToStore } = propertyData;
 
     console.log(`[UpdateProperty] Updating property ${id} for user ${userId}`);
-    console.log(`[UpdateProperty] Market Comparables count: ${propertyData.marketComparables?.length || 0}`);
+    console.log(`[UpdateProperty] Market Comparables count: ${propertyData.marketComparables?.length || 0} `);
 
     try {
         // Check for skipReevaluation flag (passed from frontend when just saving comps)
@@ -236,5 +236,35 @@ export const getPublicProperty = async (req: any, res: any) => {
     } catch (error) {
         console.error('Error fetching public property:', error);
         res.status(500).json({ message: 'Failed to fetch property.' });
+    }
+};
+
+export const generateOffer = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const offerParams = req.body; // Expects OfferParams structure
+
+        // 1. Get Property Data
+        // Ideally we should use the same getProperty logic or query directly
+        const result = await query(
+            'SELECT property_data FROM properties WHERE id = $1',
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Property not found' });
+        }
+
+        const property = result.rows[0].property_data;
+
+        // 2. Generate Offer Letter
+        const offerLetter = await generateOfferLetter(property, offerParams);
+
+        // 3. Return the letter
+        res.json({ offerLetter });
+
+    } catch (error) {
+        console.error('Error generating offer letter:', error);
+        res.status(500).json({ message: 'Failed to generate offer letter' });
     }
 };

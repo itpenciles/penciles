@@ -15,6 +15,7 @@ import { ProjectionsTab } from './ProjectionsTab';
 import { InputField, SelectField, ToggleField, SliderField } from './common/FormFields';
 import { BrrrrMetricsTab, BrrrrParamsTab } from './BrrrrStrategy';
 import { ComparablesTab } from './ComparablesTab';
+import OffersTab from './OffersTab';
 
 // --- Icons ---
 const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -68,7 +69,7 @@ const PropertyDetail = () => {
     const [property, setProperty] = useState<Property | null>(null);
     const [editedProperty, setEditedProperty] = useState<Property | null>(null);
     const [activeStrategy, setActiveStrategy] = useState<Strategy>('Rental');
-    const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'market' | 'adjust' | 'projections' | 'comparables'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'market' | 'adjust' | 'projections' | 'comparables' | 'offers'>('overview');
     const [isReevaluating, setIsReevaluating] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -307,6 +308,12 @@ const PropertyDetail = () => {
                                 Comparables
                             </button>
                         )}
+                        <button
+                            onClick={() => setActiveTab('offers')}
+                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'offers' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        >
+                            Offers
+                        </button>
                     </nav>
                 </div>
 
@@ -384,6 +391,10 @@ const PropertyDetail = () => {
 
                     {activeTab === 'projections' && editedProperty && (
                         <ProjectionsTab financials={editedProperty.financials} />
+                    )}
+
+                    {activeTab === 'offers' && editedProperty && (
+                        <OffersTab property={editedProperty} />
                     )}
                 </div>
             </div>
